@@ -577,4 +577,7 @@
     <string name="stopping_video_swap">Stopping video swap</string>
     <string name="starting_proxy">Starting proxy</string>
     <string name="stopping_proxy">Stopping proxy</string>
+    <string name="ad_status_covered">已屏蔽广告 · 正在播放无广告源</string>
+    <string name="ad_status_waiting">已屏蔽广告 · 约 %1$d 秒后恢复</string>
+    <string name="ad_status_waiting_unknown">已屏蔽广告 · 等待直播恢复</string>
 </resources>

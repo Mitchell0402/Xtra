@@ -15,6 +15,8 @@ data class AdBlockConfig(
     val useStreamProxy: Boolean,
     val useVideoSwap: Boolean,
     val hideAds: Boolean,
+    /** Layer 3: ad segments of live playlists become gaps that are never loaded. */
+    val filterAdSegments: Boolean,
     val proxyTimeoutMs: Int,
     val customProxies: List<CustomProxy>,
     /** Enabled stream proxies with a host, a port and at least one thing to proxy. */
@@ -57,6 +59,7 @@ data class AdBlockConfig(
                 useStreamProxy = !useCustomProxy && prefs.getBoolean(C.PLAYER_USE_STREAM_PROXY, false),
                 useVideoSwap = prefs.getBoolean(C.PLAYER_USE_VIDEO_SWAP, true),
                 hideAds = prefs.getBoolean(C.PLAYER_HIDE_ADS, true),
+                filterAdSegments = prefs.getBoolean(C.PLAYER_FILTER_AD_SEGMENTS, true),
                 proxyTimeoutMs = prefs.getString(C.PROXY_TIMEOUT, "3000")?.toIntOrNull() ?: 3000,
                 customProxies = repository.getCustomProxies().filter {
                     it.enabled && !it.url.isNullOrBlank()

@@ -37,12 +37,17 @@ data class AdPlaylist(
     companion object {
         @UnstableApi
         fun from(playlist: HlsMediaPlaylist): AdPlaylist {
+            return from(playlist.segments, playlist.interstitials, playlist.startTimeUs.takeIf { playlist.hasProgramDateTime })
+        }
+
+        @UnstableApi
+        fun from(segments: List<HlsMediaPlaylist.Segment>, interstitials: List<HlsMediaPlaylist.Interstitial>, startTimeUs: Long?): AdPlaylist {
             return AdPlaylist(
-                startTimeUs = playlist.startTimeUs.takeIf { playlist.hasProgramDateTime },
-                segments = playlist.segments.map {
+                startTimeUs = startTimeUs,
+                segments = segments.map {
                     Segment(it.url, it.title, it.relativeStartTimeUs, it.durationUs, it.relativeDiscontinuitySequence)
                 },
-                dateRanges = playlist.interstitials.map { dateRange ->
+                dateRanges = interstitials.map { dateRange ->
                     val start = dateRange.startDateUnixUs.takeIf { it != C.TIME_UNSET }
                     val end = dateRange.endDateUnixUs.takeIf { it != C.TIME_UNSET }
                         ?: start?.let { start ->
@@ -50,7 +55,7 @@ data class AdPlaylist(
                                 ?: dateRange.plannedDurationUs.takeIf { it != C.TIME_UNSET }?.let { start + it }
                         }
                     val attributes = dateRange.clientDefinedAttributes.associate { it.name to (if (it.type == HlsMediaPlaylist.ClientDefinedAttribute.TYPE_DOUBLE) it.doubleValue.toString() else it.textValue) }
-                    AdPlaylist.DateRange(
+                    DateRange(
                         id = dateRange.id,
                         className = attributes["CLASS"] ?: "",
                         startDateUs = start,

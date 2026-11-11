@@ -15,6 +15,8 @@
  */
 package com.github.andreyasadchy.xtra.player.lowlatency;
 
+import com.github.andreyasadchy.xtra.player.ads.AdSegmentFilter;
+
 import static androidx.media3.common.util.Util.castNonNull;
 import static androidx.media3.common.util.Util.msToUs;
 import static androidx.media3.common.util.Util.parseXsDateTime;
@@ -320,6 +322,7 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
 
   private final HlsMultivariantPlaylist multivariantPlaylist;
   @Nullable private final HlsMediaPlaylist previousMediaPlaylist;
+  private final boolean filterAds; // xtra: ad segments
 
   /**
    * Creates an instance where media playlists are parsed without inheriting attributes from a
@@ -327,6 +330,11 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
    */
   public HlsPlaylistParser() {
     this(HlsMultivariantPlaylist.EMPTY, /* previousMediaPlaylist= */ null);
+  }
+
+  /** xtra: ad segments. With {@code filterAds}, ad segments of live playlists become gaps that are never loaded. */
+  public HlsPlaylistParser(boolean filterAds) {
+    this(HlsMultivariantPlaylist.EMPTY, /* previousMediaPlaylist= */ null, filterAds);
   }
 
   /**
@@ -341,8 +349,16 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
   public HlsPlaylistParser(
       HlsMultivariantPlaylist multivariantPlaylist,
       @Nullable HlsMediaPlaylist previousMediaPlaylist) {
+    this(multivariantPlaylist, previousMediaPlaylist, false);
+  }
+
+  public HlsPlaylistParser( // xtra: ad segments
+      HlsMultivariantPlaylist multivariantPlaylist,
+      @Nullable HlsMediaPlaylist previousMediaPlaylist,
+      boolean filterAds) {
     this.multivariantPlaylist = multivariantPlaylist;
     this.previousMediaPlaylist = previousMediaPlaylist;
+    this.filterAds = filterAds;
   }
 
   @Override
@@ -377,7 +393,8 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
               previousMediaPlaylist,
               new LineIterator(extraLines, reader),
               uri,
-              matcherCache);
+              matcherCache,
+              filterAds);
         } else {
           extraLines.add(line);
         }
@@ -978,7 +995,8 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
       @Nullable HlsMediaPlaylist previousMediaPlaylist,
       LineIterator iterator,
       Uri playlistUri,
-      MatcherCache matcherCache)
+      MatcherCache matcherCache,
+      boolean filterAds) // xtra: ad segments
       throws IOException {
     String baseUri = playlistUri.toString();
     @HlsMediaPlaylist.PlaylistType int playlistType = HlsMediaPlaylist.PLAYLIST_TYPE_UNKNOWN;
@@ -1667,6 +1685,9 @@ public final class HlsPlaylistParser implements ParsingLoadable.Parser<HlsPlayli
       // to was removed. Make sure we propagate the start time from the previous playlist in such a
       // case.
       playlistStartTimeUs = previousMediaPlaylist.startTimeUs;
+    }
+    if (filterAds && !hasEndTag) { // xtra: ad segments, live only (VODs have an end tag)
+      segments = AdSegmentFilter.markAdsAsGaps(segments, interstitials, playlistStartTimeUs != 0 ? playlistStartTimeUs : null);
     }
     return new HlsMediaPlaylist(
         playlistType,

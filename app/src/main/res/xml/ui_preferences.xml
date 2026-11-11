@@ -38,16 +38,6 @@
         app:iconSpaceReserved="false"
         app:singleLineTitle="false" />
 
-    <ListPreference
-        android:defaultValue="1"
-        android:entries="@array/followedEntries"
-        android:entryValues="@array/miscValues"
-        android:key="ui_startonfollowed"
-        android:summary="%s"
-        android:title="@string/startonfollowed"
-        app:iconSpaceReserved="false"
-        app:singleLineTitle="false" />
-
     <Preference
         android:key="ui_navigation_tab_list_dialog"
         android:title="@string/navigation_tabs"

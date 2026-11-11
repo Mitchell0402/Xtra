@@ -2019,6 +2019,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFragment
     }
 
     fun minimize() {
+        // can be called from a deep link before the restored player fragment has a view
+        if (_binding == null) return
         with(binding) {
             isMaximized = false
             if (playbackService?.type == BasePlaybackService.STREAM && chatFragment?.emoteMenuIsVisible() == true) {

@@ -701,10 +701,8 @@ class SettingsActivity : AppCompatActivity() {
                         key = split[0],
                         text = when (split[0]) {
                             "0" -> getString(R.string.games)
-                            "1" -> getString(R.string.popular)
-                            "2" -> getString(R.string.following)
                             "3" -> getString(R.string.saved)
-                            else -> getString(R.string.popular)
+                            else -> getString(R.string.following)
                         },
                         default = split[1] != "0",
                         enabled = split[2] != "0",

@@ -554,7 +554,8 @@ class ExoPlayerFragment : PlayerFragment() {
     override fun close(deleteStates: Boolean) {
         playbackService?.pause()
         playbackService?.stop()
-        if (deleteStates) {
+        // isAdded: a deep link can close a player fragment that was restored but not attached yet
+        if (deleteStates && isAdded) {
             viewModel.deletePlaybackStates()
         }
         playerListener?.let { (playbackService?.secondaryPlayer ?: playbackService?.player)?.removeListener(it) }

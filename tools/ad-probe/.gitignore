@@ -1,0 +1,4 @@
+monitor.log
+shots/
+__pycache__/
+res_*.json

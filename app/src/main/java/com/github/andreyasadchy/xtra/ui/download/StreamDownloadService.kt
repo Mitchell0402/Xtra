@@ -783,6 +783,8 @@ class StreamDownloadService : LifecycleService() {
     private suspend fun download(offlineVideo: OfflineVideo, downloadProgress: DownloadProgress, downloadJob: DownloadJob, channelLogin: String, sourceUrl: String, path: String, networkLibrary: String?) = withContext(Dispatchers.IO) {
         val isShared = path.toUri().scheme == ContentResolver.SCHEME_CONTENT
         val liveCheck = max(prefs().getString(C.DOWNLOAD_STREAM_LIVE_CHECK, "2")?.toLongOrNull() ?: 2L, 2L) * 1000L
+        // recordings leave out stitched ad segments, like the player's gap filter
+        val skipAds = prefs().getBoolean(C.PLAYER_FILTER_AD_SEGMENTS, true)
         val downloadDate = System.currentTimeMillis()
         var startTime = System.currentTimeMillis()
         var lastUrl = downloadProgress.lastSegmentUrl
@@ -805,7 +807,7 @@ class StreamDownloadService : LifecycleService() {
                 }
                 if (response.info.httpStatusCode in 200..299) {
                     response.body.inputStream().use {
-                        PlaylistUtils.parseMediaPlaylist(it)
+                        PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                     }
                 } else {
                     return@withContext
@@ -828,7 +830,7 @@ class StreamDownloadService : LifecycleService() {
                 }
                 if (response.info.httpStatusCode in 200..299) {
                     response.body.inputStream().use {
-                        PlaylistUtils.parseMediaPlaylist(it)
+                        PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                     }
                 } else {
                     return@withContext
@@ -838,7 +840,7 @@ class StreamDownloadService : LifecycleService() {
                 okHttpClient.value.newCall(Request.Builder().url(sourceUrl).build()).executeAsync().use { response ->
                     if (response.isSuccessful) {
                         response.body.byteStream().use {
-                            PlaylistUtils.parseMediaPlaylist(it)
+                            PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                         }
                     } else {
                         return@withContext
@@ -1102,7 +1104,7 @@ class StreamDownloadService : LifecycleService() {
                     }
                     if (response.info.httpStatusCode in 200..299) {
                         response.body.inputStream().use {
-                            PlaylistUtils.parseMediaPlaylist(it)
+                            PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                         }
                     } else {
                         return@withContext
@@ -1125,7 +1127,7 @@ class StreamDownloadService : LifecycleService() {
                     }
                     if (response.info.httpStatusCode in 200..299) {
                         response.body.inputStream().use {
-                            PlaylistUtils.parseMediaPlaylist(it)
+                            PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                         }
                     } else {
                         return@withContext
@@ -1135,7 +1137,7 @@ class StreamDownloadService : LifecycleService() {
                     okHttpClient.value.newCall(Request.Builder().url(sourceUrl).build()).executeAsync().use { response ->
                         if (response.isSuccessful) {
                             response.body.byteStream().use {
-                                PlaylistUtils.parseMediaPlaylist(it)
+                                PlaylistUtils.parseMediaPlaylist(it, skipAds = skipAds)
                             }
                         } else {
                             return@withContext

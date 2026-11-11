@@ -414,7 +414,8 @@ class MediaPlayerFragment : PlayerFragment() {
         playbackService?.updatePlayingState()
         updatePlayingState()
         playbackService?.player?.stop()
-        if (deleteStates) {
+        // isAdded: a deep link can close a player fragment that was restored but not attached yet
+        if (deleteStates && isAdded) {
             viewModel.deletePlaybackStates()
         }
         playbackService?.playerListener = null

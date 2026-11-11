@@ -1110,12 +1110,10 @@ class MainActivity : AppCompatActivity() {
             } else defaultTabs
         }
         navController.setGraph(navController.navInflater.inflate(R.navigation.nav_graph).also {
-            val startOnFollowed = prefs.getString(C.UI_START_ON_FOLLOWED, "1")?.toIntOrNull() ?: 1
-            val isLoggedIn = !TwitchApiHelper.getGQLHeaders(this, true)[C.HEADER_TOKEN].isNullOrBlank() ||
-                    !TwitchApiHelper.getHelixHeaders(this)[C.HEADER_TOKEN].isNullOrBlank()
-            val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
+            // There is no Popular tab: start on Following unless another tab was picked as the default one
+            val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "2"
             when {
-                (isLoggedIn && startOnFollowed < 2) || (!isLoggedIn && startOnFollowed == 0) || defaultItem == "2" -> {
+                defaultItem != "0" && defaultItem != "3" -> {
                     if (prefs.getBoolean(C.UI_FOLLOW_PAGER, true)) {
                         it.setStartDestination(R.id.followPagerFragment)
                     } else {
@@ -1144,7 +1142,6 @@ class MainActivity : AppCompatActivity() {
                     if (enabled) {
                         when (key) {
                             "0" -> menu.add(Menu.NONE, R.id.rootGamesFragment, Menu.NONE, R.string.games).setIcon(R.drawable.ic_games_black_24dp)
-                            "1" -> menu.add(Menu.NONE, R.id.rootTopFragment, Menu.NONE, R.string.popular).setIcon(R.drawable.ic_trending_up_black_24dp)
                             "2" -> {
                                 if (prefs.getBoolean(C.UI_FOLLOW_PAGER, true)) {
                                     menu.add(Menu.NONE, R.id.followPagerFragment, Menu.NONE, R.string.following).setIcon(R.drawable.ic_favorite_black_24dp)

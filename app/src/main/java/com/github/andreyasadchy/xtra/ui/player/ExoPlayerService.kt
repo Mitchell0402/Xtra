@@ -27,6 +27,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.util.Base64
+import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -50,6 +51,7 @@ import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsManifest
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -57,6 +59,7 @@ import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
 import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.media3.exoplayer.hls.playlist.HlsPlaylist
 import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParserFactory
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.ParsingLoadable
@@ -193,7 +196,11 @@ class ExoPlayerService : BasePlaybackService() {
                             serviceListener?.loaded()
                             toggleSubtitles(prefs().getBoolean(C.PLAYER_SUBTITLES_ENABLED, false))
                         }
-                        if (qualities?.find { it.name == VideoQuality.AUTO_QUALITY } != null && quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
+                        // not while an ad is hidden or replaced: changeQuality would turn the video back on
+                        // (unhidePrimaryPlayer applies the quality again once the ad is over)
+                        if (qualities?.find { it.name == VideoQuality.AUTO_QUALITY } != null && quality?.name != VideoQuality.AUDIO_ONLY_QUALITY
+                            && !(type == STREAM && (hidden || videoSwapActive || proxyMediaPlaylist))
+                        ) {
                             changeQuality(quality)
                         }
                     }
@@ -250,143 +257,7 @@ class ExoPlayerService : BasePlaybackService() {
                         }
                     }
                     if (type == STREAM) {
-                        val useProxy = useStreamProxy && !stopProxy && streamProxyList?.getOrNull(currentStreamProxy)?.proxyMediaPlaylist == true
-                        val useVideoSwap = useVideoSwap && !stopVideoSwap
-                        val hideAds = prefs().getBoolean(C.PLAYER_HIDE_ADS, false)
-                        if (useProxy || useVideoSwap || hideAds) {
-                            val playlist = (player?.currentManifest as? HlsManifest)?.mediaPlaylist
-                            val ads = checkPlaylist(playlist)
-                            val oldValue = playingAds
-                            playingAds = ads
-                            if (ads) {
-                                if (!oldValue) {
-                                    when {
-                                        useProxy -> {
-                                            if (!proxyMediaPlaylist) {
-                                                proxyMediaPlaylist = true
-                                                serviceListener?.toast(R.string.starting_proxy, Toast.LENGTH_SHORT)
-                                                player?.let { player ->
-                                                    if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                                                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                                                            setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, true)
-                                                        }.build()
-                                                    }
-                                                    player.volume = 0f
-                                                }
-                                                secondaryPlayerTimerJob?.cancel()
-                                                secondaryPlayerTimerJob = lifecycleScope.launch {
-                                                    delay(3.minutes)
-                                                    proxyMediaPlaylist = false
-                                                    serviceListener?.toast(R.string.stopping_proxy, Toast.LENGTH_SHORT)
-                                                    stopSecondaryPlayer2()
-                                                    secondaryPlayerTimerJob = null
-                                                }
-                                                startSecondaryPlayer(true)
-                                            }
-                                        }
-                                        useVideoSwap -> {
-                                            if (!videoSwapActive) {
-                                                videoSwapActive = true
-                                                serviceListener?.toast(R.string.starting_video_swap, Toast.LENGTH_SHORT)
-                                                player?.let { player ->
-                                                    if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                                                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                                                            setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, true)
-                                                        }.build()
-                                                    }
-                                                    player.volume = 0f
-                                                }
-                                                secondaryPlayerTimerJob?.cancel()
-                                                secondaryPlayerTimerJob = lifecycleScope.launch {
-                                                    delay(3.minutes)
-                                                    videoSwapActive = false
-                                                    serviceListener?.toast(R.string.stopping_video_swap, Toast.LENGTH_SHORT)
-                                                    stopSecondaryPlayer2()
-                                                    secondaryPlayerTimerJob = null
-                                                }
-                                                startSecondaryPlayer(false)
-                                            }
-                                        }
-                                        else -> {
-                                            if (!hidden) {
-                                                hidden = true
-                                                serviceListener?.toast(R.string.waiting_ads, Toast.LENGTH_LONG)
-                                                player?.let { player ->
-                                                    if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                                                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                                                            setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, true)
-                                                        }.build()
-                                                    }
-                                                    player.volume = 0f
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                when {
-                                    proxyMediaPlaylist -> {
-                                        if (adDelayJob == null) {
-                                            adDelayJob = lifecycleScope.launch {
-                                                val delay = player?.let { player ->
-                                                    playlist?.segments?.lastOrNull()?.let { segment ->
-                                                        // This seems to be too much delay but at least it should hide the ad
-                                                        (segment.relativeStartTimeUs / 1000) - player.currentPosition
-                                                    }
-                                                } ?: 0
-                                                delay(delay.milliseconds)
-                                                if (proxyMediaPlaylist) {
-                                                    serviceListener?.toast(R.string.stopping_proxy, Toast.LENGTH_SHORT)
-                                                    stopSecondaryPlayer()
-                                                }
-                                                adDelayJob = null
-                                            }
-                                        }
-                                    }
-                                    videoSwapActive -> {
-                                        if (adDelayJob == null) {
-                                            adDelayJob = lifecycleScope.launch {
-                                                val delay = player?.let { player ->
-                                                    playlist?.segments?.lastOrNull()?.let { segment ->
-                                                        (segment.relativeStartTimeUs / 1000) - player.currentPosition
-                                                    }
-                                                } ?: 0
-                                                delay(delay.milliseconds)
-                                                if (videoSwapActive) {
-                                                    serviceListener?.toast(R.string.stopping_video_swap, Toast.LENGTH_SHORT)
-                                                    stopSecondaryPlayer()
-                                                }
-                                                adDelayJob = null
-                                            }
-                                        }
-                                    }
-                                    hidden -> {
-                                        if (adDelayJob == null) {
-                                            adDelayJob = lifecycleScope.launch {
-                                                val delay = player?.let { player ->
-                                                    playlist?.segments?.lastOrNull()?.let { segment ->
-                                                        (segment.relativeStartTimeUs / 1000) - player.currentPosition
-                                                    }
-                                                } ?: 0
-                                                delay(delay.milliseconds)
-                                                if (hidden) {
-                                                    hidden = false
-                                                    player?.let { player ->
-                                                        if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                                                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                                                                setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, false)
-                                                            }.build()
-                                                        }
-                                                        player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
-                                                    }
-                                                }
-                                                adDelayJob = null
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        handleStreamAds((player?.currentManifest as? HlsManifest)?.mediaPlaylist)
                     }
                 }
 
@@ -685,6 +556,7 @@ class ExoPlayerService : BasePlaybackService() {
                 }
             }
             val player = ExoPlayer.Builder(this).apply {
+                setRenderersFactory(renderersFactory())
                 setLoadControl(
                     DefaultLoadControl.Builder().apply {
                         setBufferDurationsMs(
@@ -740,6 +612,10 @@ class ExoPlayerService : BasePlaybackService() {
     private fun start(restorePauseState: Boolean) {
         lifecycleScope.launch {
             restorePlaybackState()
+            if (type != STREAM || qualities.isNullOrEmpty()) {
+                // a new item: never carry a hidden/muted player over from a previous stream
+                resetAdState()
+            }
             when (type) {
                 STREAM -> {
                     started = true
@@ -770,7 +646,7 @@ class ExoPlayerService : BasePlaybackService() {
                                     && (it.proxyPlaybackAccessToken || it.proxyMultivariantPlaylist || it.proxyMediaPlaylist)
                         }.sortedBy { it.position }
                     }
-                    useVideoSwap = !useCustomProxy && !useStreamProxy && prefs().getBoolean(C.PLAYER_USE_VIDEO_SWAP, false)
+                    useVideoSwap = prefs().getBoolean(C.PLAYER_USE_VIDEO_SWAP, true)
                     if (useVideoSwap) {
                         videoSwapList = xtraModule.playerRepository.getVideoSwapItems().filter {
                             it.enabled && !it.platform.isNullOrBlank() && !it.playerType.isNullOrBlank()
@@ -1604,6 +1480,11 @@ class ExoPlayerService : BasePlaybackService() {
                 }
             }
         }
+        // Tracks change at every ad boundary and onTracksChanged calls this, which re-enables video.
+        // Keep the primary player's video off while an ad is being hidden or replaced.
+        if (type == STREAM && (hidden || videoSwapActive || proxyMediaPlaylist)) {
+            mutePrimaryPlayer()
+        }
     }
 
     fun toggleSubtitles(enabled: Boolean) {
@@ -1624,29 +1505,178 @@ class ExoPlayerService : BasePlaybackService() {
         }
     }
 
-    private fun checkPlaylist(playlist: HlsMediaPlaylist?): Boolean {
-        return playlist?.segments?.lastOrNull()?.let { segment ->
-            val title = segment.title.substringBefore('|')
-            if (title == "Amazon" || title == "Adform" || title == "DCM") {
-                true
-            } else {
-                val segmentStartTime = playlist.startTimeUs + segment.relativeStartTimeUs
-                playlist.interstitials.find { dateRange ->
-                    if (dateRange.id.startsWith("stitched-ad-")
-                        || dateRange.clientDefinedAttributes.find { it.name == "CLASS" }?.textValue == "twitch-stitched-ad"
-                        || dateRange.clientDefinedAttributes.find { it.name.startsWith("X-TV-TWITCH-AD-") } != null
-                    ) {
-                        val startTime = dateRange.startDateUnixUs
-                        val endTime = dateRange.endDateUnixUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }
-                            ?: dateRange.durationUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }?.let { startTime + it }
-                            ?: dateRange.plannedDurationUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }?.let { startTime + it }
-                        if (endTime != null) {
-                            segmentStartTime in startTime..<endTime
-                        } else false
-                    } else false
-                } != null
+    /** The emulator's goldfish decoders fail on Twitch streams, prefer the software ones there. No effect on real devices. */
+    private fun renderersFactory() = DefaultRenderersFactory(this).setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+        val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunnelingDecoder)
+        decoders.filterNot { it.name.startsWith("c2.goldfish.") }.ifEmpty { decoders }
+    }
+
+    /**
+     * Ad handling for live streams. Layers, in order: stream proxy (media playlist) ->
+     * video swap -> hide (video off + muted). Each layer falls through to the next one
+     * when it is unavailable or its stream has ads too, so ads are never shown.
+     */
+    private fun handleStreamAds(playlist: HlsMediaPlaylist?) {
+        val position = player?.currentPosition ?: 0
+        val ads = checkPlaylist(playlist, position)
+        val oldValue = playingAds
+        playingAds = ads
+        if (ads != oldValue) {
+            Log.i(AD_LOG_TAG, "ads=$ads pos=$position segments=${playlist?.segments?.size} first=${playlist?.segments?.firstOrNull()?.relativeStartTimeUs} last=${playlist?.segments?.lastOrNull()?.title} proxy=$proxyMediaPlaylist swap=$videoSwapActive hidden=$hidden")
+        }
+        if (ads) {
+            adDelayJob?.cancel()
+            adDelayJob = null
+            if (!proxyMediaPlaylist && !videoSwapActive && !hidden) {
+                val useProxy = useStreamProxy && !stopProxy && streamProxyList?.getOrNull(currentStreamProxy)?.proxyMediaPlaylist == true
+                val useVideoSwap = useVideoSwap && !stopVideoSwap && videoSwapList?.getOrNull(currentVideoSwapItem) != null
+                when {
+                    useProxy -> {
+                        proxyMediaPlaylist = true
+                        serviceListener?.toast(R.string.starting_proxy, Toast.LENGTH_SHORT)
+                        mutePrimaryPlayer()
+                        secondaryPlayerTimerJob?.cancel()
+                        secondaryPlayerTimerJob = lifecycleScope.launch {
+                            delay(3.minutes)
+                            proxyMediaPlaylist = false
+                            serviceListener?.toast(R.string.stopping_proxy, Toast.LENGTH_SHORT)
+                            stopSecondaryPlayer2()
+                            secondaryPlayerTimerJob = null
+                        }
+                        startSecondaryPlayer(true)
+                    }
+                    useVideoSwap -> {
+                        videoSwapActive = true
+                        serviceListener?.toast(R.string.starting_video_swap, Toast.LENGTH_SHORT)
+                        mutePrimaryPlayer()
+                        secondaryPlayerTimerJob?.cancel()
+                        secondaryPlayerTimerJob = lifecycleScope.launch {
+                            delay(3.minutes)
+                            videoSwapActive = false
+                            serviceListener?.toast(R.string.stopping_video_swap, Toast.LENGTH_SHORT)
+                            stopSecondaryPlayer2()
+                            secondaryPlayerTimerJob = null
+                        }
+                        startSecondaryPlayer(false)
+                    }
+                    prefs().getBoolean(C.PLAYER_HIDE_ADS, true) -> hidePrimaryPlayer()
+                }
             }
-        } == true
+        } else {
+            if ((proxyMediaPlaylist || videoSwapActive || hidden) && adDelayJob == null) {
+                adDelayJob = lifecycleScope.launch {
+                    // wait until the player has played past the last ad segment still in the playlist
+                    delay(adEndDelayMs(playlist, player?.currentPosition ?: 0).milliseconds)
+                    when {
+                        proxyMediaPlaylist -> {
+                            serviceListener?.toast(R.string.stopping_proxy, Toast.LENGTH_SHORT)
+                            stopSecondaryPlayer()
+                        }
+                        videoSwapActive -> {
+                            serviceListener?.toast(R.string.stopping_video_swap, Toast.LENGTH_SHORT)
+                            stopSecondaryPlayer()
+                        }
+                        hidden -> unhidePrimaryPlayer()
+                    }
+                    // the next ad break gets a fresh try at every video swap item
+                    currentVideoSwapItem = 0
+                    stopVideoSwap = false
+                    adDelayJob = null
+                    Log.i(AD_LOG_TAG, "restored primary player")
+                }
+            }
+        }
+    }
+
+    private fun mutePrimaryPlayer() {
+        player?.let { player ->
+            if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
+                    setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, true)
+                }.build()
+            }
+            player.volume = 0f
+        }
+    }
+
+    private fun hidePrimaryPlayer() {
+        if (!hidden) {
+            hidden = true
+            serviceListener?.toast(R.string.waiting_ads, Toast.LENGTH_LONG)
+            mutePrimaryPlayer()
+        }
+    }
+
+    private fun unhidePrimaryPlayer() {
+        hidden = false
+        player?.let { player ->
+            val quality = quality
+            if (quality != null && quality.name != VideoQuality.AUDIO_ONLY_QUALITY && quality.name != VideoQuality.CHAT_ONLY_QUALITY
+                && qualities?.find { it.name == VideoQuality.AUTO_QUALITY } != null && !player.currentTracks.isEmpty
+            ) {
+                // the track group changed during the ad, so apply the selected quality again
+                val previous = previousQuality
+                changeQuality(quality)
+                previousQuality = previous
+            } else if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
+                    setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, false)
+                }.build()
+            }
+            player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
+        }
+    }
+
+    private fun resetAdState() {
+        adDelayJob?.cancel()
+        adDelayJob = null
+        if (hidden) {
+            unhidePrimaryPlayer()
+        }
+        playingAds = false
+        stopProxy = false
+        stopVideoSwap = false
+        currentVideoSwapItem = 0
+    }
+
+    private fun isAdSegment(playlist: HlsMediaPlaylist, segment: HlsMediaPlaylist.Segment): Boolean {
+        // content segments are titled "live", stitched ads carry the ad server name (Amazon, Adform, DCM, ...)
+        val title = segment.title.substringBefore('|')
+        if (title.isNotBlank() && title != "live") {
+            return true
+        }
+        val segmentStartTime = playlist.startTimeUs + segment.relativeStartTimeUs
+        return playlist.interstitials.any { dateRange ->
+            if (dateRange.id.startsWith("stitched-ad-")
+                || dateRange.clientDefinedAttributes.find { it.name == "CLASS" }?.textValue == "twitch-stitched-ad"
+                || dateRange.clientDefinedAttributes.find { it.name.startsWith("X-TV-TWITCH-AD-") } != null
+            ) {
+                val startTime = dateRange.startDateUnixUs
+                val endTime = dateRange.endDateUnixUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }
+                    ?: dateRange.durationUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }?.let { startTime + it }
+                    ?: dateRange.plannedDurationUs.takeIf { it != androidx.media3.common.C.TIME_UNSET }?.let { startTime + it }
+                if (endTime != null) {
+                    segmentStartTime in startTime..<endTime
+                } else false
+            } else false
+        }
+    }
+
+    /** True when the newest segment, or any segment the player has not finished yet, is an ad. */
+    private fun checkPlaylist(playlist: HlsMediaPlaylist?, positionMs: Long): Boolean {
+        val segments = playlist?.segments ?: return false
+        val last = segments.lastOrNull() ?: return false
+        if (isAdSegment(playlist, last)) {
+            return true
+        }
+        val positionUs = positionMs * 1000
+        return segments.any { it.relativeStartTimeUs + it.durationUs > positionUs && isAdSegment(playlist, it) }
+    }
+
+    private fun adEndDelayMs(playlist: HlsMediaPlaylist?, positionMs: Long): Long {
+        val segments = playlist?.segments ?: return 0
+        val adEndMs = segments.filter { isAdSegment(playlist, it) }.maxOfOrNull { it.relativeStartTimeUs + it.durationUs }?.div(1000) ?: return 0
+        return (adEndMs - positionMs).coerceIn(0, 30000)
     }
 
     private fun startSecondaryPlayer(proxy: Boolean) {
@@ -1661,7 +1691,10 @@ class ExoPlayerService : BasePlaybackService() {
             val playerListener = object : Player.Listener {
                 override fun onTimelineChanged(timeline: Timeline, reason: Int) {
                     val playlist = (secondaryPlayer?.currentManifest as? HlsManifest)?.mediaPlaylist
-                    val ads = checkPlaylist(playlist)
+                    val ads = checkPlaylist(playlist, secondaryPlayer?.currentPosition ?: 0)
+                    if (ads) {
+                        Log.i(AD_LOG_TAG, "secondary player has ads (proxy=$proxyMediaPlaylist swap=$videoSwapActive item=$currentVideoSwapItem)")
+                    }
                     if (ads) {
                         when {
                             proxyMediaPlaylist -> {
@@ -1705,6 +1738,7 @@ class ExoPlayerService : BasePlaybackService() {
                 }
             }
             val player = ExoPlayer.Builder(this@ExoPlayerService).apply {
+                setRenderersFactory(renderersFactory())
                 setLoadControl(
                     DefaultLoadControl.Builder().apply {
                         setBufferDurationsMs(
@@ -2076,13 +2110,11 @@ class ExoPlayerService : BasePlaybackService() {
     private fun stopSecondaryPlayer2() {
         secondaryPlayer?.playWhenReady = false
         serviceListener?.setPlayerSurface(false)
-        player?.let { player ->
-            if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                    setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, false)
-                }.build()
-            }
-            player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
+        if (playingAds && prefs().getBoolean(C.PLAYER_HIDE_ADS, true)) {
+            // no clean secondary stream (failed, had ads too, or timed out): keep the primary player hidden
+            hidePrimaryPlayer()
+        } else {
+            unhidePrimaryPlayer()
         }
         secondaryPlayer?.release()
         secondaryPlayer = null
@@ -2798,6 +2830,7 @@ class ExoPlayerService : BasePlaybackService() {
     }
 
     companion object {
+        const val AD_LOG_TAG = "XtraAds"
         const val MULTIVARIANT_PLAYLIST_REGEX = "^usher\\.ttvnw\\.net$"
         const val MEDIA_PLAYLIST_REGEX = "^(?:[a-z0-9-]+\\.playlist\\.(?:live-video|ttvnw)\\.net|video-weaver\\.[a-z0-9-]+\\.hls\\.ttvnw\\.net)$"
 

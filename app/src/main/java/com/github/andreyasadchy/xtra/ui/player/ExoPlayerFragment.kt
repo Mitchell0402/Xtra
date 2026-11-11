@@ -217,6 +217,13 @@ class ExoPlayerFragment : PlayerFragment() {
                 }
             }
 
+            override fun adStatus(text: CharSequence?) {
+                if (view != null) {
+                    binding.adStatus.text = text
+                    binding.adStatus.visibility = if (text != null) View.VISIBLE else View.GONE
+                }
+            }
+
             override fun updateVideoInfo() {
                 if (view != null) {
                     with(binding.playerControls) {

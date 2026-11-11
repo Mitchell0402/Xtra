@@ -126,6 +126,10 @@ class ExoPlayerService : BasePlaybackService() {
     private var surfaceOnSecondary = false
     private var adBoundaryJob: Job? = null
     private var adRestoreJob: Job? = null
+    private var adStatusJob: Job? = null
+    /** Wall clock end of the newest ad break in the primary's playlist. */
+    private var adEndWallMs: Long? = null
+    private var coveredSinceMs: Long? = null
 
     private var backupQualities: List<String>? = null
     private var updateQualities = false
@@ -140,6 +144,8 @@ class ExoPlayerService : BasePlaybackService() {
         fun toast(text: CharSequence, duration: Int)
         fun updateVideoInfo()
         fun setPlayerSurface(secondaryPlayer: Boolean)
+        /** A short ad status for the corner of the player, null to hide it. */
+        fun adStatus(text: CharSequence?)
     }
 
     var serviceListener: Listener? = null
@@ -275,7 +281,7 @@ class ExoPlayerService : BasePlaybackService() {
                                         }
                                         currentCustomProxy += 1
                                         if (host != null) {
-                                            serviceListener?.toast(getString(R.string.proxy_error, host), Toast.LENGTH_LONG)
+                                            AdLog.w("proxy $host failed, trying the next source") // no toast: the next source takes over
                                         }
                                         lifecycleScope.launch {
                                             delay(1500.milliseconds)
@@ -286,7 +292,7 @@ class ExoPlayerService : BasePlaybackService() {
                                         val host = adConfig?.streamProxies?.getOrNull(currentStreamProxy)?.host
                                         currentStreamProxy += 1
                                         if (host != null) {
-                                            serviceListener?.toast(getString(R.string.proxy_error, host), Toast.LENGTH_LONG)
+                                            AdLog.w("proxy $host failed, trying the next source") // no toast: the next source takes over
                                         }
                                         lifecycleScope.launch {
                                             delay(1500.milliseconds)
@@ -746,7 +752,7 @@ class ExoPlayerService : BasePlaybackService() {
                                 StreamDataSources.factory(application, xtraModule, networkLibrary, proxyTimeout, customProxyUrl, multivariantProxy)
                             )
                         ).apply {
-                            setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
+                            setPlaylistParserFactory(CustomHlsPlaylistParserFactory(filterAds = adConfig?.filterAdSegments == true))
                             setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(
                                 if (useCustomProxy || multivariantProxy != null) {
                                     1
@@ -1278,7 +1284,48 @@ class ExoPlayerService : BasePlaybackService() {
         if (ads != controller.playingAds) {
             AdLog.i("ads=$ads pos=$position segments=${adPlaylist?.segments?.size} last=${adPlaylist?.segments?.lastOrNull()?.title} adIn=${AdDetector.adStartDelayMs(adPlaylist, position)}ms state=${controller.state}")
         }
+        if (ads) {
+            adEndWallMs = adPlaylist?.dateRanges?.filter { it.className == "twitch-stitched-ad" || it.id.startsWith("stitched-ad-") }
+                ?.mapNotNull { it.endDateUs }?.maxOrNull()?.div(1000)
+        }
         applyAdActions(controller.onPrimaryPlaylist(ads, AdDetector.adStartDelayMs(adPlaylist, position), AdDetector.adEndDelayMs(adPlaylist, position)))
+        updateAdStatus()
+    }
+
+    /**
+     * The corner status that replaces the old toasts: "clean stream" for a few seconds after a
+     * switch, "back in about N s" while the ad is hidden or filtered out.
+     */
+    private fun updateAdStatus() {
+        val controller = adController
+        val now = System.currentTimeMillis()
+        if (controller?.isCovered == true) {
+            if (coveredSinceMs == null) {
+                coveredSinceMs = now
+            }
+        } else {
+            coveredSinceMs = null
+        }
+        val coveredSince = coveredSinceMs
+        val text = when {
+            controller == null -> null
+            coveredSince != null -> if (now - coveredSince < 3000) getString(R.string.ad_status_covered) else null
+            controller.isHidingPrimaryVideo || controller.playingAds && adConfig?.filterAdSegments == true && player?.playbackState == Player.STATE_BUFFERING -> {
+                val seconds = adEndWallMs?.let { (it - now) / 1000 }?.takeIf { it > 0 }
+                if (seconds != null) getString(R.string.ad_status_waiting, seconds) else getString(R.string.ad_status_waiting_unknown)
+            }
+            else -> null
+        }
+        serviceListener?.adStatus(text)
+        if (text != null || controller?.isActive == true) {
+            if (adStatusJob?.isActive != true) {
+                adStatusJob = lifecycleScope.launch {
+                    delay(1000)
+                    adStatusJob = null
+                    updateAdStatus()
+                }
+            }
+        }
     }
 
     private fun applyAdActions(actions: List<AdController.Action>) {
@@ -1316,13 +1363,8 @@ class ExoPlayerService : BasePlaybackService() {
                     adRestoreJob?.cancel()
                     adRestoreJob = null
                 }
-                is AdController.Action.Notice -> when (action.notice) {
-                    AdController.AdNotice.STARTING_PROXY -> serviceListener?.toast(R.string.starting_proxy, Toast.LENGTH_SHORT)
-                    AdController.AdNotice.STOPPING_PROXY -> serviceListener?.toast(R.string.stopping_proxy, Toast.LENGTH_SHORT)
-                    AdController.AdNotice.STARTING_VIDEO_SWAP -> serviceListener?.toast(R.string.starting_video_swap, Toast.LENGTH_SHORT)
-                    AdController.AdNotice.STOPPING_VIDEO_SWAP -> serviceListener?.toast(R.string.stopping_video_swap, Toast.LENGTH_SHORT)
-                    AdController.AdNotice.WAITING_FOR_ADS -> serviceListener?.toast(R.string.waiting_ads, Toast.LENGTH_LONG)
-                }
+                // shown as the corner status (updateAdStatus) instead of toasts
+                is AdController.Action.Notice -> AdLog.i("notice ${action.notice}")
             }
         }
     }
@@ -1438,7 +1480,7 @@ class ExoPlayerService : BasePlaybackService() {
                         )
                     )
                 ).apply {
-                    setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
+                    setPlaylistParserFactory(CustomHlsPlaylistParserFactory(filterAds = adConfig?.filterAdSegments == true))
                     setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(if (proxy != null) 1 else 6))
                 }.createMediaSource(
                     MediaItem.Builder().apply {
@@ -2200,13 +2242,14 @@ class ExoPlayerService : BasePlaybackService() {
         notificationManager?.cancel(NOTIFICATION_ID)
     }
 
-    class CustomHlsPlaylistParserFactory: HlsPlaylistParserFactory {
+    /** @param filterAds live streams only: ad segments become gaps, see [com.github.andreyasadchy.xtra.player.ads.AdSegmentFilter] */
+    class CustomHlsPlaylistParserFactory(private val filterAds: Boolean = false) : HlsPlaylistParserFactory {
         override fun createPlaylistParser(): ParsingLoadable.Parser<HlsPlaylist> {
-            return HlsPlaylistParser()
+            return HlsPlaylistParser(filterAds)
         }
 
         override fun createPlaylistParser(multivariantPlaylist: HlsMultivariantPlaylist, previousMediaPlaylist: HlsMediaPlaylist?): ParsingLoadable.Parser<HlsPlaylist> {
-            return HlsPlaylistParser(multivariantPlaylist, previousMediaPlaylist)
+            return HlsPlaylistParser(multivariantPlaylist, previousMediaPlaylist, filterAds)
         }
     }
 

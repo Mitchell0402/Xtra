@@ -1007,10 +1007,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun closePlayer() {
-        supportFragmentManager.beginTransaction()
-            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-            .remove(supportFragmentManager.findFragmentById(R.id.playerContainer)!!)
-            .commit()
+        // the fragment can already be gone when a twitch.tv link replaces a restored player
+        supportFragmentManager.findFragmentById(R.id.playerContainer)?.let {
+            supportFragmentManager.beginTransaction()
+                .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                .remove(it)
+                .commit()
+        }
         playerFragment = null
         viewModel.isPlayerOpened = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {

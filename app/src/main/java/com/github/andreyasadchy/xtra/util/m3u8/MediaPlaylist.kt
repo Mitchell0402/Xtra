@@ -5,5 +5,7 @@ data class MediaPlaylist(
     val dateRanges: List<DateRange>,
     val initSegmentUri: String?,
     val segments: List<Segment>,
-    val end: Boolean
+    val end: Boolean,
+    /** Ad segments left out by parseMediaPlaylist(skipAds = true). */
+    val skippedAdSegments: Int = 0,
 )

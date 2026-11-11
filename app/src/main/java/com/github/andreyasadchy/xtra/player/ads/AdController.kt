@@ -7,28 +7,44 @@ package com.github.andreyasadchy.xtra.player.ads
  * Layers, in order: the ad sources from [AdSourceQueue] (secondary player) -> hide (video off,
  * muted). A layer that is unavailable, fails or has ads too falls through to the next one, so
  * the ad is never shown unless hiding is turned off.
+ *
+ * Ads show up in the media playlist a few seconds before the player reaches them. The secondary
+ * player starts right away, silent and off screen, and takes over the screen only when the
+ * primary player reaches the first ad segment (the "boundary"), so no content is cut and the
+ * switch is usually seamless. The primary player keeps decoding video while it is covered, so
+ * switching back after the ad is instant too.
  */
 class AdController(
     private val queue: AdSourceQueue,
     private val hideAds: Boolean,
 ) {
     sealed class State {
-        object Idle : State()
-        data class Covering(val source: AdSource) : State()
-        object Hidden : State()
+        object Idle : State() {
+            override fun toString() = "Idle"
+        }
+
+        /** A secondary player plays [source]; [shown] once the primary reached the ad. */
+        data class Covering(val source: AdSource, val shown: Boolean) : State()
+
+        /** No usable source: the primary's video is turned off and muted once [shown]. */
+        data class Hidden(val shown: Boolean) : State()
     }
 
     sealed class Action {
-        /** Video off and volume 0 on the primary player. */
-        object MutePrimary : Action()
-        /** Undo [MutePrimary] and apply the selected quality again. */
-        object RestorePrimary : Action()
-        /** Start (or replace) the secondary player with this source. */
-        data class StartSecondary(val source: AdSource) : Action()
+        /** Start (or replace) the secondary player; on screen with sound when [show], else silent and off screen. */
+        data class StartSecondary(val source: AdSource, val show: Boolean) : Action()
+        /** Put the secondary player on screen and turn its sound on. */
+        object ShowSecondary : Action()
         object StopSecondary : Action()
-        /** Call [onSecondaryTimeout] after this many milliseconds; replaces a pending timeout. */
-        data class StartSecondaryTimeout(val delayMs: Long) : Action()
-        object CancelSecondaryTimeout : Action()
+        /** Volume 0 on the primary player, its video keeps playing off screen. */
+        object MutePrimary : Action()
+        /** Video off and volume 0 on the primary player. */
+        object HidePrimary : Action()
+        /** Undo [MutePrimary] or, when [videoHidden], [HidePrimary]. */
+        data class RestorePrimary(val videoHidden: Boolean) : Action()
+        /** Call [onAdBoundary] after this many milliseconds; replaces a pending one. */
+        data class ScheduleBoundary(val delayMs: Long) : Action()
+        object CancelBoundary : Action()
         /** Call [onRestoreDelayElapsed] after this many milliseconds. */
         data class ScheduleRestore(val delayMs: Long) : Action()
         object CancelRestore : Action()
@@ -48,8 +64,14 @@ class AdController(
 
     private var restorePending = false
 
-    /** True while the primary player must not turn its video back on. */
+    /** True while the primary player must not turn its video back on or change quality. */
     val isActive get() = state != State.Idle
+
+    /** True while the primary player's video must stay off. */
+    val isHidingPrimaryVideo get() = (state as? State.Hidden)?.shown == true
+
+    /** True while the secondary player is on screen and the primary is muted. */
+    val isCovered get() = (state as? State.Covering)?.shown == true
 
     val isCoveringWithProxy get() = (state as? State.Covering)?.source is AdSource.StreamProxy
 
@@ -57,9 +79,10 @@ class AdController(
 
     /**
      * The primary player's media playlist changed.
+     * @param adStartDelayMs time until the primary player reaches the first ad segment
      * @param restoreDelayMs time until the last ad segment in the playlist has been played
      */
-    fun onPrimaryPlaylist(ads: Boolean, restoreDelayMs: Long): List<Action> {
+    fun onPrimaryPlaylist(ads: Boolean, adStartDelayMs: Long, restoreDelayMs: Long): List<Action> {
         playingAds = ads
         val actions = mutableListOf<Action>()
         if (ads) {
@@ -68,7 +91,16 @@ class AdController(
                 actions.add(Action.CancelRestore)
             }
             if (state == State.Idle) {
-                actions.addAll(coverWithNextSource(fromIdle = true))
+                val next = queue.next()
+                if (next != null) {
+                    actions.add(startingNotice(next))
+                    actions.add(Action.StartSecondary(next, show = false))
+                    actions.add(Action.ScheduleBoundary(adStartDelayMs))
+                    state = State.Covering(next, shown = false)
+                } else if (hideAds) {
+                    actions.add(Action.ScheduleBoundary(adStartDelayMs))
+                    state = State.Hidden(shown = false)
+                }
             }
         } else if (state != State.Idle && !restorePending) {
             restorePending = true
@@ -77,22 +109,60 @@ class AdController(
         return actions
     }
 
+    /** The primary player reached the first ad segment. */
+    fun onAdBoundary(): List<Action> {
+        return when (val state = state) {
+            is State.Covering -> if (!state.shown) {
+                this.state = state.copy(shown = true)
+                listOf(Action.MutePrimary, Action.ShowSecondary)
+            } else emptyList()
+            is State.Hidden -> if (!state.shown) {
+                this.state = State.Hidden(shown = true)
+                listOf(Action.Notice(AdNotice.WAITING_FOR_ADS), Action.HidePrimary)
+            } else emptyList()
+            State.Idle -> emptyList()
+        }
+    }
+
     /** The secondary player's stream has ads too. */
     fun onSecondaryAds(): List<Action> = onSecondaryUnusable()
 
-    /** The secondary player's stream could not be loaded. */
+    /** The secondary player's stream could not be loaded or failed. */
     fun onSecondaryFailed(): List<Action> = onSecondaryUnusable()
 
     private fun onSecondaryUnusable(): List<Action> {
-        val current = (state as? State.Covering)?.source ?: return emptyList()
-        queue.markBad(current)
-        return coverWithNextSource(fromIdle = false)
-    }
-
-    /** The secondary player ran for the maximum time. */
-    fun onSecondaryTimeout(): List<Action> {
         val covering = state as? State.Covering ?: return emptyList()
-        return listOf(stoppingNotice(covering.source), Action.StopSecondary) + hideOrRestore()
+        queue.markBad(covering.source)
+        val actions = mutableListOf<Action>()
+        val next = queue.next()
+        if (next != null) {
+            actions.add(startingNotice(next))
+            actions.add(Action.StartSecondary(next, show = covering.shown))
+            state = State.Covering(next, covering.shown)
+            return actions
+        }
+        actions.add(stoppingNotice(covering.source))
+        actions.add(Action.StopSecondary)
+        if (playingAds && hideAds) {
+            state = State.Hidden(covering.shown)
+            if (covering.shown) {
+                actions.add(Action.Notice(AdNotice.WAITING_FOR_ADS))
+                actions.add(Action.HidePrimary)
+            }
+        } else {
+            state = State.Idle
+            queue.startNextBreak()
+            if (restorePending) {
+                restorePending = false
+                actions.add(Action.CancelRestore)
+            }
+            if (covering.shown) {
+                actions.add(Action.RestorePrimary(videoHidden = false))
+            } else {
+                actions.add(Action.CancelBoundary)
+            }
+        }
+        return actions
     }
 
     /** The ad is over and the primary player has played past it. */
@@ -102,11 +172,20 @@ class AdController(
         when (val state = state) {
             is State.Covering -> {
                 actions.add(stoppingNotice(state.source))
-                actions.add(Action.CancelSecondaryTimeout)
                 actions.add(Action.StopSecondary)
-                actions.add(Action.RestorePrimary)
+                if (state.shown) {
+                    actions.add(Action.RestorePrimary(videoHidden = false))
+                } else {
+                    actions.add(Action.CancelBoundary)
+                }
             }
-            State.Hidden -> actions.add(Action.RestorePrimary)
+            is State.Hidden -> {
+                if (state.shown) {
+                    actions.add(Action.RestorePrimary(videoHidden = true))
+                } else {
+                    actions.add(Action.CancelBoundary)
+                }
+            }
             State.Idle -> {}
         }
         this.state = State.Idle
@@ -121,13 +200,16 @@ class AdController(
             restorePending = false
             actions.add(Action.CancelRestore)
         }
-        when (state) {
+        when (val state = state) {
             is State.Covering -> {
-                actions.add(Action.CancelSecondaryTimeout)
+                actions.add(Action.CancelBoundary)
                 actions.add(Action.StopSecondary)
-                actions.add(Action.RestorePrimary)
+                actions.add(Action.RestorePrimary(videoHidden = false))
             }
-            State.Hidden -> actions.add(Action.RestorePrimary)
+            is State.Hidden -> {
+                actions.add(Action.CancelBoundary)
+                actions.add(Action.RestorePrimary(videoHidden = state.shown))
+            }
             State.Idle -> {}
         }
         state = State.Idle
@@ -136,60 +218,12 @@ class AdController(
         return actions
     }
 
-    private fun coverWithNextSource(fromIdle: Boolean): List<Action> {
-        val actions = mutableListOf<Action>()
-        val next = queue.next()
-        if (next != null) {
-            actions.add(
-                Action.Notice(
-                    when (next) {
-                        is AdSource.StreamProxy -> AdNotice.STARTING_PROXY
-                        is AdSource.VideoSwap -> AdNotice.STARTING_VIDEO_SWAP
-                    }
-                )
-            )
-            if (fromIdle) {
-                actions.add(Action.MutePrimary)
-            }
-            actions.add(Action.StartSecondaryTimeout(SECONDARY_TIMEOUT_MS))
-            actions.add(Action.StartSecondary(next))
-            state = State.Covering(next)
-        } else {
-            (state as? State.Covering)?.let {
-                actions.add(stoppingNotice(it.source))
-                actions.add(Action.CancelSecondaryTimeout)
-                actions.add(Action.StopSecondary)
-            }
-            if (fromIdle) {
-                if (hideAds) {
-                    actions.add(Action.Notice(AdNotice.WAITING_FOR_ADS))
-                    actions.add(Action.MutePrimary)
-                    state = State.Hidden
-                }
-            } else {
-                actions.addAll(hideOrRestore())
-            }
+    private fun startingNotice(source: AdSource) = Action.Notice(
+        when (source) {
+            is AdSource.StreamProxy -> AdNotice.STARTING_PROXY
+            is AdSource.VideoSwap -> AdNotice.STARTING_VIDEO_SWAP
         }
-        return actions
-    }
-
-    /** No secondary player any more: keep the primary hidden while it still plays ads. */
-    private fun hideOrRestore(): List<Action> {
-        return if (playingAds && hideAds) {
-            val wasHidden = state == State.Hidden
-            state = State.Hidden
-            if (wasHidden) emptyList() else listOf(Action.Notice(AdNotice.WAITING_FOR_ADS))
-        } else {
-            state = State.Idle
-            queue.startNextBreak()
-            if (restorePending) {
-                restorePending = false
-                listOf(Action.CancelRestore, Action.RestorePrimary)
-            } else {
-                listOf(Action.RestorePrimary)
-            }
-        }
-    }
+    )
 
     private fun stoppingNotice(source: AdSource) = Action.Notice(
         when (source) {
@@ -197,8 +231,4 @@ class AdController(
             is AdSource.VideoSwap -> AdNotice.STOPPING_VIDEO_SWAP
         }
     )
-
-    companion object {
-        const val SECONDARY_TIMEOUT_MS = 180_000L
-    }
 }

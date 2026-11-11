@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="adBlockPresetEntries">
+        <item>@string/ad_block_preset_aggressive</item>
+        <item>@string/ad_block_preset_balanced</item>
+        <item>@string/ad_block_preset_hide_only</item>
+        <item>@string/ad_block_preset_custom</item>
+    </string-array>
+
+    <string-array name="adBlockPresetValues" translatable="false">
+        <item>aggressive</item>
+        <item>balanced</item>
+        <item>hide_only</item>
+        <item>custom</item>
+    </string-array>
+
     <string-array name="networkLibraryEntries">
         <item>HttpEngine</item>
         <item>Cronet</item>

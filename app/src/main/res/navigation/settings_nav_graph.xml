@@ -61,6 +61,13 @@
         android:id="@+id/action_global_bufferSettingsFragment"
         app:destination="@id/bufferSettingsFragment" />
     <fragment
+        android:id="@+id/adBlockSettingsFragment"
+        android:name="com.github.andreyasadchy.xtra.ui.settings.SettingsActivity$AdBlockSettingsFragment"
+        android:label="@string/ad_block_settings" />
+    <action
+        android:id="@+id/action_global_adBlockSettingsFragment"
+        app:destination="@id/adBlockSettingsFragment" />
+    <fragment
         android:id="@+id/playbackSettingsFragment"
         android:name="com.github.andreyasadchy.xtra.ui.settings.SettingsActivity$PlaybackSettingsFragment"
         android:label="@string/playback_settings" />

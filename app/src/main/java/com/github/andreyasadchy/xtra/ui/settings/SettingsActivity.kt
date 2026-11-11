@@ -69,6 +69,9 @@ import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.applyTheme
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
+import com.github.andreyasadchy.xtra.player.ads.AdBlockPreset
+import com.github.andreyasadchy.xtra.player.ads.AdLog
+import com.github.andreyasadchy.xtra.player.ads.AdStats
 import com.github.andreyasadchy.xtra.util.tokenPrefs
 import com.google.android.material.appbar.AppBarLayout
 import com.google.mlkit.common.model.DownloadConditions
@@ -397,14 +400,9 @@ class SettingsActivity : AppCompatActivity() {
                 findNavController().navigate(SettingsNavGraphDirections.actionGlobalBufferSettingsFragment())
                 true
             }
-            findPreference<Preference>("custom_proxy_settings")?.setOnPreferenceClickListener {
+            findPreference<Preference>("ad_block_settings")?.setOnPreferenceClickListener {
                 requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
-                findNavController().navigate(SettingsNavGraphDirections.actionGlobalCustomProxySettingsFragment())
-                true
-            }
-            findPreference<Preference>("stream_proxy_settings")?.setOnPreferenceClickListener {
-                requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
-                findNavController().navigate(SettingsNavGraphDirections.actionGlobalStreamProxySettingsFragment())
+                findNavController().navigate(SettingsNavGraphDirections.actionGlobalAdBlockSettingsFragment())
                 true
             }
             findPreference<Preference>("playback_settings")?.setOnPreferenceClickListener {
@@ -1222,14 +1220,123 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    class PlaybackSettingsFragment : MaterialPreferenceFragment() {
+    /** Every live ad setting in one place, with presets, statistics and the ad log. */
+    class AdBlockSettingsFragment : MaterialPreferenceFragment() {
+        private val switchKeys = AdBlockPreset.AGGRESSIVE.values.keys
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.playback_preferences, rootKey)
+            setPreferencesFromResource(R.xml.ad_block_preferences, rootKey)
+            val prefs = requireContext().prefs()
+            findPreference<ListPreference>("ad_block_preset")?.apply {
+                value = AdBlockPreset.match { key, default -> prefs.getBoolean(key, default) }
+                summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+                setOnPreferenceChangeListener { _, newValue ->
+                    val preset = AdBlockPreset.entries.find { it.key == newValue }
+                    if (preset != null) {
+                        prefs.edit {
+                            preset.values.forEach { (key, value) -> putBoolean(key, value) }
+                        }
+                        preset.values.forEach { (key, value) ->
+                            findPreference<SwitchPreferenceCompat>(key)?.isChecked = value
+                        }
+                    }
+                    true
+                }
+            }
+            switchKeys.forEach { key ->
+                findPreference<SwitchPreferenceCompat>(key)?.setOnPreferenceChangeListener { _, newValue ->
+                    findPreference<ListPreference>("ad_block_preset")?.value = AdBlockPreset.match { k, default ->
+                        if (k == key) newValue as Boolean else prefs.getBoolean(k, default)
+                    }
+                    true
+                }
+            }
+            updateStats()
             findPreference<Preference>("video_swap_settings")?.setOnPreferenceClickListener {
                 requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
                 findNavController().navigate(SettingsNavGraphDirections.actionGlobalVideoSwapSettingsFragment())
                 true
             }
+            findPreference<Preference>("custom_proxy_settings")?.setOnPreferenceClickListener {
+                requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
+                findNavController().navigate(SettingsNavGraphDirections.actionGlobalCustomProxySettingsFragment())
+                true
+            }
+            findPreference<Preference>("stream_proxy_settings")?.setOnPreferenceClickListener {
+                requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
+                findNavController().navigate(SettingsNavGraphDirections.actionGlobalStreamProxySettingsFragment())
+                true
+            }
+            findPreference<Preference>("ad_block_log")?.setOnPreferenceClickListener {
+                val lines = AdLog.lines()
+                val format = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                val text = if (lines.isNotEmpty()) {
+                    lines.reversed().joinToString("\n") { line ->
+                        val time = line.substringBefore(' ').toLongOrNull()
+                        if (time != null) "${format.format(java.util.Date(time))} ${line.substringAfter(' ')}" else line
+                    }
+                } else getString(R.string.ad_block_log_empty)
+                requireActivity().getAlertDialogBuilder()
+                    .setTitle(R.string.ad_block_log)
+                    .setMessage(text)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+                true
+            }
+            findPreference<Preference>("ad_block_stats_reset")?.setOnPreferenceClickListener {
+                AdStats.reset(prefs)
+                updateStats()
+                true
+            }
+        }
+
+        override fun onResume() {
+            super.onResume()
+            updateStats()
+        }
+
+        private fun updateStats() {
+            val stats = AdStats.summary(requireContext().prefs())
+            findPreference<Preference>("ad_block_stats")?.summary = if (stats.breaks > 0) {
+                val duration = if (stats.seconds >= 60) "${stats.seconds / 60} min ${stats.seconds % 60} s" else "${stats.seconds} s"
+                getString(R.string.ad_block_stats_summary, stats.breaks, duration) + "\n" +
+                        stats.byHandler.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+            } else getString(R.string.ad_block_stats_none)
+        }
+
+        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+            super.onViewCreated(view, savedInstanceState)
+            ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
+                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                listView.updatePadding(bottom = insets.bottom)
+                WindowInsetsCompat.CONSUMED
+            }
+            requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.let { appBar ->
+                if (requireContext().prefs().getBoolean(C.UI_THEME_APPBAR_LIFT, true)) {
+                    listView.let {
+                        appBar.setLiftOnScrollTargetView(it)
+                        it.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                                super.onScrolled(recyclerView, dx, dy)
+                                appBar.isLifted = recyclerView.canScrollVertically(-1)
+                            }
+                        })
+                        it.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                            appBar.isLifted = it.canScrollVertically(-1)
+                        }
+                    }
+                } else {
+                    appBar.setLiftable(false)
+                    appBar.background = null
+                }
+            }
+            (requireActivity() as? SettingsActivity)?.getSelectedSearchItem()?.let { scrollToPreference(it) }
+        }
+    }
+
+    class PlaybackSettingsFragment : MaterialPreferenceFragment() {
+        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+            setPreferencesFromResource(R.xml.playback_preferences, rootKey)
         }
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -1579,6 +1686,7 @@ class SettingsActivity : AppCompatActivity() {
                 val list = mutableListOf<SettingsSearchItem>()
                 val preferenceManager = PreferenceManager(requireContext())
                 listOf(
+                    Triple(R.xml.ad_block_preferences, SettingsNavGraphDirections.actionGlobalAdBlockSettingsFragment(), getString(R.string.ad_block_settings)),
                     Triple(R.xml.api_token_preferences, SettingsNavGraphDirections.actionGlobalApiTokenSettingsFragment(), getString(R.string.api_token_settings)),
                     Triple(R.xml.buffer_preferences, SettingsNavGraphDirections.actionGlobalBufferSettingsFragment(), getString(R.string.buffer_settings)),
                     Triple(R.xml.chat_preferences, SettingsNavGraphDirections.actionGlobalChatSettingsFragment(), getString(R.string.chat_settings)),

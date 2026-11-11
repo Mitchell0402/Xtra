@@ -74,6 +74,7 @@ import com.github.andreyasadchy.xtra.player.ads.AdPlaylist
 import com.github.andreyasadchy.xtra.player.ads.AdSource
 import com.github.andreyasadchy.xtra.player.ads.AdSourceQueue
 import com.github.andreyasadchy.xtra.player.ads.AdSourceResolver
+import com.github.andreyasadchy.xtra.player.ads.AdStats
 import com.github.andreyasadchy.xtra.player.ads.StartupRace
 import com.github.andreyasadchy.xtra.player.ads.StreamDataSources
 import com.github.andreyasadchy.xtra.player.lowlatency.HlsPlaylistParser
@@ -130,6 +131,8 @@ class ExoPlayerService : BasePlaybackService() {
     /** Wall clock end of the newest ad break in the primary's playlist. */
     private var adEndWallMs: Long? = null
     private var coveredSinceMs: Long? = null
+    private var adBreakStartMs: Long? = null
+    private var adBreakHandler: String? = null
 
     private var backupQualities: List<String>? = null
     private var updateQualities = false
@@ -1290,6 +1293,41 @@ class ExoPlayerService : BasePlaybackService() {
         }
         applyAdActions(controller.onPrimaryPlaylist(ads, AdDetector.adStartDelayMs(adPlaylist, position), AdDetector.adEndDelayMs(adPlaylist, position)))
         updateAdStatus()
+        recordAdBreak(ads)
+    }
+
+    /** Statistics for the ad blocking settings page: one entry per ad break and who handled it. */
+    private fun recordAdBreak(ads: Boolean) {
+        val controller = adController ?: return
+        val now = System.currentTimeMillis()
+        if (ads) {
+            if (adBreakStartMs == null) {
+                adBreakStartMs = now
+            }
+            val handler = when {
+                controller.isCovered -> (controller.state as? AdController.State.Covering)?.source?.label
+                controller.isHidingPrimaryVideo -> "hidden"
+                adConfig?.filterAdSegments == true -> "filtered"
+                else -> "shown"
+            }
+            // keep the strongest layer seen during the break: a clean source > hidden > filtered > shown
+            fun rank(handler: String?) = when (handler) {
+                null -> -1
+                "shown" -> 0
+                "filtered" -> 1
+                "hidden" -> 2
+                else -> 3
+            }
+            if (rank(handler) > rank(adBreakHandler)) {
+                adBreakHandler = handler
+            }
+        } else {
+            val start = adBreakStartMs ?: return
+            AdStats.record(prefs(), now - start, adBreakHandler ?: "shown")
+            AdLog.i("ad break over after ${(now - start) / 1000} s, handled by $adBreakHandler")
+            adBreakStartMs = null
+            adBreakHandler = null
+        }
     }
 
     /**

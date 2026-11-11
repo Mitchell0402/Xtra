@@ -82,29 +82,10 @@
         app:iconSpaceReserved="false"
         app:singleLineTitle="false" />
 
-    <SwitchPreferenceCompat
-        android:defaultValue="true"
-        android:key="player_use_custom_proxy"
-        android:title="@string/use_custom_proxies"
-        app:iconSpaceReserved="false"
-        app:singleLineTitle="false" />
-
     <Preference
-        android:key="custom_proxy_settings"
-        android:title="@string/custom_proxy_settings"
-        app:iconSpaceReserved="false"
-        app:singleLineTitle="false" />
-
-    <SwitchPreferenceCompat
-        android:defaultValue="false"
-        android:key="player_use_stream_proxy"
-        android:title="@string/use_stream_proxies"
-        app:iconSpaceReserved="false"
-        app:singleLineTitle="false" />
-
-    <Preference
-        android:key="stream_proxy_settings"
-        android:title="@string/proxy_settings"
+        android:key="ad_block_settings"
+        android:summary="@string/ad_block_settings_desc"
+        android:title="@string/ad_block_settings"
         app:iconSpaceReserved="false"
         app:singleLineTitle="false" />
 

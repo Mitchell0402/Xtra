@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Preference
+        android:key="ad_block_stats"
+        android:selectable="false"
+        android:title="@string/ad_block_stats"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false" />
+
+    <ListPreference
+        android:defaultValue="aggressive"
+        android:entries="@array/adBlockPresetEntries"
+        android:entryValues="@array/adBlockPresetValues"
+        android:key="ad_block_preset"
+        android:persistent="false"
+        android:title="@string/ad_block_preset"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false" />
+
+    <PreferenceCategory
+        android:title="@string/ad_block_sources"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="player_use_video_swap"
+            android:summary="@string/ad_block_video_swap_desc"
+            android:title="@string/use_video_swap"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <Preference
+            android:key="video_swap_settings"
+            android:title="@string/video_swap_settings"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="player_use_custom_proxy"
+            android:summary="@string/ad_block_custom_proxy_desc"
+            android:title="@string/use_custom_proxies"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <Preference
+            android:key="custom_proxy_settings"
+            android:title="@string/custom_proxy_settings"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="player_use_stream_proxy"
+            android:summary="@string/ad_block_stream_proxy_desc"
+            android:title="@string/use_stream_proxies"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <Preference
+            android:key="stream_proxy_settings"
+            android:title="@string/proxy_settings"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/ad_block_fallback"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="player_filter_ad_segments"
+            android:summary="@string/ad_block_filter_desc"
+            android:title="@string/ad_block_filter"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="player_hide_ads"
+            android:summary="@string/ad_block_hide_desc"
+            android:title="@string/hide_during_ads"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="ad_block_advanced"
+        android:title="@string/ad_block_advanced"
+        app:iconSpaceReserved="false"
+        app:initialExpandedChildrenCount="0">
+
+        <EditTextPreference
+            android:defaultValue="3000"
+            android:key="proxy_timeout"
+            android:singleLine="true"
+            android:title="@string/proxy_timeout"
+            app:dialogMessage="@string/proxy_timeout_summary"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            android:key="ad_block_log"
+            android:summary="@string/ad_block_log_desc"
+            android:title="@string/ad_block_log"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+        <Preference
+            android:key="ad_block_stats_reset"
+            android:title="@string/ad_block_stats_reset"
+            app:iconSpaceReserved="false"
+            app:singleLineTitle="false" />
+
+    </PreferenceCategory>
+
+</androidx.preference.PreferenceScreen>

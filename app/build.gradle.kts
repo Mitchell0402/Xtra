@@ -54,6 +54,10 @@ android {
     lint {
         disable += "ContentDescription"
     }
+    sourceSets {
+        // real ad playlists captured in stage 0, used by the ad detector tests
+        getByName("test").resources.directories.add("../tools/ad-probe/samples")
+    }
     packaging.jniLibs.excludes.addAll(listOf(
         "lib/x86/libtranslate_jni.so",
         "lib/x86/liblanguage_id_l2c_jni.so",
@@ -116,6 +120,8 @@ dependencies {
     implementation(libs.glide.webpdecoder)
 
     implementation(libs.coroutines)
+
+    testImplementation(libs.junit)
 }
 
 apollo {

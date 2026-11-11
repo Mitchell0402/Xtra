@@ -1,10 +1,27 @@
 package com.github.andreyasadchy.xtra.util.m3u8
 
+import com.github.andreyasadchy.xtra.player.ads.AdDetector
+import com.github.andreyasadchy.xtra.player.ads.AdPlaylist
 import java.io.InputStream
 import java.io.OutputStream
 
 object PlaylistUtils {
-    fun parseMediaPlaylist(input: InputStream): MediaPlaylist {
+    /**
+     * @param skipAds live recordings: leave out segments [AdDetector] finds to be stitched ads
+     */
+    fun parseMediaPlaylist(input: InputStream, skipAds: Boolean = false): MediaPlaylist {
+        val text = input.bufferedReader().readText()
+        val playlist = parseMediaPlaylist(text)
+        if (!skipAds || playlist.end) {
+            return playlist
+        }
+        val adPlaylist = AdPlaylist.parse(text)
+        val ads = AdDetector.adSegments(adPlaylist)
+        val adUrls = adPlaylist.segments.filterIndexed { index, _ -> ads[index] }.map { it.url }.toSet()
+        return if (adUrls.isEmpty()) playlist else playlist.copy(segments = playlist.segments.filterNot { it.uri in adUrls })
+    }
+
+    private fun parseMediaPlaylist(text: String): MediaPlaylist {
         var targetDuration = 10
         val dateRanges = mutableListOf<DateRange>()
         var programDateTime: String? = null
@@ -12,7 +29,7 @@ object PlaylistUtils {
         val segments = mutableListOf<Segment>()
         var segmentInfo: Pair<Float, String?>? = null
         var end = false
-        input.bufferedReader().forEachLine { line ->
+        text.lineSequence().forEach { line ->
             if (line.isNotBlank()) {
                 if (line.startsWith('#')) {
                     when {

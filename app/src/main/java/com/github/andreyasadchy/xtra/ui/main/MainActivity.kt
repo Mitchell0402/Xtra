@@ -453,7 +453,9 @@ class MainActivity : AppCompatActivity() {
                 viewModel.playbackStates.collectLatest { states ->
                     val savedState = states.firstOrNull()
                     if (savedState != null) {
-                        (playerFragment as? PlayerFragment)?.close()
+                        // keep the states: the new player's service restores and then deletes them,
+                        // a delete from here could run after that and leave the new player empty
+                        (playerFragment as? PlayerFragment)?.close(deleteStates = false)
                         val fragment = ExoPlayerFragment().apply {
                             if (savedState.type == BasePlaybackService.OFFLINE_VIDEO) {
                                 arguments = Bundle().apply {
@@ -477,7 +479,8 @@ class MainActivity : AppCompatActivity() {
                         if (!video.id.isNullOrBlank()) {
                             (playerFragment as? PlayerFragment)?.also {
                                 it.minimize()
-                                it.close()
+                                // startVideo replaces the saved state; deleting it here races with that save
+                                it.close(deleteStates = false)
                                 closePlayer()
                             }
                             startVideo(video, offset, offset != null)

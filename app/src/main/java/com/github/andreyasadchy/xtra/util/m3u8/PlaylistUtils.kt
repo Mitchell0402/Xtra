@@ -18,7 +18,11 @@ object PlaylistUtils {
         val adPlaylist = AdPlaylist.parse(text)
         val ads = AdDetector.adSegments(adPlaylist)
         val adUrls = adPlaylist.segments.filterIndexed { index, _ -> ads[index] }.map { it.url }.toSet()
-        return if (adUrls.isEmpty()) playlist else playlist.copy(segments = playlist.segments.filterNot { it.uri in adUrls })
+        if (adUrls.isEmpty()) {
+            return playlist
+        }
+        val segments = playlist.segments.filterNot { it.uri in adUrls }
+        return playlist.copy(segments = segments, skippedAdSegments = playlist.segments.size - segments.size)
     }
 
     private fun parseMediaPlaylist(text: String): MediaPlaylist {

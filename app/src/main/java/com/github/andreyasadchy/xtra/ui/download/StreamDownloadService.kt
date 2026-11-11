@@ -1263,9 +1263,9 @@ class StreamDownloadService : LifecycleService() {
                 if (playlist.end) {
                     return@withContext
                 }
-            } else {
+            } else if (playlist.skippedAdSegments == 0) {
                 return@withContext
-            }
+            } // else: only ad segments right now, keep polling until the stream continues
             val timeTaken = System.currentTimeMillis() - startTime
             if ((timeTaken) < liveCheck) {
                 delay((liveCheck - timeTaken).milliseconds)

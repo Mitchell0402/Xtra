@@ -17,6 +17,24 @@ class RecordingAdSkipTest {
         assertEquals(17, all.segments.size)
         assertEquals(14, recorded.segments.size)
         assertTrue(recorded.segments.all { it.title == "live" })
+        assertEquals(3, recorded.skippedAdSegments)
+    }
+
+    @Test
+    fun onlyAdsIsNotTheEndOfTheStream() {
+        // a playlist with nothing but ad segments must keep the recording polling, not end it
+        val text = """
+            #EXTM3U
+            #EXT-X-PROGRAM-DATE-TIME:2026-11-11T16:00:00.000Z
+            #EXTINF:2.000,Amazon|1
+            https://example.com/ad1.ts
+            #EXTINF:2.000,Amazon|1
+            https://example.com/ad2.ts
+        """.trimIndent()
+        val recorded = PlaylistUtils.parseMediaPlaylist(text.byteInputStream(), skipAds = true)
+        assertEquals(0, recorded.segments.size)
+        assertEquals(2, recorded.skippedAdSegments)
+        assertEquals(false, recorded.end)
     }
 
     @Test

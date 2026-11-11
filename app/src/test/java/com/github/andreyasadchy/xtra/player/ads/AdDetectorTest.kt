@@ -94,6 +94,16 @@ class AdDetectorTest {
     }
 
     @Test
+    fun adStartAndLiveEdge() {
+        val playlist = sample("hutchmf_web_embed_1794413033.m3u8")
+        // the ad starts at 28 s (14 content segments of 2 s)
+        assertEquals(8_000, AdDetector.adStartDelayMs(playlist, 20_000))
+        assertEquals(0, AdDetector.adStartDelayMs(playlist, 30_000))
+        assertTrue(AdDetector.hasAdsNearLiveEdge(playlist))
+        assertFalse(AdDetector.hasAdsNearLiveEdge(playlist.copy(segments = playlist.segments.take(14))))
+    }
+
+    @Test
     fun parsesDates() {
         assertEquals(1794413031658000L, AdPlaylist.parseDateUs("2026-11-11T16:03:51.658Z"))
         assertEquals(1794413031658000L, AdPlaylist.parseDateUs("2026-11-11T17:03:51.658+01:00"))

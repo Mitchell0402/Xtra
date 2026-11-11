@@ -21,7 +21,8 @@ class AdSourceResolver(
     private val xtraModule: XtraModule,
     private val networkLibrary: String?,
 ) {
-    suspend fun resolveVideoSwap(channelLogin: String, source: AdSource.VideoSwap, gqlHeaders: Map<String, String>, supportedCodecs: String?): String? {
+    /** @param maxHeight the primary's selected quality, null for the best one */
+    suspend fun resolveVideoSwap(channelLogin: String, source: AdSource.VideoSwap, gqlHeaders: Map<String, String>, supportedCodecs: String?, maxHeight: Int? = null): String? {
         val playlistUrl = try {
             xtraModule.playerRepository.loadStreamPlaylistUrl(
                 context = context,
@@ -48,7 +49,7 @@ class AdSourceResolver(
             AdLog.w("${source.label}: multivariant playlist request failed")
             return null
         }
-        return MultivariantPlaylist.bestVariantUrl(playlist)
+        return MultivariantPlaylist.bestVariantUrl(playlist, maxHeight)?.let { java.net.URI(playlistUrl).resolve(it).toString() }
     }
 
     suspend fun fetch(url: String): String? {
@@ -163,14 +164,20 @@ object MultivariantPlaylist {
         return variants
     }
 
-    /** The highest quality video variant: source first, then by resolution, frame rate and bitrate. */
-    fun bestVariantUrl(playlist: String): String? {
+    /**
+     * The highest quality video variant: source first, then by resolution, frame rate and
+     * bitrate. With [maxHeight], the best one up to that height (or the lowest when all are
+     * higher).
+     */
+    fun bestVariantUrl(playlist: String, maxHeight: Int? = null): String? {
         val video = variants(playlist).filter {
             !it.name.endsWith("-portrait") && !it.name.startsWith("audio", true)
         }
-        return (video.find { it.name.equals("source", true) || it.name.equals("chunked", true) }
-            ?: video.sortedWith(compareByDescending<Variant> { it.height ?: 0 }.thenByDescending { it.frameRate ?: 0f }.thenByDescending { it.bitrate ?: 0 }).firstOrNull())
-            ?.url
+        val sorted = video.sortedWith(compareByDescending<Variant> { it.height ?: 0 }.thenByDescending { it.frameRate ?: 0f }.thenByDescending { it.bitrate ?: 0 })
+        if (maxHeight != null) {
+            return (sorted.firstOrNull { (it.height ?: 0) <= maxHeight } ?: sorted.lastOrNull())?.url
+        }
+        return (video.find { it.name.equals("source", true) || it.name.equals("chunked", true) } ?: sorted.firstOrNull())?.url
     }
 
     private val attributeRegex = Regex("""([A-Z0-9-]+)=("[^"]*"|[^,]*)""")

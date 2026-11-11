@@ -36,6 +36,14 @@ class MultivariantPlaylistTest {
     }
 
     @Test
+    fun picksSelectedQuality() {
+        assertEquals("https://video-weaver.example.hls.ttvnw.net/v1/playlist/720p60.m3u8", MultivariantPlaylist.bestVariantUrl(playlist, maxHeight = 720))
+        assertEquals("https://video-weaver.example.hls.ttvnw.net/v1/playlist/720p60.m3u8", MultivariantPlaylist.bestVariantUrl(playlist, maxHeight = 900))
+        // lower than anything offered: the lowest
+        assertEquals("https://video-weaver.example.hls.ttvnw.net/v1/playlist/720p60.m3u8", MultivariantPlaylist.bestVariantUrl(playlist, maxHeight = 160))
+    }
+
+    @Test
     fun picksHighestWithoutSource() {
         // android/autoplay tokens only list low qualities
         val autoplay = """

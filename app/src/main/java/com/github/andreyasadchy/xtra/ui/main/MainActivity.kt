@@ -1392,5 +1392,15 @@ class MainActivity : AppCompatActivity() {
                 putInt(C.SETTINGS_VERSION, 17)
             }
         }
+        if (version < 18) {
+            // web/highlighter: no mid-rolls in the stage 3 measurements and up to 1080p.
+            // New installs already get it from setDefaultVideoSwapItems.
+            if (version >= 17) {
+                viewModel.addVideoSwapItemFirst("web", "highlighter")
+            }
+            prefs.edit {
+                putInt(C.SETTINGS_VERSION, 18)
+            }
+        }
     }
 }

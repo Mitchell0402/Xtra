@@ -68,6 +68,26 @@ object AdDetector {
     }
 
     /**
+     * How long until the player at [positionMs] reaches the first ad segment it has not finished
+     * yet; 0 when it is already in one or there is none.
+     */
+    fun adStartDelayMs(playlist: AdPlaylist?, positionMs: Long): Long {
+        val segments = playlist?.segments ?: return 0
+        val positionUs = positionMs * 1000
+        val first = segments.firstOrNull { it.relativeEndTimeUs > positionUs && isAdSegment(playlist, it) } ?: return 0
+        return ((first.relativeStartTimeUs - positionUs) / 1000).coerceAtLeast(0)
+    }
+
+    /**
+     * True when the newest [windowMs] of the playlist contain an ad: what a player starting at
+     * the live edge would play first.
+     */
+    fun hasAdsNearLiveEdge(playlist: AdPlaylist?, windowMs: Long = 10_000): Boolean {
+        val end = playlist?.segments?.lastOrNull()?.relativeEndTimeUs ?: return false
+        return hasAds(playlist, (end / 1000 - windowMs).coerceAtLeast(0))
+    }
+
+    /**
      * How long until the player at [positionMs] has played past the last ad segment still in
      * the playlist, capped at [maxMs].
      */

@@ -63,6 +63,7 @@ import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.model.VideoPosition
 import com.github.andreyasadchy.xtra.model.VideoQuality
+import com.github.andreyasadchy.xtra.model.ui.CustomProxy
 import com.github.andreyasadchy.xtra.model.ui.StreamProxy
 import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.player.ads.AdBlockConfig
@@ -73,6 +74,7 @@ import com.github.andreyasadchy.xtra.player.ads.AdPlaylist
 import com.github.andreyasadchy.xtra.player.ads.AdSource
 import com.github.andreyasadchy.xtra.player.ads.AdSourceQueue
 import com.github.andreyasadchy.xtra.player.ads.AdSourceResolver
+import com.github.andreyasadchy.xtra.player.ads.StartupRace
 import com.github.andreyasadchy.xtra.player.ads.StreamDataSources
 import com.github.andreyasadchy.xtra.player.lowlatency.HlsPlaylistParser
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
@@ -117,8 +119,12 @@ class ExoPlayerService : BasePlaybackService() {
 
     private var adConfig: AdBlockConfig? = null
     private var adController: AdController? = null
+    /** The secondary player while it is on screen. */
     var secondaryPlayer: ExoPlayer? = null
-    private var secondaryPlayerTimerJob: Job? = null
+    /** The secondary player while it warms up off screen, before the primary reaches the ad. */
+    private var pendingSecondaryPlayer: ExoPlayer? = null
+    private var surfaceOnSecondary = false
+    private var adBoundaryJob: Job? = null
     private var adRestoreJob: Job? = null
 
     private var backupQualities: List<String>? = null
@@ -710,7 +716,7 @@ class ExoPlayerService : BasePlaybackService() {
 
     private suspend fun loadStream(restorePauseState: Boolean = false, restart: Boolean = false) {
         channelLogin?.let { channelLogin ->
-            var streamProxy = if (useStreamProxy) {
+            val streamProxy = if (useStreamProxy) {
                 adConfig?.streamProxies?.getOrNull(currentStreamProxy).also {
                     if (it == null) {
                         useStreamProxy = false
@@ -718,77 +724,7 @@ class ExoPlayerService : BasePlaybackService() {
                 }
             } else null
             if (restart || qualities.isNullOrEmpty()) {
-                val proxyUrl = if (useCustomProxy) {
-                    adConfig?.customProxies?.getOrNull(currentCustomProxy)?.let { proxy ->
-                        proxy.url?.let { proxyUrl ->
-                            (proxyUrl.toUri().takeIf { it.host != null } ?: "https://$proxyUrl".toUri()).let { uri ->
-                                if (proxy.addQueryParams) {
-                                    val source = uri.getQueryParameter("allow_source") == null
-                                    val audio = uri.getQueryParameter("allow_audio_only") == null
-                                    val lowLatency = uri.getQueryParameter("fast_bread") == null
-                                    val unavailable = uri.getQueryParameter("include_unavailable") == null
-                                    val supportedCodecs = prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264")
-                                    val codecs = !supportedCodecs.isNullOrBlank() && uri.getQueryParameter("supported_codecs") == null
-                                    if (source || audio || lowLatency || unavailable || codecs) {
-                                        uri.buildUpon().apply {
-                                            if (source) {
-                                                appendQueryParameter("allow_source", "true")
-                                            }
-                                            if (audio) {
-                                                appendQueryParameter("allow_audio_only", "true")
-                                            }
-                                            if (lowLatency) {
-                                                appendQueryParameter("fast_bread", "true")
-                                            }
-                                            if (unavailable) {
-                                                appendQueryParameter("include_unavailable", "true")
-                                            }
-                                            if (codecs) {
-                                                appendQueryParameter("supported_codecs", supportedCodecs)
-                                            }
-                                        }.build()
-                                    } else uri
-                                } else uri
-                            }.toString().replace("\$channel", channelLogin)
-                        }
-                    }
-                } else null
-                if (proxyUrl != null) {
-                    playlistUrl = proxyUrl
-                } else {
-                    useCustomProxy = false
-                    val url = if (streamProxy?.proxyPlaybackAccessToken == true) {
-                        var url: String?
-                        while (true) {
-                            val result = getStreamPlaylistUrl(channelLogin, streamProxy)
-                            if (result != null) {
-                                url = result
-                                break
-                            } else {
-                                val host = streamProxy?.host
-                                currentStreamProxy += 1
-                                if (host != null) {
-                                    serviceListener?.toast(getString(R.string.proxy_error, host), Toast.LENGTH_LONG)
-                                }
-                                streamProxy = adConfig?.streamProxies?.getOrNull(currentStreamProxy)
-                                if (streamProxy == null) {
-                                    useStreamProxy = false
-                                    url = getStreamPlaylistUrl(channelLogin)
-                                    break
-                                } else {
-                                    if (!streamProxy.proxyPlaybackAccessToken) {
-                                        url = getStreamPlaylistUrl(channelLogin)
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                        url
-                    } else {
-                        getStreamPlaylistUrl(channelLogin)
-                    }
-                    playlistUrl = url
-                }
+                playlistUrl = raceStartupSources(channelLogin, streamProxy)
             }
             val url = playlistUrl
             if (url != null) {
@@ -837,6 +773,92 @@ class ExoPlayerService : BasePlaybackService() {
                 }
             }
         }
+    }
+
+    private sealed class StartupSource {
+        data class Custom(val index: Int) : StartupSource()
+        object TokenProxy : StartupSource()
+        object Direct : StartupSource()
+        object VideoSwap : StartupSource()
+    }
+
+    private fun customProxyUrl(proxy: CustomProxy, channelLogin: String): String? {
+        val proxyUrl = proxy.url ?: return null
+        val uri = proxyUrl.toUri().takeIf { it.host != null } ?: "https://$proxyUrl".toUri()
+        return if (proxy.addQueryParams) {
+            val supportedCodecs = prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264")
+            uri.buildUpon().apply {
+                if (uri.getQueryParameter("allow_source") == null) appendQueryParameter("allow_source", "true")
+                if (uri.getQueryParameter("allow_audio_only") == null) appendQueryParameter("allow_audio_only", "true")
+                if (uri.getQueryParameter("fast_bread") == null) appendQueryParameter("fast_bread", "true")
+                if (uri.getQueryParameter("include_unavailable") == null) appendQueryParameter("include_unavailable", "true")
+                if (!supportedCodecs.isNullOrBlank() && uri.getQueryParameter("supported_codecs") == null) appendQueryParameter("supported_codecs", supportedCodecs)
+            }.build()
+        } else {
+            uri
+        }.toString().replace("\$channel", channelLogin)
+    }
+
+    /**
+     * Layer 1 of the ad pipeline, see [StartupRace]: custom proxies (from [currentCustomProxy]
+     * on), the token through the stream proxy and the direct token are tried at the same time.
+     * Sets [useCustomProxy] and [currentCustomProxy] for the winner and returns its url.
+     */
+    private suspend fun raceStartupSources(channelLogin: String, streamProxy: StreamProxy?): String? {
+        val candidates = mutableListOf<StartupRace.Candidate>()
+        if (useCustomProxy) {
+            adConfig?.customProxies?.forEachIndexed { index, proxy ->
+                if (index >= currentCustomProxy) {
+                    val host = proxy.url?.let { it.toUri().host ?: "https://$it".toUri().host } ?: "proxy"
+                    candidates.add(StartupRace.Candidate(host, index, { customProxyUrl(proxy, channelLogin) }, StartupSource.Custom(index)))
+                }
+            }
+        }
+        if (streamProxy?.proxyPlaybackAccessToken == true) {
+            candidates.add(StartupRace.Candidate("token via ${streamProxy.host}", 1000, { getStreamPlaylistUrl(channelLogin, streamProxy) }, StartupSource.TokenProxy))
+        }
+        candidates.add(StartupRace.Candidate("direct", 1001, { getStreamPlaylistUrl(channelLogin) }, StartupSource.Direct))
+        // a clean video swap source wins when the direct stream starts with an ad (anonymous tokens)
+        if (adConfig?.useVideoSwap == true) {
+            adConfig?.videoSwaps?.forEachIndexed { index, item ->
+                candidates.add(StartupRace.Candidate("swap ${item.platform}/${item.playerType}", 2000 + index, {
+                    try {
+                        xtraModule.playerRepository.loadStreamPlaylistUrl(
+                            context = this,
+                            networkLibrary = prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                            gqlHeaders = TwitchApiHelper.getGQLHeaders(this, false),
+                            channelLogin = channelLogin,
+                            platform = item.platform,
+                            playerType = item.playerType,
+                            supportedCodecs = prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
+                            proxyPlaybackAccessToken = false,
+                            proxyHost = null,
+                            proxyPort = null,
+                            proxyUser = null,
+                            proxyPassword = null,
+                            proxyTimeout = null,
+                            enableIntegrity = false
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                }, StartupSource.VideoSwap))
+            }
+        }
+        val resolver = AdSourceResolver(this, xtraModule, prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP))
+        val (winner, results) = StartupRace(fetch = { resolver.fetch(it) }).run(candidates)
+        results.sortedBy { it.candidate.priority }.forEach {
+            AdLog.i("startup ${it.candidate.label}: ${if (it.ok) "ads=${it.ads} max=${it.maxHeight}p" else it.error} ${it.elapsedMs}ms")
+        }
+        AdLog.i("startup winner: ${winner?.candidate?.label}")
+        when (val source = winner?.candidate?.tag) {
+            is StartupSource.Custom -> {
+                useCustomProxy = true
+                currentCustomProxy = source.index
+            }
+            else -> useCustomProxy = false
+        }
+        return winner?.url
     }
 
     private suspend fun getStreamPlaylistUrl(channelLogin: String, streamProxy: StreamProxy? = null): String? {
@@ -1200,8 +1222,8 @@ class ExoPlayerService : BasePlaybackService() {
         }
         // Tracks change at every ad boundary and onTracksChanged calls this, which re-enables video.
         // Keep the primary player's video off while an ad is being hidden or replaced.
-        if (type == STREAM && adController?.isActive == true) {
-            mutePrimaryPlayer()
+        if (type == STREAM && adController?.isHidingPrimaryVideo == true) {
+            hidePrimaryVideo()
         }
     }
 
@@ -1254,30 +1276,32 @@ class ExoPlayerService : BasePlaybackService() {
         val adPlaylist = playlist?.let { AdPlaylist.from(it) }
         val ads = AdDetector.hasAds(adPlaylist, position)
         if (ads != controller.playingAds) {
-            AdLog.i("ads=$ads pos=$position segments=${adPlaylist?.segments?.size} last=${adPlaylist?.segments?.lastOrNull()?.title} state=${controller.state}")
+            AdLog.i("ads=$ads pos=$position segments=${adPlaylist?.segments?.size} last=${adPlaylist?.segments?.lastOrNull()?.title} adIn=${AdDetector.adStartDelayMs(adPlaylist, position)}ms state=${controller.state}")
         }
-        applyAdActions(controller.onPrimaryPlaylist(ads, AdDetector.adEndDelayMs(adPlaylist, position)))
+        applyAdActions(controller.onPrimaryPlaylist(ads, AdDetector.adStartDelayMs(adPlaylist, position), AdDetector.adEndDelayMs(adPlaylist, position)))
     }
 
     private fun applyAdActions(actions: List<AdController.Action>) {
         actions.forEach { action ->
             when (action) {
-                AdController.Action.MutePrimary -> mutePrimaryPlayer()
-                AdController.Action.RestorePrimary -> unhidePrimaryPlayer()
-                is AdController.Action.StartSecondary -> startSecondaryPlayer(action.source)
+                is AdController.Action.StartSecondary -> startSecondaryPlayer(action.source, action.show)
+                AdController.Action.ShowSecondary -> showSecondaryPlayer()
                 AdController.Action.StopSecondary -> stopSecondaryPlayer()
-                is AdController.Action.StartSecondaryTimeout -> {
-                    secondaryPlayerTimerJob?.cancel()
-                    secondaryPlayerTimerJob = lifecycleScope.launch {
+                AdController.Action.MutePrimary -> player?.volume = 0f
+                AdController.Action.HidePrimary -> hidePrimaryVideo()
+                is AdController.Action.RestorePrimary -> restorePrimaryPlayer(action.videoHidden)
+                is AdController.Action.ScheduleBoundary -> {
+                    adBoundaryJob?.cancel()
+                    adBoundaryJob = lifecycleScope.launch {
                         delay(action.delayMs.milliseconds)
-                        secondaryPlayerTimerJob = null
-                        AdLog.i("secondary player timed out")
-                        adController?.let { applyAdActions(it.onSecondaryTimeout()) }
+                        adBoundaryJob = null
+                        AdLog.i("ad boundary, secondary ready=${pendingSecondaryPlayer?.playbackState == Player.STATE_READY}")
+                        adController?.let { applyAdActions(it.onAdBoundary()) }
                     }
                 }
-                AdController.Action.CancelSecondaryTimeout -> {
-                    secondaryPlayerTimerJob?.cancel()
-                    secondaryPlayerTimerJob = null
+                AdController.Action.CancelBoundary -> {
+                    adBoundaryJob?.cancel()
+                    adBoundaryJob = null
                 }
                 is AdController.Action.ScheduleRestore -> {
                     adRestoreJob?.cancel()
@@ -1303,7 +1327,7 @@ class ExoPlayerService : BasePlaybackService() {
         }
     }
 
-    private fun mutePrimaryPlayer() {
+    private fun hidePrimaryVideo() {
         player?.let { player ->
             if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
                 player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
@@ -1314,20 +1338,29 @@ class ExoPlayerService : BasePlaybackService() {
         }
     }
 
-    private fun unhidePrimaryPlayer() {
+    private fun restorePrimaryPlayer(videoHidden: Boolean) {
         player?.let { player ->
             val quality = quality
-            if (quality != null && quality.name != VideoQuality.AUDIO_ONLY_QUALITY && quality.name != VideoQuality.CHAT_ONLY_QUALITY
+            if (videoHidden) {
+                if (quality != null && quality.name != VideoQuality.AUDIO_ONLY_QUALITY && quality.name != VideoQuality.CHAT_ONLY_QUALITY
+                    && qualities?.find { it.name == VideoQuality.AUTO_QUALITY } != null && !player.currentTracks.isEmpty
+                ) {
+                    // the track group changed during the ad, so apply the selected quality again
+                    val previous = previousQuality
+                    changeQuality(quality)
+                    previousQuality = previous
+                } else if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
+                        setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, false)
+                    }.build()
+                }
+            } else if (quality != null && quality.name != VideoQuality.AUDIO_ONLY_QUALITY && quality.name != VideoQuality.CHAT_ONLY_QUALITY
                 && qualities?.find { it.name == VideoQuality.AUTO_QUALITY } != null && !player.currentTracks.isEmpty
             ) {
-                // the track group changed during the ad, so apply the selected quality again
+                // tracks changed at the ad boundaries while changeQuality was skipped
                 val previous = previousQuality
                 changeQuality(quality)
                 previousQuality = previous
-            } else if (quality?.name != VideoQuality.AUDIO_ONLY_QUALITY) {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().apply {
-                    setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_VIDEO, false)
-                }.build()
             }
             player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
         }
@@ -1335,10 +1368,14 @@ class ExoPlayerService : BasePlaybackService() {
 
     private fun isCurrentAdSource(source: AdSource) = (adController?.state as? AdController.State.Covering)?.source == source
 
-    private fun startSecondaryPlayer(source: AdSource) {
-        if (secondaryPlayer != null) {
-            stopSecondaryPlayer()
-        }
+    private fun isSecondary(player: ExoPlayer) = player === secondaryPlayer || player === pendingSecondaryPlayer
+
+    /**
+     * Starts the secondary player for [source], replacing a running one. Off screen and silent
+     * until [showSecondaryPlayer] unless [show].
+     */
+    private fun startSecondaryPlayer(source: AdSource, show: Boolean) {
+        stopSecondaryPlayer(keepSurface = show)
         lifecycleScope.launch {
             val networkLibrary = prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP)
             val url = when (source) {
@@ -1346,12 +1383,15 @@ class ExoPlayerService : BasePlaybackService() {
                 is AdSource.StreamProxy -> quality?.url ?: qualities?.firstOrNull {
                     it.url != null && it.name != VideoQuality.AUDIO_ONLY_QUALITY
                 }?.url
+                // anonymous: only the primary stream's token request carries the login
                 is AdSource.VideoSwap -> channelLogin?.let { channelLogin ->
                     AdSourceResolver(this@ExoPlayerService, xtraModule, networkLibrary).resolveVideoSwap(
                         channelLogin = channelLogin,
                         source = source,
-                        gqlHeaders = AdSourceResolver.gqlHeaders(this@ExoPlayerService, prefs()),
+                        gqlHeaders = TwitchApiHelper.getGQLHeaders(this@ExoPlayerService, false),
                         supportedCodecs = prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
+                        // the same quality as the primary; auto and source get the best one
+                        maxHeight = quality?.takeIf { it.name != VideoQuality.AUTO_QUALITY && it.name != VideoQuality.SOURCE_QUALITY }?.resolution,
                     )
                 }
             }
@@ -1366,7 +1406,7 @@ class ExoPlayerService : BasePlaybackService() {
             val player = buildPlayer()
             player.addListener(object : Player.Listener {
                 override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                    if (secondaryPlayer !== player) return
+                    if (!isSecondary(player)) return
                     val playlist = (player.currentManifest as? HlsManifest)?.mediaPlaylist?.let { AdPlaylist.from(it) }
                     if (AdDetector.hasAds(playlist, player.currentPosition)) {
                         AdLog.i("${source.label}: secondary player has ads")
@@ -1375,7 +1415,7 @@ class ExoPlayerService : BasePlaybackService() {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    if (secondaryPlayer !== player) return
+                    if (!isSecondary(player)) return
                     AdLog.w("${source.label}: secondary player error", error)
                     adController?.let { applyAdActions(it.onSecondaryFailed()) }
                 }
@@ -1412,23 +1452,51 @@ class ExoPlayerService : BasePlaybackService() {
                     }.build()
                 )
             )
-            player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
+            player.volume = 0f
             player.setPlaybackSpeed(1f)
             player.prepare()
             player.playWhenReady = true
-            secondaryPlayer = player
-            serviceListener?.setPlayerSurface(true)
+            pendingSecondaryPlayer = player
             AdLog.i("${source.label}: secondary player started")
+            if (show || adController?.isCovered == true) {
+                showSecondaryPlayer()
+            }
         }
     }
 
-    private fun stopSecondaryPlayer() {
-        val player = secondaryPlayer ?: return
-        player.playWhenReady = false
-        // the fragment moves the surface and its listener off secondaryPlayer, so clear it afterwards
-        serviceListener?.setPlayerSurface(false)
+    /**
+     * Puts the secondary player on screen. When it is still resolving, the primary player only
+     * loses the surface (the last content frame stays) and the secondary gets it once it starts.
+     */
+    private fun showSecondaryPlayer() {
+        val player = pendingSecondaryPlayer
+        if (player != null) {
+            pendingSecondaryPlayer = null
+            player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
+            secondaryPlayer = player
+        }
+        surfaceOnSecondary = true
+        serviceListener?.setPlayerSurface(true)
+        AdLog.i("secondary player shown, ready=${player?.playbackState == Player.STATE_READY}")
+    }
+
+    /**
+     * @param keepSurface a replacement player follows right away: keep the primary off screen
+     */
+    private fun stopSecondaryPlayer(keepSurface: Boolean = false) {
+        pendingSecondaryPlayer?.let {
+            pendingSecondaryPlayer = null
+            it.release()
+        }
+        val player = secondaryPlayer
+        player?.playWhenReady = false
+        if (surfaceOnSecondary && !keepSurface) {
+            surfaceOnSecondary = false
+            // the fragment moves the surface and its listener off secondaryPlayer, so clear it afterwards
+            serviceListener?.setPlayerSurface(false)
+        }
         secondaryPlayer = null
-        player.release()
+        player?.release()
     }
 
     fun getCurrentVolume() = secondaryPlayer?.volume ?: player?.volume
@@ -1507,9 +1575,9 @@ class ExoPlayerService : BasePlaybackService() {
     fun restartPlayer() {
         if (quality?.name != VideoQuality.CHAT_ONLY_QUALITY) {
             lifecycleScope.launch {
-                if (secondaryPlayer != null) {
-                    stopSecondaryPlayer()
-                }
+                // a new stream session: its ads are detected from scratch
+                adController?.let { applyAdActions(it.reset()) }
+                stopSecondaryPlayer()
                 loadStream(restart = true)
             }
         }
@@ -2118,6 +2186,7 @@ class ExoPlayerService : BasePlaybackService() {
         savePosition()
         player?.playWhenReady = false
         secondaryPlayer?.playWhenReady = false
+        pendingSecondaryPlayer?.playWhenReady = false
         stopSelf()
     }
 
@@ -2125,6 +2194,7 @@ class ExoPlayerService : BasePlaybackService() {
         super.onDestroy()
         player?.release()
         secondaryPlayer?.release()
+        pendingSecondaryPlayer?.release()
         session?.release()
         bitmapLoadJob?.cancel()
         notificationManager?.cancel(NOTIFICATION_ID)

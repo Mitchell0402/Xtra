@@ -1256,6 +1256,7 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             playerRepository.saveVideoSwapItems(
                 listOf(
+                    Triple("web", "highlighter", true),
                     Triple("android", "autoplay", true),
                     Triple("web", "embed", false),
                     Triple("web", "popout", false),
@@ -1263,6 +1264,17 @@ class MainViewModel(
                     VideoSwap(triple.first, triple.second, index, triple.third)
                 }
             )
+        }
+    }
+
+    fun addVideoSwapItemFirst(platform: String, playerType: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = playerRepository.getVideoSwapItems().sortedBy { it.position }
+            if (items.none { it.platform == platform && it.playerType == playerType }) {
+                items.forEach { it.position += 1 }
+                playerRepository.updateVideoSwapItems(items)
+                playerRepository.saveVideoSwap(VideoSwap(platform, playerType, 0, true))
+            }
         }
     }
 

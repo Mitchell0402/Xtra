@@ -9,7 +9,6 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
 
 /** Sample of the screenshot test pattern every stage follows: one image per form factor. */
@@ -23,7 +22,7 @@ class LabHomeScreenshotTest {
     val rules = ScreenshotRules()
 
     private fun capture(formFactor: FormFactor) {
-        RuntimeEnvironment.setQualifiers(formFactor.qualifiers)
+        formFactor.apply()
         compose.setContent { LabHome() }
         compose.onRoot().captureRoboImage(ScreenshotRules.path("LabHome", formFactor))
     }

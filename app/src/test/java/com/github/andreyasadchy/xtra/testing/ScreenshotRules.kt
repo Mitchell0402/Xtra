@@ -4,15 +4,22 @@ import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import org.junit.rules.TestWatcher
+import org.robolectric.RuntimeEnvironment
 import org.junit.runner.Description
 import java.util.Locale
 import java.util.TimeZone
 
 /** The three layouts every screen is captured in (plan 10.2). */
-enum class FormFactor(val qualifiers: String) {
-    PhonePortrait(RobolectricDeviceQualifiers.Pixel7),
-    PhoneLandscape("${RobolectricDeviceQualifiers.Pixel7}-land"),
-    TabletLandscape(RobolectricDeviceQualifiers.MediumTablet),
+enum class FormFactor(private val device: String, private val orientation: String) {
+    PhonePortrait(RobolectricDeviceQualifiers.Pixel7, "+port"),
+    PhoneLandscape(RobolectricDeviceQualifiers.Pixel7, "+land"),
+    TabletLandscape(RobolectricDeviceQualifiers.MediumTablet, "+land");
+
+    /** Device first, then the orientation on top ("+" overrides one qualifier, Robolectric rejects "-land" appended). */
+    fun apply() {
+        RuntimeEnvironment.setQualifiers(device)
+        RuntimeEnvironment.setQualifiers(orientation)
+    }
 }
 
 /**

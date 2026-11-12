@@ -109,8 +109,12 @@ android {
         listOf("debug", "benchmark").forEach {
             getByName(it).kotlin.directories.add("src/lab/kotlin")
             getByName(it).manifest.srcFile("src/lab/AndroidManifest.xml")
+            getByName(it).assets.directories.add("../tools/chat-probe/samples")
         }
     }
+    // minSdk 29 would store dex files uncompressed (+4.7 MB APK); keep them compressed like v0.1 so the
+    // size gate (plan 10.4) compares like with like and the GitHub download stays small
+    packaging.dex.useLegacyPackaging = true
     packaging.jniLibs.excludes.addAll(listOf(
         "lib/x86/libtranslate_jni.so",
         "lib/x86/liblanguage_id_l2c_jni.so",
@@ -186,6 +190,7 @@ dependencies {
         add(conf, libs.compose.ui.viewbinding)
         add(conf, libs.activity.compose)
         add(conf, libs.media3.ui.compose)
+        add(conf, libs.coil.compose)
     }
     // the Compose compiler plugin needs the runtime on every variant's compile classpath; release and qa
     // have no Compose code yet, so nothing of it ends up in those APKs

@@ -13,5 +13,20 @@
             android:exported="true"
             android:label="Lagoon lab"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
+
+        <activity
+            android:name="com.github.andreyasadchy.xtra.lab.ChatLabActivity"
+            android:exported="true"
+            android:label="Chat lab" />
+
+        <activity
+            android:name="com.github.andreyasadchy.xtra.lab.PlayerSwitchLabActivity"
+            android:exported="true"
+            android:label="Player switch lab" />
+
+        <provider
+            android:name="com.github.andreyasadchy.xtra.lab.LabShellProvider"
+            android:authorities="${applicationId}.labshell"
+            android:exported="false" />
     </application>
 </manifest>

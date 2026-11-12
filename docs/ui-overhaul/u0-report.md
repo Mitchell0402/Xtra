@@ -1,0 +1,96 @@
+# U0 验证报告：护栏与三项技术验证
+
+日期：2026-11-12。分支 `ui/u0-guardrails`。U0 不改任何可见界面：`app/src/main` 没有任何改动，新代码都在构建脚本、测试、`benchmark` 模块、`tools/` 和只进调试版与 benchmark 版的 `app/src/lab`。
+
+## 结论
+
+| 门槛（计划 10.6 U0） | 结果 |
+| --- | --- |
+| 工具链四项在 AGP 9.5 / Kotlin 2.4.21 / SDK 37 上跑通 | 通过（见第 1 节，Robolectric 需要三处配置） |
+| CI 的检查在试验 PR 上生效，受保护路径检查能拦住故意违规 | 见 PR 说明里的试验 PR 记录 |
+| v0.1 基线包、功能总表、性能基线已留存 | 基线包、功能总表、性能基线已留存；各界面截图、满载数据快照见第 6 节 |
+| v0.1 三项未测功能有结论 | 见第 7 节 |
+| 三个技术验证各有结论和数字 | 三项都通过，各带一条 U2 / U6 / U7 必须遵守的做法（第 3 到 5 节） |
+| 最低系统版本提到 Android 10，并在 Android 10 模拟器上冒烟 | 见第 6 节 |
+
+## 1. 工具链
+
+| 工具 | 版本 | 结论 |
+| --- | --- | --- |
+| Compose 编译插件 | 跟随 Kotlin 2.4.21，Compose BOM 2026.09.00 | 可用。注意：插件要求每个构建变体的编译路径上都有 Compose runtime，release / qa 暂时用 `compileOnly` 满足，不进安装包 |
+| Robolectric | 4.17，模拟 SDK 36（还不支持 37） | 可用，需要：`conscryptMode=OFF`（应用自带的 conscrypt-android 没有桌面版本地库）、测试 Application 用普通 `Application`、JVM 参数 `--add-opens java.base/java.io` 和 `--add-exports java.base/jdk.internal.access`（JDK 21 下否则报 FileDescriptor 错误） |
+| Roborazzi | 1.78.0 | 可用。基线放 `app/src/testDebug/screenshots`，只在 CI 上录制；缺基线时比较会失败 |
+| Macrobenchmark | 1.5.0，`:benchmark` 模块（`com.android.test`） | 可用。模拟器要加 `suppressErrors=EMULATOR` |
+
+## 2. 护栏
+
+- CI（`.github/workflows/android.yml`）：每个 PR 跑全部 JVM 测试（单元、交互、契约、截图比较，按类名后缀分组汇总）、Lint（只拦新增错误，已有 209 条在 `app/lint-baseline.xml`，缺少翻译是错误级）、qa 构建（记录体积，保留安装包和混淆映射 90 天）。
+- 受保护路径（`.github/workflows/protected-paths.yml`）：改到去广告四处代码、数据库包、签名配置、清单权限或 CI 本身时失败，除非 PR 说明有 `## Protected code declaration` 段落逐项写明。改说明会自动重跑。
+- qa 构建：发布版代码加 R8，调试密钥签名，包名 `io.github.mitchell0402.lagoon.qa`，不碰发布密钥。
+- benchmark 构建：qa 加可分析（profileable）加实验页，包名 `...lagoon.bench`。
+- 版本号：versionCode 1 → 2。最低系统版本 24 → 29（Android 10）。
+- 体积：最低版本提到 29 后 AGP 默认不压缩 dex，安装包会大 4.7 MB；已改回压缩（`packaging.dex.useLegacyPackaging = true`），qa 包 40.8 MB → 见第 6 节实测。
+
+## 3. 技术验证 1：聊天列表 30 条/秒
+
+方法：用 `tools/chat-probe/record.py` 匿名录下 xqc 和 caseoh_ 各 3 分钟的真实消息（用户名、用户 id、@提及都换成等长假名，表情位置不变）。实验页 `ChatLabActivity` 把同一段录制以每秒 30 条、持续 60 秒、保留上限 600 条（应用默认值）回放进两种列表：现在的 RecyclerView + ChatAdapter（应用默认聊天设置，含 7TV / BTTV / FFZ 表情和徽章），以及 Compose LazyColumn 原型（AnnotatedString 加内联图片，Coil 加载，`reverseLayout` 固定在底部）。用 Macrobenchmark 的帧耗时统计各跑 3 次，两者在同一台模拟器、同一次会话里交替进行。xqc 这段录制加载到 1094 个第三方表情、563 + 88 个徽章，几乎每条消息都有动态表情。
+
+| 实现 | 60 秒内渲染帧数（中位） | 帧 CPU 耗时 P50 / P90 / P95 / P99（毫秒） |
+| --- | --- | --- |
+| 旧列表，动态表情 | 706 | 89 / 345 / 430 / 978 |
+| Compose 原型，动态表情 | 967 | 91 / 131 / 187 / 406 |
+| 旧列表，静态表情 | 728 | 84 / 329 / 413 / 893 |
+| Compose 原型，静态表情 | 870 | 87 / 220 / 332 / 662 |
+
+结论：
+
+- 在同样的输入下，Compose 原型比现有列表多渲染 20% 到 37% 的帧，长尾帧（P90 以上）明显更短。走 Compose 原生路线可行，不需要退回自绘文字路线。
+- 这台模拟器本身很慢：两种实现的中位帧耗时都在 85 到 90 毫秒，也就是说现在发布的聊天列表在模拟器上也只有约 11 帧每秒。所以“卡顿帧低于 5%”这个绝对门槛在模拟器上无法判断，按计划留到 U7 在你的真机上测。
+- 动态表情开关对两者影响都不大，说明主要开销在文字排版和列表本身，而不是动图解码。
+- 定下的测试参数：每秒 30 条、60 秒、保留 600 条、动态表情按录制原样（xqc 样本几乎每条都有）、模拟器刷新率 60 Hz。U7 沿用 `ChatStressBenchmark` 和这两段录制。
+
+## 4. 技术验证 2：广告时主副播放器画面切换
+
+方法：实验页 `PlayerSwitchLabActivity` 用应用自己的取流代码打开同一个直播的两个源（web/site 作主、android/autoplay 作副，副播放器静音、无画面地预热），每 4 秒切换一次画面，共 20 次。“旧实现”照搬 `ExoPlayerFragment.setPlayerSurface` 的做法，把同一个 SurfaceView 从一个播放器移到另一个；“Compose”用 Media3 1.11.1 的 `PlayerSurface`，只改它的 `player` 参数。每次切换前后各 1 秒、每 16 毫秒用 PixelCopy 取一帧画面，整幅接近纯黑记为黑帧；同时记录新播放器渲染出第一帧的时间。
+
+| 实现 | 黑帧（20 次切换，每次约 100 个采样） | 新画面第一帧（中位 / 最大） |
+| --- | --- | --- |
+| 旧实现（移动 SurfaceView） | 19 个，切换后 1 秒内，每次 1 个 | 7 / 45 毫秒 |
+| Compose PlayerSurface | 25 个，每次约 1 个，出现在切换后 1 到 2 秒的窗口里 | 28 / 46 毫秒 |
+
+结论：Compose 的画面组件和现在的做法一样，每次切换大约闪一帧黑（约 16 毫秒），没有更差；第一帧慢约 20 毫秒，是因为要等下一次重组。广告切换这个场景可以用 Compose 画面组件实现。现在的实现本身就有这一帧黑，如果 U6 想做到完全无黑帧，需要换成两个画面叠放、交叉淡入，那是新功能，不在 U6 的“功能不减”范围内，届时再定。
+
+## 5. 技术验证 3：旧页面嵌进 Compose 外壳
+
+方法：不改主代码，调试版里的 `LabShellProvider` 在 MainActivity 启动后把它的整个布局（导航容器、播放器容器、底部栏）移进一个 ComposeView：顶部是 Compose 顶栏，显示旧导航当前所在页；中间用 AndroidView 原样承载旧布局；底部是 Compose 悬浮胶囊，点击时调用旧的 BottomNavigationView，旧底部栏保留占位但透明，迷你播放器因此保持原来的位置。
+
+逐项在模拟器上点过：
+
+| 项目 | 结果 |
+| --- | --- |
+| 胶囊切换关注 / 游戏 / 已保存，顶栏标题跟随 | 通过 |
+| 进游戏页再返回，返回栈正确 | 通过 |
+| 深链（twitch.tv 频道、游戏目录）进到正确页面 | 通过 |
+| 打开直播、缩成迷你播放器后浏览其他页面 | 通过，迷你播放器在胶囊上方，不被遮挡 |
+| 横屏再转回 | 通过 |
+| 画中画 | 第一次不通过：外壳的顶栏和胶囊被画进了画中画窗口。改为监听画中画状态后通过 |
+| 播放器全屏时 | 第一次不通过：胶囊浮在全屏播放器和聊天上。改为播放器最大化时隐藏外壳后通过 |
+| 活动被系统重建（切换深色模式触发） | 第一次不通过：重建后内容区空白。原因是系统在 onStart 时按 id 找容器把恢复的页面放回去，而旧布局已被移进还没完成组合的 ComposeView。改成首次 onResume 之后再移入后通过，页面、播放器、聊天都恢复 |
+
+结论：方案可行，U2 照此实施时必须做到三点：
+
+1. 旧布局移入 Compose 外壳的时机要在 Fragment 恢复之后（或者反过来，让外壳的顶栏和导航作为 ComposeView 嵌进旧布局，旧布局继续做 Activity 的根）。两种都验证可行的前提是：恢复期间旧容器必须挂在窗口上。
+2. 外壳要拿到“画中画中”和“播放器最大化”两个状态并随之隐藏自己。实验里是从旧播放器的背景状态推断的，U2 应在 PlayerFragment 上加一个明确的回调。
+3. 旧底部栏保留占位、只是不画，迷你播放器的位置逻辑就不用动；U6 重写播放器时再一起换掉。
+
+## 6. 基线与留存
+
+- v0.1 基线包：用 v0.1 标签的代码加同样的 qa / benchmark 构建类型构建，存在 `E:\Projects\Lagoon-baseline\v0.1\`（qa 包、bench 包、混淆映射）。qa 包 36.0 MB。
+- 功能总表：`docs/ui-overhaul/feature-inventory.md`，由 `tools/ui-inventory/inventory.py` 从代码生成。13 个导航页面、18 个设置页共 225 个设置项、47 个含弹窗或弹出菜单的文件、8 个菜单资源、后台组件，每行标了负责阶段。
+- 性能基线（同一模拟器、同一会话，v0.1 与新包交替各 10 次）：待填。
+- Android 10 冒烟：待填。
+- v0.1 各界面截图、满载数据快照：待填。
+
+## 7. v0.1 补测三项
+
+待填。

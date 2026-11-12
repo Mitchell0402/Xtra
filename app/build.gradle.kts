@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.navigation.safeargs)
     alias(libs.plugins.apollo)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.roborazzi)
 }
 
 kotlin {
@@ -46,9 +48,10 @@ android {
     defaultConfig {
         // own id so it installs next to upstream Xtra; the code namespace stays com.github.andreyasadchy.xtra
         applicationId = "io.github.mitchell0402.lagoon"
-        minSdk = 24
+        minSdk = 29
         targetSdk = 37
-        versionCode = 1
+        // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
+        versionCode = 2
         versionName = "0.1"
     }
 
@@ -64,9 +67,25 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+        // Release code (R8 on) signed with the debug key and installed under its own id. Manual tests run on
+        // this build so shrinker crashes show up without ever touching the release key.
+        create("qa") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".qa"
+            versionNameSuffix = "-QA"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
+        // Non-debuggable, profileable build for the :benchmark module. Also carries the U0 lab screens.
+        create("benchmark") {
+            initWith(getByName("qa"))
+            applicationIdSuffix = ".bench"
+            versionNameSuffix = "-BENCH"
+        }
     }
     buildFeatures {
         buildConfig = true
+        compose = true
         viewBinding = true
     }
     androidResources {
@@ -74,10 +93,23 @@ android {
     }
     lint {
         disable += "ContentDescription"
+        error += "MissingTranslation"
+        // existing issues are recorded here; CI fails only on new ones
+        baseline = file("lint-baseline.xml")
+        checkReleaseBuilds = false
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { it.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED") }
     }
     sourceSets {
         // real ad playlists captured in stage 0, used by the ad detector tests
         getByName("test").resources.directories.add("../tools/ad-probe/samples")
+        // U0 lab: technical spikes (chat list, player surface switch, Compose shell), never in qa or release
+        listOf("debug", "benchmark").forEach {
+            getByName(it).kotlin.directories.add("src/lab/kotlin")
+            getByName(it).manifest.srcFile("src/lab/AndroidManifest.xml")
+        }
     }
     packaging.jniLibs.excludes.addAll(listOf(
         "lib/x86/libtranslate_jni.so",
@@ -143,6 +175,36 @@ dependencies {
     implementation(libs.coroutines)
 
     testImplementation(libs.junit)
+
+    // Compose is only used by the U0 lab screens and tests for now; U1 moves it to implementation.
+    val compose = platform(libs.compose.bom)
+    listOf("debugImplementation", "benchmarkImplementation").forEach { conf ->
+        add(conf, compose)
+        add(conf, libs.compose.ui)
+        add(conf, libs.compose.foundation)
+        add(conf, libs.compose.material3)
+        add(conf, libs.compose.ui.viewbinding)
+        add(conf, libs.activity.compose)
+        add(conf, libs.media3.ui.compose)
+    }
+    // the Compose compiler plugin needs the runtime on every variant's compile classpath; release and qa
+    // have no Compose code yet, so nothing of it ends up in those APKs
+    compileOnly(compose)
+    compileOnly(libs.compose.runtime)
+    implementation(libs.profileinstaller)
+    debugImplementation(libs.compose.ui.test.manifest)
+    testImplementation(compose)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.androidx.test.ext.junit)
+}
+
+roborazzi {
+    // baselines are recorded and compared on CI (Linux) only, see .github/workflows
+    outputDir.set(file("src/testDebug/screenshots"))
 }
 
 apollo {

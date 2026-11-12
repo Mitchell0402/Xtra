@@ -23,7 +23,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import coil3.decode.BitmapFactoryDecoder
+import coil3.request.ImageRequest
 import com.github.andreyasadchy.xtra.model.chat.ChatMessage
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
@@ -121,20 +124,23 @@ class ComposeChatRowBuilder(context: Context, data: ChatLabData) {
 }
 
 @Composable
-fun ComposeChatList(rows: List<ComposeChatRow>) {
+fun ComposeChatList(rows: List<ComposeChatRow>, animated: Boolean = true) {
     // newest row first with reverseLayout, so the list stays pinned to the bottom without scroll calls
     LazyColumn(Modifier.fillMaxSize().background(Color(ComposeChatRowBuilder.BACKGROUND)), reverseLayout = true) {
         items(count = rows.size, key = { rows[rows.size - 1 - it].key }, contentType = { 0 }) { index ->
-            ChatLine(rows[rows.size - 1 - index])
+            ChatLine(rows[rows.size - 1 - index], animated)
         }
     }
 }
 
 @Composable
-private fun ChatLine(row: ComposeChatRow) {
+private fun ChatLine(row: ComposeChatRow, animated: Boolean) {
+    val context = LocalContext.current
     val inline = row.images.mapValues { (_, img) ->
         InlineTextContent(Placeholder(img.width, img.height, PlaceholderVerticalAlign.TextCenter)) {
-            AsyncImage(model = img.url, contentDescription = null, modifier = Modifier.fillMaxSize())
+            // animated = false decodes only the first frame, like the app's "animated emotes" setting turned off
+            val model = if (animated) img.url else ImageRequest.Builder(context).data(img.url).decoderFactory(BitmapFactoryDecoder.Factory()).build()
+            AsyncImage(model = model, contentDescription = null, modifier = Modifier.fillMaxSize())
         }
     }
     Text(

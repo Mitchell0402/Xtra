@@ -49,7 +49,7 @@ import java.io.File
  *
  * Nothing in the main source set changes. When the file `files/lab_compose_shell` exists in the app's data directory
  * (debug build: `adb shell run-as <pkg> touch files/lab_compose_shell`), this provider registers activity callbacks
- * that, right after MainActivity.onCreate, move MainActivity's content view into a ComposeView:
+ * that, after MainActivity's first resume, move its content view into a ComposeView:
  *   - a Compose top bar that follows the legacy NavController's current destination,
  *   - the legacy layout in an AndroidView, unchanged, so its fragments, player and mini player keep working,
  *   - a floating Compose pill drawn over the legacy bottom bar (made transparent, still laid out so the mini player
@@ -60,8 +60,17 @@ class LabShellProvider : ContentProvider() {
         val app = context!!.applicationContext as Application
         if (File(app.filesDir, "lab_compose_shell").exists()) {
             app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-                override fun onActivityPostCreated(activity: Activity, savedInstanceState: Bundle?) {
-                    if (activity is MainActivity) wrap(activity)
+                private val wrapped = java.util.WeakHashMap<Activity, Unit>()
+
+                // After the first resume, not after onCreate: when the activity is recreated, the fragment manager
+                // re-attaches restored fragment views to their containers in onStart, and finds them with
+                // findViewById. A layout already moved into a not-yet-composed ComposeView is detached at that point,
+                // so the restored screen stays blank (seen in U0 with a night-mode recreation).
+                override fun onActivityPostResumed(activity: Activity) {
+                    if (activity is MainActivity && wrapped.put(activity, Unit) == null) {
+                        android.util.Log.i("LabShell", "wrapping MainActivity ${activity.hashCode()}")
+                        wrap(activity)
+                    }
                 }
                 override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
                 override fun onActivityStarted(activity: Activity) {}
@@ -90,12 +99,17 @@ class LabShellProvider : ContentProvider() {
             val navBarContainer = legacy.findViewById<View>(R.id.navBarContainer)
             val state = ShellState()
             navBarContainer.alpha = 0f
-            legacy.viewTreeObserver.addOnGlobalLayoutListener(ViewTreeObserver.OnGlobalLayoutListener {
+            // checked every frame: the legacy code changes these without a layout pass
+            legacy.viewTreeObserver.addOnPreDrawListener(ViewTreeObserver.OnPreDrawListener {
                 state.navVisible.value = navBarContainer.isShown
                 state.navHeight.intValue = navBarContainer.height
                 state.items.value = (0 until navBar.menu.size()).map { navBar.menu.getItem(it).let { i -> i.itemId to i.title.toString() } }
                 state.selected.intValue = navBar.selectedItemId
+                // PlayerFragment makes its background clickable only while maximized
+                state.playerMaximized.value = legacy.findViewById<View>(R.id.playerBackground)?.isClickable == true
+                true
             })
+            activity.addOnPictureInPictureModeChangedListener { state.pip.value = it.isInPictureInPictureMode }
             val navHost = activity.supportFragmentManager.findFragmentById(R.id.navHostFragment) as? NavHostFragment
             navHost?.navController?.addOnDestinationChangedListener { _, destination, _ ->
                 state.title.value = destination.label?.toString() ?: activity.resources.getResourceEntryName(destination.id)
@@ -113,19 +127,23 @@ private class ShellState {
     val navHeight = mutableIntStateOf(0)
     val items = mutableStateOf(emptyList<Pair<Int, String>>())
     val selected = mutableIntStateOf(0)
+    val playerMaximized = mutableStateOf(false)
+    val pip = mutableStateOf(false)
 }
 
 @Composable
 private fun Shell(state: ShellState, legacy: View, onSelect: (Int) -> Unit) {
+    // the shell's own chrome steps aside for picture-in-picture and for the maximized player
+    val chrome = !state.pip.value && !state.playerMaximized.value
     Box(Modifier.fillMaxSize().background(Color(0xFF111113))) {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxWidth().background(Color(0xFF1B1B1F)).statusBarsPadding().height(40.dp).padding(horizontal = 16.dp),
+            if (chrome) Box(Modifier.fillMaxWidth().background(Color(0xFF1B1B1F)).statusBarsPadding().height(40.dp).padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart) {
                 Text("Compose shell · ${state.title.value}", color = Color(0xEBFFFFFF), fontSize = 15.sp)
             }
             AndroidView(factory = { legacy }, modifier = Modifier.fillMaxWidth().weight(1f))
         }
-        if (state.navVisible.value) {
+        if (chrome && state.navVisible.value) {
             val height = with(LocalDensity.current) { state.navHeight.intValue.toDp() }
             Row(
                 Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).height((height - 16.dp).coerceAtLeast(48.dp))

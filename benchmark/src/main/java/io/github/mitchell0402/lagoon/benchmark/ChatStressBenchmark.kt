@@ -19,7 +19,8 @@ import org.junit.runners.Parameterized
  * ("legacy", RecyclerView + ChatAdapter) and into the Compose prototype ("compose"), measured with the same
  * frame metrics. Needs the lab screens, so it only runs against this checkout's benchmark build.
  *
- * Runner arguments: chatRate (default 30), chatSeconds (60), chatLimit (600), chatSample (xqc-20261112.irc).
+ * Runner arguments: chatRate (default 30), chatSeconds (60), chatLimit (600), chatSample (xqc-20261112.irc),
+ * chatAnimated (true), chatIterations (3).
  */
 @RunWith(Parameterized::class)
 class ChatStressBenchmark(private val mode: String) {
@@ -31,6 +32,7 @@ class ChatStressBenchmark(private val mode: String) {
     private val seconds = args.getString("chatSeconds")?.toInt() ?: 60
     private val limit = args.getString("chatLimit")?.toInt() ?: 600
     private val sample = args.getString("chatSample") ?: "xqc-20261112.irc"
+    private val animated = args.getString("chatAnimated")?.toBoolean() ?: true
 
     @Test
     fun chatReplay() = rule.measureRepeated(
@@ -48,8 +50,11 @@ class ChatStressBenchmark(private val mode: String) {
             putExtra("seconds", seconds)
             putExtra("limit", limit)
             putExtra("sample", sample)
+            putExtra("animated", animated)
+            putExtra("finish", true)
         })
-        check(device.wait(Until.hasObject(By.textStartsWith("DONE")), (seconds + 60) * 1000L)) { "replay did not finish" }
+        // the lab activity finishes itself when the replay is over
+        check(device.wait(Until.gone(By.pkg(TARGET_PACKAGE).depth(0)), (seconds + 60) * 1000L)) { "replay did not finish" }
     }
 
     companion object {

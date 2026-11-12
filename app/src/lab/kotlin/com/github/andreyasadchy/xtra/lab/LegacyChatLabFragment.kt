@@ -16,6 +16,7 @@ import com.google.android.material.color.MaterialColors
 /** The current chat list (ChatAdapter + RecyclerView), configured with the app's default chat settings. */
 class LegacyChatLabFragment : Fragment() {
     lateinit var data: ChatLabData
+    var animated = true
     private val messages = mutableListOf<ChatMessage>()
     private lateinit var recycler: RecyclerView
     private lateinit var adapter: ChatAdapter
@@ -40,7 +41,7 @@ class LegacyChatLabFragment : Fragment() {
             backgroundColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurface),
             dialogBackgroundColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorSurface),
             imageLibrary = "0", messageTextSize = 14f, emoteSize = dp(29.5f), badgeSize = dp(18.5f), gifSize = dp(79.5f),
-            showGifMessages = true, emoteQuality = "4", animateGifs = true, enableOverlayEmotes = true,
+            showGifMessages = true, emoteQuality = "4", animateGifs = animated, enableOverlayEmotes = true,
             translateMessage = { _, _ -> }, showLanguageDownloadDialog = { _, _ -> }, channelId = data.roomId, loggedInUser = null,
             messageClickListener = null, replyClickListener = null, imageClickListener = null,
         )

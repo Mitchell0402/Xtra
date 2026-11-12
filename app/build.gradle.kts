@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.parcelize)
@@ -11,6 +13,16 @@ kotlin {
     jvmToolchain(21)
 }
 
+// Release signing comes from keystore.properties in the project root (git-ignored), or from
+// LAGOON_KEYSTORE_* environment variables. Without either, release builds fall back to the debug key.
+val releaseSigning = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
+    System.getenv("LAGOON_KEYSTORE_FILE")?.let { setProperty("storeFile", it) }
+    System.getenv("LAGOON_KEYSTORE_PASSWORD")?.let { setProperty("storePassword", it) }
+    System.getenv("LAGOON_KEY_ALIAS")?.let { setProperty("keyAlias", it) }
+    System.getenv("LAGOON_KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
+}.takeIf { it.getProperty("storeFile") != null }
+
 android {
     signingConfigs {
         getByName("debug") {
@@ -19,16 +31,25 @@ android {
             storeFile = file("debug-keystore.jks")
             storePassword = "123456"
         }
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
     }
     namespace = "com.github.andreyasadchy.xtra"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.github.andreyasadchy.xtra"
+        // own id so it installs next to upstream Xtra; the code namespace stays com.github.andreyasadchy.xtra
+        applicationId = "io.github.mitchell0402.lagoon"
         minSdk = 24
         targetSdk = 37
-        versionCode = 121
-        versionName = "2.60.10"
+        versionCode = 1
+        versionName = "0.1"
     }
 
     buildTypes {
@@ -41,7 +62,7 @@ android {
             isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     buildFeatures {

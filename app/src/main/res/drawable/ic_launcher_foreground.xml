@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lagoon: a soft card with a play button floating on calm water, a second card peeking out behind it -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillAlpha="0.45"
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,29H66A9,9 0,0 1,75 38V62A9,9 0,0 1,66 71H42A9,9 0,0 1,33 62V38A9,9 0,0 1,42 29Z" />
+    <path
+        android:fillAlpha="0.12"
+        android:fillColor="#000000"
+        android:pathData="M38,38H70A11,11 0,0 1,81 49V69A11,11 0,0 1,70 80H38A11,11 0,0 1,27 69V49A11,11 0,0 1,38 38Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,36H70A11,11 0,0 1,81 47V67A11,11 0,0 1,70 78H38A11,11 0,0 1,27 67V47A11,11 0,0 1,38 36Z" />
+    <group>
+        <clip-path android:pathData="M38,36H70A11,11 0,0 1,81 47V67A11,11 0,0 1,70 78H38A11,11 0,0 1,27 67V47A11,11 0,0 1,38 36Z" />
+        <path
+            android:fillColor="#99F6E4"
+            android:pathData="M27,70C36,66 45,74 54,70C63,66 72,74 81,70L81,78L27,78Z" />
+    </group>
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M50,48L50,62L62,55Z"
+        android:strokeWidth="4"
+        android:strokeColor="#0D9488"
+        android:strokeLineJoin="round" />
+</vector>

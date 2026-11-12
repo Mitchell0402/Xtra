@@ -16,8 +16,8 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
   pipeline, the database package, signing, manifest permissions or CI fails until its description has a
   `## Protected code declaration` section naming each touched area.
 - **Screenshots**: baselines live in `app/src/testDebug/screenshots` and are only recorded on CI. After an intended visual
-  change, run the "Update screenshot baselines" workflow on the PR branch (Actions tab, or
-  `gh workflow run screenshots.yml --ref <branch>`); it commits the new images to the branch.
+  change, run the CI workflow by hand on the PR branch with "Record new screenshot baselines" ticked (Actions tab, or
+  `gh workflow run android.yml --ref <branch> -f record_screenshots=true`); it commits the new images to the branch.
 - **Test naming**: `*ScreenshotTest`, `*InteractionTest`, `*ContractTest`, everything else is a unit test. The CI summary
   groups results by these suffixes.
 - **Builds**: `qa` = release code with R8, debug key, id `io.github.mitchell0402.lagoon.qa` (manual tests);

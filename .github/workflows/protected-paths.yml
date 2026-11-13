@@ -1,0 +1,21 @@
+# Red-line guard (plan section 10.1): a PR that touches the ad-blocking pipeline, the database,
+# signing, manifest permissions or CI itself fails until its description declares why.
+# Runs again when the PR description is edited.
+name: Protected code
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  protected-paths:
+    name: Protected code check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+    - name: Check protected paths against the PR declaration
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
+      run: python3 tools/ci/protected_paths.py "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"

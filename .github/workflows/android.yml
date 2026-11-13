@@ -1,35 +1,109 @@
-# Builds an APK as a workflow artifact only. Releases are published by hand with the Lagoon
-# release key (see README); CI has no key, so an automatic "latest" release here would be
-# debug-signed and would break in-app updates.
-name: Build
+# Build and test checks for every pull request and every push to master (plan section 10.2).
+# Releases are still published by hand with the Lagoon release key; CI never has the key, so it
+# builds the "qa" type (R8 on, debug key, own app id) instead of a release APK.
+name: CI
 
 on:
+  pull_request:
   push:
     branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      record_screenshots:
+        description: Record new screenshot baselines on Linux and commit them to this branch
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  tests:
+    name: Unit, interaction, contract and screenshot tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v7
-      with:
-        fetch-depth: 0
-        filter: blob:none
-    - name: Setup Java
-      uses: actions/setup-java@v6
+    - uses: actions/checkout@v7
+    - uses: actions/setup-java@v6
       with:
         java-version: '21'
         distribution: 'temurin'
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v6
+    - uses: gradle/actions/setup-gradle@v6
       with:
         cache-provider: 'basic'
-    - name: Build with Gradle
-      run: ./gradlew assembleRelease
-
-    - name: Upload a Build Artifact
+    # Baselines are only ever recorded here, so font rendering matches the comparison (plan 10.2). After an intended
+    # visual change: Actions > CI > Run workflow on the PR branch with "Record new screenshot baselines" ticked
+    # (or `gh workflow run android.yml --ref <branch> -f record_screenshots=true`).
+    - name: Record screenshot baselines
+      if: github.event_name == 'workflow_dispatch' && inputs.record_screenshots
+      run: |
+        ./gradlew :app:recordRoborazziDebug
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add app/src/testDebug/screenshots
+        if git diff --cached --quiet; then echo "Baselines unchanged."; else git commit -m "Update screenshot baselines" && git push; fi
+    - name: Run JVM tests and compare screenshots with the recorded baselines
+      if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.record_screenshots) }}
+      run: ./gradlew :app:verifyRoborazziDebug
+    - name: Summary
+      if: always()
+      run: python3 tools/ci/test_summary.py app/build/test-results/testDebugUnitTest >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload test reports and screenshot diffs
+      if: failure()
       uses: actions/upload-artifact@v7
       with:
-        name: apk
-        path: app/build/outputs/apk/release/*.apk
+        name: test-reports
+        path: |
+          app/build/reports/tests/
+          app/build/outputs/roborazzi/
+          app/src/testDebug/screenshots/*_compare.png
+
+  lint:
+    name: Android Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-java@v6
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - uses: gradle/actions/setup-gradle@v6
+      with:
+        cache-provider: 'basic'
+    - name: Lint (fails on new errors; existing ones are in app/lint-baseline.xml)
+      run: ./gradlew :app:lintDebug
+    - name: Upload lint report
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: lint-report
+        path: app/build/reports/lint-results-debug.html
+
+  qa-build:
+    name: qa build (R8)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-java@v6
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - uses: gradle/actions/setup-gradle@v6
+      with:
+        cache-provider: 'basic'
+    - name: Build the qa APK
+      run: ./gradlew :app:assembleQa
+    - name: APK size
+      run: |
+        size=$(stat -c %s app/build/outputs/apk/qa/app-qa.apk)
+        echo "qa APK: $size bytes ($((size / 1024)) KiB)" | tee -a "$GITHUB_STEP_SUMMARY"
+    - name: Upload APK and R8 mapping
+      uses: actions/upload-artifact@v7
+      with:
+        name: lagoon-qa-${{ github.sha }}
+        path: |
+          app/build/outputs/apk/qa/app-qa.apk
+          app/build/outputs/mapping/qa/
+        retention-days: 90

@@ -1,0 +1,2218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.5.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.5.0)" variant="all" version="9.5.0">
+
+    <issue
+        id="EmptySuperCall"
+        message="No need to call `super.onCleared`; the super method is defined to be empty"
+        errorLine1="        super.onCleared()"
+        errorLine2="              ~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatViewModel.kt"
+            line="211"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="AppBundleLocaleChanges"
+        message="Found dynamic locale changes, but did not find corresponding Play Core library calls for downloading languages and splitting by language is not disabled in the `bundle` configuration"
+        errorLine1="        resources.configuration.setLocale("
+        errorLine2="        ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/ContextExtensions.kt"
+            line="28"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AppLinkWarning"
+        message="This intent filter has the format of an Android App Link but is missing the `autoVerify` attribute; add `android:autoVerify=&quot;true&quot;` to ensure your domain will be validated and enable App Link-related Lint warnings. If you do not want clicked URLs to bring the user to your app, remove the `android.intent.category.BROWSABLE` category, or set `android:autoVerify=&quot;false&quot;` to make it clear this is not intended to be an Android App Link."
+        errorLine1="            &lt;intent-filter>"
+        errorLine2="             ~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="45"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="FragmentBackPressedCallback"
+        message="Use viewLifecycleOwner as the LifecycleOwner."
+        errorLine1="            requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)"
+        errorLine2="                                                                  ~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatFragment.kt"
+            line="941"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="FragmentBackPressedCallback"
+        message="Use viewLifecycleOwner as the LifecycleOwner."
+        errorLine1="            requireActivity().onBackPressedDispatcher.addCallback(this@PlayerFragment, backPressedCallback)"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="2095"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                            ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt"
+            line="59"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                            ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt"
+            line="59"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            webView.webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                                    ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt"
+            line="190"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            webView.webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                                    ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt"
+            line="190"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            secondaryWebView.webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                                             ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt"
+            line="472"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="MissingOnRenderProcessGone"
+        message="WebViewClient should implement `onRenderProcessGone` to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down."
+        errorLine1="            secondaryWebView.webViewClient = object : WebViewClientCompat() {"
+        errorLine2="                                             ~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt"
+            line="472"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="635"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                        repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                        ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="829"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                        repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                        ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="863"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                            repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                            ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="927"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                            repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                            ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="939"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                            repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                            ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1053"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="RepeatOnLifecycleWrongUsage"
+        message="Wrong usage of repeatOnLifecycle from ExoPlayerFragment.onStart."
+        errorLine1="                            repeatOnLifecycle(Lifecycle.State.STARTED) {"
+        errorLine2="                            ^">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1066"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 9.5.0 is available: 9.5.1"
+        errorLine1="android-gradle-plugin = &quot;9.5.0&quot;"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="12"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.test than 9.5.0 is available: 9.5.1"
+        errorLine1="android-gradle-plugin = &quot;9.5.0&quot;"
+        errorLine2="                        ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="12"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of org.chromium.net:cronet-api than 143.7445.0 is available: 500.1.0"
+        errorLine1="cronet = &quot;143.7445.0&quot;"
+        errorLine2="         ~~~~~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="21"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.google.j2objc:j2objc-annotations than 3.0.0 is available: 3.1"
+        errorLine1="    compileOnly(&quot;com.google.j2objc:j2objc-annotations:3.0.0&quot;) // OkHttpDataSource SettableFuture"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="125"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.conscrypt:conscrypt-android than 2.8.0 is available: 2.9.0"
+        errorLine1="conscrypt = &quot;2.8.0&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="16"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.github.bumptech.glide:glide than 4.16.0 is available: 5.0.9"
+        errorLine1="glide = &quot;4.16.0&quot;"
+        errorLine2="        ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.github.bumptech.glide:ksp than 4.16.0 is available: 5.0.9"
+        errorLine1="glide = &quot;4.16.0&quot;"
+        errorLine2="        ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.github.bumptech.glide:okhttp3-integration than 4.16.0 is available: 5.0.9"
+        errorLine1="glide = &quot;4.16.0&quot;"
+        errorLine2="        ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.github.zjupure:webpdecoder than 2.7.4.16.0 is available: 2.8.5.0.9"
+        errorLine1="glide-webpdecoder = &quot;2.7.4.16.0&quot;"
+        errorLine2="                    ~~~~~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="25"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-serialization-json than 1.12.0 is available: 1.13.0"
+        errorLine1="serialization = &quot;1.12.0&quot;"
+        errorLine2="                ~~~~~~~~">
+        <location
+            file="../gradle/libs.versions.toml"
+            line="38"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="SourceLockedOrientationActivity"
+        message="You should not lock orientation of your activities, so that you can support a good user experience for any device or orientation"
+        errorLine1="                            requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1250"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_subtitle_on` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="                    subtitles.setImageResource(androidx.media3.ui.R.drawable.exo_ic_subtitle_on)"
+        errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt"
+            line="432"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_subtitle_off` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="                    subtitles.setImageResource(androidx.media3.ui.R.drawable.exo_ic_subtitle_off)"
+        errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt"
+            line="439"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_speed` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="        android:icon=&quot;@drawable/exo_ic_speed&quot;"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/player_button_preferences.xml"
+            line="63"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_icon_fastforward` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="        android:icon=&quot;@drawable/exo_icon_fastforward&quot;"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/player_button_preferences.xml"
+            line="111"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_subtitle_off` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="        android:icon=&quot;@drawable/exo_ic_subtitle_off&quot;"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/player_button_preferences.xml"
+            line="139"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_styled_controls_rewind` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="        android:foreground=&quot;@drawable/exo_styled_controls_rewind&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="34"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_styled_controls_fastforward` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="        android:foreground=&quot;@drawable/exo_styled_controls_fastforward&quot;"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="55"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_speed` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="            android:src=&quot;@drawable/exo_ic_speed&quot;"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="207"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_icon_fastforward` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="            android:src=&quot;@drawable/exo_icon_fastforward&quot;"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="258"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="PrivateResource"
+        message="The resource `@drawable/exo_ic_subtitle_off` is marked as private in androidx.media3:media3-ui:1.11.1"
+        errorLine1="            android:src=&quot;@drawable/exo_ic_subtitle_off&quot;"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="319"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_settings&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_settings&quot;>Ad blocking&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="599"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_settings_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_settings_desc&quot;>Sources, fallbacks and statistics for live stream ads&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="600"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_stats&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_stats&quot;>Blocked ads&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="601"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_stats_summary&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_stats_summary&quot;>%1$d ad breaks, %2$s of ads&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="602"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_stats_none&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_stats_none&quot;>No ad breaks yet&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="603"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_preset&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_preset&quot;>Preset&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="604"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_preset_aggressive&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_preset_aggressive&quot;>Aggressive: every source, including public proxies&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="605"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_preset_balanced&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_preset_balanced&quot;>Balanced: Twitch only, no third-party proxies&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="606"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_preset_hide_only&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_preset_hide_only&quot;>Hide only: no replacement stream, wait for the ad to end&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="607"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_preset_custom&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_preset_custom&quot;>Custom&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="608"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_sources&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_sources&quot;>Replace the stream during ads&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="609"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_video_swap_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_video_swap_desc&quot;>Clean Twitch player types (web/highlighter up to 1080p, android/autoplay up to 360p), warmed up before the ad starts&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="610"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_custom_proxy_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_custom_proxy_desc&quot;>Public playlist proxies (luminous.dev, cdn-perfprod.com), also tried when a stream starts. They see which channel you watch&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="611"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_stream_proxy_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_stream_proxy_desc&quot;>Your own HTTP proxy for the token or playlist requests&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="612"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_fallback&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_fallback&quot;>When no clean stream is available&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="613"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_filter&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_filter&quot;>Filter ad segments&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="614"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_filter_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_filter_desc&quot;>Ad segments are never downloaded: the picture holds until the stream continues. Also leaves ads out of stream recordings&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="615"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_hide_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_hide_desc&quot;>Turn the video off and mute while the ad plays&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="616"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_advanced&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_advanced&quot;>Advanced&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="617"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_log&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_log&quot;>Ad log&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="618"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_log_desc&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_log_desc&quot;>The last ad detections, switches and source failures&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="619"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_log_empty&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_log_empty&quot;>Nothing logged since the app started&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="620"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_block_stats_reset&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_block_stats_reset&quot;>Reset statistics&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="621"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_status_covered&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_status_covered&quot;>Ad blocked · clean stream&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="622"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_status_waiting&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_status_waiting&quot;>Ad blocked · back in about %1$d s&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="623"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;ad_status_waiting_unknown&quot; is not translated in &quot;ar&quot; (Arabic), &quot;de&quot; (German), &quot;ru&quot; (Russian), &quot;pt&quot; (Portuguese), &quot;gl&quot; (Galician), &quot;in&quot; (Indonesian), &quot;ja&quot; (Japanese), &quot;it&quot; (Italian), &quot;fr&quot; (French), &quot;es&quot; (Spanish), &quot;tr&quot; (Turkish)"
+        errorLine1="    &lt;string name=&quot;ad_status_waiting_unknown&quot;>Ad blocked · waiting for the stream&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="624"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;video&quot; is a common misspelling; did you mean &quot;vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;find_unlisted_video&quot;>Find unlisted video&lt;/string>"
+        errorLine2="                                                     ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="548"
+            column="54"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;Video&quot; is a common misspelling; did you mean &quot;Vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;video_not_found&quot;>Video not found&lt;/string>"
+        errorLine2="                                   ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="549"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;video&quot; is a common misspelling; did you mean &quot;vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;use_video_swap&quot;>Use video swap&lt;/string>"
+        errorLine2="                                      ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="566"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;Video&quot; is a common misspelling; did you mean &quot;Vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;video_swap_settings&quot;>Video swap settings&lt;/string>"
+        errorLine2="                                       ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="568"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;video&quot; is a common misspelling; did you mean &quot;vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;starting_video_swap&quot;>Starting video swap&lt;/string>"
+        errorLine2="                                                ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="576"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="&quot;video&quot; is a common misspelling; did you mean &quot;vídeo&quot;?"
+        errorLine1="    &lt;string name=&quot;stopping_video_swap&quot;>Stopping video swap&lt;/string>"
+        errorLine2="                                                ~~~~~">
+        <location
+            file="src/main/res/values-pt-rBR/strings.xml"
+            line="577"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;channel&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;points_earned&quot;>Received %d channel points&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="290"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;viewers&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;raid_text&quot;>Raiding %1$s with %2$d viewers&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="294"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;bits&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;bits_reward_emote&quot;>%d bits reward&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="436"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnsafeIntentLaunch"
+        message="This intent could be coming from an untrusted source. It is later launched by an unprotected component com.github.andreyasadchy.xtra.ui.main.MainActivity. You could either make the component com.github.andreyasadchy.xtra.ui.main.MainActivity protected; or sanitize this intent using androidx.core.content.IntentSanitizer."
+        errorLine1="                        extras.getParcelable(Intent.EXTRA_INTENT, Intent::class.java)"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="812"
+            column="25"/>
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="820"
+            column="25"
+            message="The unsafe intent is launched here."/>
+    </issue>
+
+    <issue
+        id="UnsafeIntentLaunch"
+        message="This intent could be coming from an untrusted source. It is later launched by an unprotected component com.github.andreyasadchy.xtra.ui.main.MainActivity. You could either make the component com.github.andreyasadchy.xtra.ui.main.MainActivity protected; or sanitize this intent using androidx.core.content.IntentSanitizer."
+        errorLine1="                        extras.getParcelable(Intent.EXTRA_INTENT)"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="815"
+            column="25"/>
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="820"
+            column="25"
+            message="The unsafe intent is launched here."/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="            notifyDataSetChanged()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/saved/bookmarks/BookmarksAdapter.kt"
+            line="69"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="            notifyDataSetChanged()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/saved/bookmarks/BookmarksAdapter.kt"
+            line="78"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NotifyDataSetChanged"
+        message="It will always be more efficient to use more specific change events if you can. Rely on `notifyDataSetChanged` as a last resort."
+        errorLine1="            notifyDataSetChanged()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/common/VideosAdapter.kt"
+            line="67"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            tools:targetApi=&quot;29&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/lab/AndroidManifest.xml"
+            line="9"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            val socketFactory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/chat/ChatReadIRCSocket.kt"
+            line="63"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            val socketFactory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/chat/ChatWriteIRCSocket.kt"
+            line="64"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/DownloadDialog.kt"
+            line="458"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` is always true here (`SDK_INT` = 29)"
+        errorLine1="                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> !useController &amp;&amp; isMaximized"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt"
+            line="586"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp; notificationManager?.getNotificationChannel(channelId) == null) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerService.kt"
+            line="563"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.P` is never true here"
+        errorLine1="                        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.P) {"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerService.kt"
+            line="570"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerService.kt"
+            line="2001"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerService.kt"
+            line="2098"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerService.kt"
+            line="2159"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/LiveNotificationWorker.kt"
+            line="38"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="593"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` is never true here"
+        errorLine1="            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="596"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` is always true here (`SDK_INT` ≥ 29 and &lt; 31)"
+        errorLine1="            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="663"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="                if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.P) {"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt"
+            line="1266"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/MediaButtonReceiver.kt"
+            line="23"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                            val dynamiteClassLoader = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        errorLine2="                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/PlayServicesCronetProvider.kt"
+            line="40"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp; requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="224"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &amp;&amp; requireContext().prefs().getBoolean(C.PLAYER_AUDIO_COMPRESSOR_BUTTON, true)) {"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="767"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1885"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` is always true here (`SDK_INT` = 29)"
+        errorLine1="            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> !useController &amp;&amp; isMaximized"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1938"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `Build.VERSION.SDK_INT >= Build.VERSION_CODES.O` is always true here (`SDK_INT` = 29)"
+        errorLine1="                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> !useController &amp;&amp; isMaximized"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="1969"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt"
+            line="346"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O || !requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt"
+            line="385"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.P) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt"
+            line="921"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.O || !requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt"
+            line="1021"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="            if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.P) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt"
+            line="1091"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp; notificationManager?.getNotificationChannel(channelId) == null) {"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/StreamDownloadService.kt"
+            line="135"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/StreamDownloadService.kt"
+            line="2206"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/TwitchApiHelper.kt"
+            line="139"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/TwitchApiHelper.kt"
+            line="169"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/TwitchApiHelper.kt"
+            line="182"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &amp;&amp; notificationManager?.getNotificationChannel(channelId) == null) {"
+        errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/VideoDownloadService.kt"
+            line="123"
+            column="29"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="                            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/VideoDownloadService.kt"
+            line="174"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/download/VideoDownloadService.kt"
+            line="1801"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 29"
+        errorLine1="        val socketFactory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/WebSocket.kt"
+            line="96"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 29"
+        errorLine1="        if (Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.Q) {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/XtraApp.kt"
+            line="42"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 29. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 27"
+        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot; tools:targetApi=&quot;o_mr1&quot;>true&lt;/item>"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="47"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>59sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="284"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>47sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="290"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>38sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="296"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>34sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="302"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>30sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="308"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>26sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="314"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>24sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="320"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>18sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="326"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>16sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="332"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>18sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="338"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>16sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="344"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>14sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="350"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>16sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="356"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>14sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="362"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 28"
+        errorLine1="        &lt;item name=&quot;android:lineHeight&quot; tools:targetApi=&quot;p&quot;>13sp&lt;/item>"
+        errorLine2="                                        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="368"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 27"
+        errorLine1="        &lt;item name=&quot;android:windowLightNavigationBar&quot; tools:targetApi=&quot;o_mr1&quot;>true&lt;/item>"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/styles.xml"
+            line="1334"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 29. Merge all the resources in this folder into `values`.">
+        <location
+            file="src/main/res/values-v26"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v28`) is unnecessary; `minSdkVersion` is 29. Merge all the resources in this folder into `values`.">
+        <location
+            file="src/main/res/values-v28"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v29`) is unnecessary; `minSdkVersion` is 29. Merge all the resources in this folder into `values`.">
+        <location
+            file="src/main/res/values-v29"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="&lt;LinearLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2=" ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/auto_complete_emotes_list_item.xml"
+            line="2"
+            column="2"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="        &lt;LinearLayout"
+        errorLine2="         ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_chat.xml"
+            line="41"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="UseCompoundDrawables"
+        message="This tag and its children can be replaced by one `&lt;TextView/>` and a compound drawable"
+        errorLine1="        &lt;LinearLayout"
+        errorLine2="         ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="394"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?android:colorBackground` with a theme that also paints a background (inferred theme is `@style/DarkTheme`)"
+        errorLine1="    android:background=&quot;?android:colorBackground&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_main.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `?android:colorBackground` with a theme that also paints a background (inferred theme is `@style/DarkTheme`)"
+        errorLine1="    android:background=&quot;?android:colorBackground&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_settings.xml"
+            line="7"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.array.followedEntries` appears to be unused"
+        errorLine1="    &lt;string-array name=&quot;followedEntries&quot;>"
+        errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/arrays.xml"
+            line="226"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_arrow_back_black_24` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_arrow_back_black_24.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_forward_10_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_forward_10_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_forward_15_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_forward_15_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_forward_30_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_forward_30_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_forward_5_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_forward_5_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_forward_60_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_forward_60_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_person_black_36` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_person_black_36.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_replay_10_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_replay_10_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_replay_15_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_replay_15_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_replay_30_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_replay_30_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_replay_5_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_replay_5_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.baseline_replay_60_black_48` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/baseline_replay_60_black_48.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.exo_styled_controls_play` appears to be unused"
+        errorLine1="    &lt;drawable name=&quot;exo_styled_controls_play&quot; tools:override=&quot;true&quot;>@drawable/baseline_play_arrow_black_48&lt;/drawable>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/drawables.xml"
+            line="3"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.exo_styled_controls_pause` appears to be unused"
+        errorLine1="    &lt;drawable name=&quot;exo_styled_controls_pause&quot; tools:override=&quot;true&quot;>@drawable/baseline_pause_black_48&lt;/drawable>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/drawables.xml"
+            line="4"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.media3_notification_small_icon` appears to be unused"
+        errorLine1="    &lt;drawable name=&quot;media3_notification_small_icon&quot; tools:override=&quot;true&quot;>@drawable/notification_icon&lt;/drawable>"
+        errorLine2="              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/drawables.xml"
+            line="5"
+            column="15"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.mipmap.ic_launcher_foreground` appears to be unused">
+        <location
+            file="src/debug/res/mipmap-hdpi/ic_launcher_foreground.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_trending_up_black_24dp` appears to be unused">
+        <location
+            file="src/main/res/drawable-hdpi/ic_trending_up_black_24dp.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.CronetProviderClassName` appears to be unused"
+        errorLine1="    &lt;string name=&quot;CronetProviderClassName&quot; translatable=&quot;false&quot;>com.github.andreyasadchy.xtra.util.PlayServicesCronetProvider&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="7"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.popular` appears to be unused"
+        errorLine1="    &lt;string name=&quot;popular&quot;>Popular&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="23"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.trending` appears to be unused"
+        errorLine1="    &lt;string name=&quot;trending&quot;>Trending&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="37"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.welcome` appears to be unused"
+        errorLine1="    &lt;string name=&quot;welcome&quot;>Welcome&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="52"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.skip` appears to be unused"
+        errorLine1="    &lt;string name=&quot;skip&quot;>Skip&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="55"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.storage_permission_title` appears to be unused"
+        errorLine1="    &lt;string name=&quot;storage_permission_title&quot;>Storage permission required&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="70"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.storage_permission_message` appears to be unused"
+        errorLine1="    &lt;string name=&quot;storage_permission_message&quot;>Storage permission is required to download videos.&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="71"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.permission_denied` appears to be unused"
+        errorLine1="    &lt;string name=&quot;permission_denied&quot;>Required permissions were denied.&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="72"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.error_stream` appears to be unused"
+        errorLine1="    &lt;string name=&quot;error_stream&quot;>Error when loading stream&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="76"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.error_loading_user` appears to be unused"
+        errorLine1="    &lt;string name=&quot;error_loading_user&quot;>Error loading user profile&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="108"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.never` appears to be unused"
+        errorLine1="    &lt;string name=&quot;never&quot;>Never&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="142"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.startonfollowed` appears to be unused"
+        errorLine1="    &lt;string name=&quot;startonfollowed&quot;>Start on \&quot;Following\&quot; page&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="146"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.when_logged_in` appears to be unused"
+        errorLine1="    &lt;string name=&quot;when_logged_in&quot;>When logged in&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="147"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.always` appears to be unused"
+        errorLine1="    &lt;string name=&quot;always&quot;>Always&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="180"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.chat_send_msg_error` appears to be unused"
+        errorLine1="    &lt;string name=&quot;chat_send_msg_error&quot;>Error sending message - %s&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="207"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.api_gql_redirect` appears to be unused"
+        errorLine1="    &lt;string name=&quot;api_gql_redirect&quot;>GQL redirect URL&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="233"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.stream_proxy` appears to be unused"
+        errorLine1="    &lt;string name=&quot;stream_proxy&quot;>Stream proxy&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="309"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.waiting_ads` appears to be unused"
+        errorLine1="    &lt;string name=&quot;waiting_ads&quot;>Waiting for ads to finish&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="319"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.no_file_manager_found` appears to be unused"
+        errorLine1="    &lt;string name=&quot;no_file_manager_found&quot;>No file manager app found&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="365"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.player` appears to be unused"
+        errorLine1="    &lt;string name=&quot;player&quot;>Player&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="547"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.proxy_error` appears to be unused"
+        errorLine1="    &lt;string name=&quot;proxy_error&quot;>Proxy error. %s is offline&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="579"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.use_video_swap_desc` appears to be unused"
+        errorLine1="    &lt;string name=&quot;use_video_swap_desc&quot;>Swaps playlist during ads&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="586"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.starting_video_swap` appears to be unused"
+        errorLine1="    &lt;string name=&quot;starting_video_swap&quot;>Starting video swap&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="595"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.stopping_video_swap` appears to be unused"
+        errorLine1="    &lt;string name=&quot;stopping_video_swap&quot;>Stopping video swap&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="596"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.starting_proxy` appears to be unused"
+        errorLine1="    &lt;string name=&quot;starting_proxy&quot;>Starting proxy&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="597"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.stopping_proxy` appears to be unused"
+        errorLine1="    &lt;string name=&quot;stopping_proxy&quot;>Stopping proxy&lt;/string>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="598"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UselessParent"
+        message="This `FrameLayout` layout or its `LinearLayout` parent is possibly unnecessary"
+        errorLine1="    &lt;FrameLayout"
+        errorLine2="     ~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_player.xml"
+            line="7"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="        android:textSize=&quot;10sp&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="41"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="SmallSp"
+        message="Avoid using sizes smaller than `11sp`: `10sp`"
+        errorLine1="        android:textSize=&quot;10sp&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/player_layout.xml"
+            line="62"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AlwaysShowAction"
+        message="Prefer &quot;`ifRoom`&quot; instead of &quot;`always`&quot;"
+        errorLine1="        app:showAsAction=&quot;always&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/menu/channel_menu.xml"
+            line="10"
+            column="9"/>
+        <location
+            file="src/main/res/menu/channel_menu.xml"
+            line="17"
+            column="9"/>
+        <location
+            file="src/main/res/menu/channel_menu.xml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Canvas.withSave` instead?"
+        errorLine1="        canvas.save()"
+        errorLine2="        ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/view/CenteredImageSpan.kt"
+            line="30"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="        return savedColors[color] ?: Color.parseColor(color).let { newColor ->"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/util/chat/ChatAdapterUtils.kt"
+            line="438"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="        val maskBitmap = Bitmap.createBitmap(max(fullWidth - xOffset, 0), max(fullHeight - top, 0), Bitmap.Config.ARGB_8888)"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/view/NamePaintImageSpan.kt"
+            line="66"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    compileOnly(&quot;com.google.j2objc:j2objc-annotations:3.0.0&quot;) // OkHttpDataSource SettableFuture"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="125"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    implementation(&quot;com.google.mlkit:language-id:17.0.6&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="126"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    implementation(&quot;com.google.mlkit:translate:17.0.3&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="127"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="            &lt;AutoCompleteTextView"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/dialog_video_download.xml"
+            line="45"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="                    &lt;AutoCompleteTextView"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_game.xml"
+            line="148"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="            &lt;AutoCompleteTextView"
+        errorLine2="             ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/fragment_media.xml"
+            line="32"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="        &lt;AutoCompleteTextView"
+        errorLine2="         ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/storage_selection.xml"
+            line="40"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Number formatting does not take into account locale settings. Consider using `String.format` instead."
+        errorLine1="                rewind.text = (requireContext().prefs().getString(C.PLAYER_REWIND, &quot;10&quot;)?.toLongOrNull() ?: 10).toString()"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="592"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Number formatting does not take into account locale settings. Consider using `String.format` instead."
+        errorLine1="                fastForward.text = (requireContext().prefs().getString(C.PLAYER_FORWARD, &quot;10&quot;)?.toLongOrNull() ?: 10).toString()"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt"
+            line="597"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="Number formatting does not take into account locale settings. Consider using `String.format` instead."
+        errorLine1="            volumeText.text = volume.toInt().toString()"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerVolumeDialog.kt"
+            line="63"
+            column="31"/>
+    </issue>
+
+</issues>

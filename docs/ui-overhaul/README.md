@@ -5,6 +5,7 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
 | File | What it is |
 | --- | --- |
 | `u0-report.md` | U0 validation report: toolchain, CI, baselines, the three technical spikes and their numbers |
+| `u1-report.md` | U1 report: design tokens, icons, the 14 components, showcase, dark-only theme, languages, size |
 | `feature-inventory.md` | App-wide feature list generated from the code (`tools/ui-inventory/inventory.py`); each stage claims and ticks its rows |
 
 ## How the guardrails work
@@ -24,3 +25,13 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
   `benchmark` = qa plus profileable plus the lab screens, id `...lagoon.bench` (`:benchmark` module).
 - **Lab** (`app/src/lab`, debug and benchmark builds only): the U0 spikes. `LabShellProvider` wraps MainActivity in a
   Compose shell when `files/lab_compose_shell` exists in the app's data directory.
+
+## Design system (U1)
+
+- Tokens: `app/src/main/java/.../ui/design/theme` (`Lagoon.colors`, `Lagoon.type`, `Lagoon.motion`, `LagoonShapes`,
+  `LagoonSpacing`, `WidthClass`). Screens take every colour, size, radius, duration and spring from here.
+- Components: `ui/design/components`. Wrap every Compose screen in `LagoonTheme { }`.
+- Icons: `ui/design/icons/LucideIcons` is generated; add an SVG to `tools/icons/lucide` and run
+  `python tools/icons/lucide_to_compose.py`.
+- Showcase: debug builds have a second launcher icon, "Lagoon 组件" (`app/src/lab/.../showcase`). Its specimen sheets are
+  also what `ComponentScreenshotTest` captures.

@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.github.andreyasadchy.xtra.R
+import com.github.andreyasadchy.xtra.util.USE_MATERIAL3
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.prefs
 
@@ -17,7 +18,7 @@ class GridRecyclerView : RecyclerView {
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     private val prefs = context.prefs()
-    private val material3 = prefs.getBoolean(C.UI_THEME_MATERIAL3, true)
+    private val material3 = USE_MATERIAL3
     private val portraitColumns = prefs.getString(C.PORTRAIT_COLUMN_COUNT, "1")!!.toInt()
     private val landscapeColumns = prefs.getString(C.LANDSCAPE_COLUMN_COUNT, "2")!!.toInt()
 

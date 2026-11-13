@@ -7,13 +7,14 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import com.github.andreyasadchy.xtra.util.USE_MATERIAL3
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.prefs
 
 abstract class MaterialPreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onDisplayPreferenceDialog(preference: Preference) {
-        if (requireContext().prefs().getBoolean(C.UI_THEME_MATERIAL3, true)) {
+        if (USE_MATERIAL3) {
             when (preference) {
                 is ListPreference -> showPreferenceDialog(preference, MaterialListPreference())
                 is MultiSelectListPreference -> showPreferenceDialog(preference, MaterialMultiSelectListPreference())

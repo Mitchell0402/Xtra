@@ -39,10 +39,10 @@ Restyled in U3. Chat and player-button pages are restyled in U3 and trimmed in U
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `ui_language` | ListPreference | auto | Language |
+| [ ] | `ui_language` | ListPreference | auto | Language — U1: choices cut to system, English, Simplified Chinese (plan 12) |
 | [ ] | `ui_draw_behind_cutouts` | SwitchPreferenceCompat | false | Draw behind display cutouts |
 | [ ] | `live_notifications_enabled` | SwitchPreferenceCompat | false | Live notifications |
-| [ ] | `theme_settings` | Preference |  | Theme |
+| [x] | `theme_settings` | Preference |  | Theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
 | [ ] | `ui_settings` | Preference |  | UI |
 | [ ] | `chat_settings` | Preference |  | Chat |
 | [ ] | `player_picture_in_picture` | SwitchPreferenceCompat | true | Picture-in-Picture |
@@ -66,17 +66,16 @@ Restyled in U3. Chat and player-button pages are restyled in U3 and trimmed in U
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `theme` | ListPreference | 0 | Theme |
-| [ ] | `ui_theme_follow_system` | SwitchPreferenceCompat | false | Change based on device theme |
-| [ ] | `ui_theme_dark_on` | ListPreference | 0 | Dark theme on |
-| [ ] | `ui_theme_dark_off` | ListPreference | 2 | Dark theme off |
-| [ ] | `ui_theme_rounded_corners_v2` | ListPreference | 0 | Rounded corners |
-| [ ] | `ui_theme_reduced_padding` | SwitchPreferenceCompat | false | Reduced padding |
-| [ ] | `ui_theme_compact_text` | SwitchPreferenceCompat | false | Compact text |
-| [ ] | `ui_theme_appbar_lift` | SwitchPreferenceCompat | true | Lift app bar on scroll |
-| [ ] | `ui_theme_bottom_nav_color` | SwitchPreferenceCompat | true | Bottom navigation color |
-| [ ] | `ui_theme_material3` | SwitchPreferenceCompat | true | Material 3 theme |
-
+| [x] | `theme` | ListPreference | 0 | Theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_follow_system` | SwitchPreferenceCompat | false | Change based on device theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_dark_on` | ListPreference | 0 | Dark theme on — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_dark_off` | ListPreference | 2 | Dark theme off — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_rounded_corners_v2` | ListPreference | 0 | Rounded corners — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_reduced_padding` | SwitchPreferenceCompat | false | Reduced padding — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [x] | `ui_theme_compact_text` | SwitchPreferenceCompat | false | Compact text — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
+| [ ] | `ui_theme_appbar_lift` | SwitchPreferenceCompat | true | Lift app bar on scroll — U1: hidden with the theme page, stored value still applied to the old screens; decided in U2 with the new shell |
+| [ ] | `ui_theme_bottom_nav_color` | SwitchPreferenceCompat | true | Bottom navigation color — U1: hidden with the theme page, stored value still applied to the old screens; decided in U2 with the new shell |
+| [x] | `ui_theme_material3` | SwitchPreferenceCompat | true | Material 3 theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
 ### `uiSettingsFragment` (SettingsActivity$UiSettingsFragment, 24 entries)
 
 | Done | Key | Type | Default | Title |

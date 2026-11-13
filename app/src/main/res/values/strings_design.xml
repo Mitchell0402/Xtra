@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings used by the Lagoon design components (ui/design). Every one needs a zh-CN twin (lint MissingTranslation). -->
+<resources>
+    <string name="design_back">Back</string>
+    <string name="design_more">More</string>
+    <string name="design_close">Close</string>
+    <string name="design_retry">Retry</string>
+    <string name="design_undo">Undo</string>
+    <string name="design_live">Live</string>
+    <string name="design_clear">Clear</string>
+    <string name="design_search">Search</string>
+    <string name="design_selected">Selected</string>
+    <string name="design_not_selected">Not selected</string>
+    <string name="design_follow">Follow</string>
+    <string name="design_following">Following</string>
+    <string name="design_viewers">%1$s viewers</string>
+    <string name="design_loading">Loading</string>
+    <string name="design_download">Download</string>
+    <string name="design_watched">Watched %1$d%%</string>
+    <string name="design_load_failed">Couldn\'t load this</string>
+    <string name="design_pull_to_refresh">Pull to refresh</string>
+</resources>

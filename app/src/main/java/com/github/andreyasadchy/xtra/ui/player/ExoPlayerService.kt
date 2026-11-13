@@ -75,6 +75,7 @@ import com.github.andreyasadchy.xtra.player.ads.AdSource
 import com.github.andreyasadchy.xtra.player.ads.AdSourceQueue
 import com.github.andreyasadchy.xtra.player.ads.AdSourceResolver
 import com.github.andreyasadchy.xtra.player.ads.AdStats
+import com.github.andreyasadchy.xtra.player.ads.LiveEdge
 import com.github.andreyasadchy.xtra.player.ads.StartupRace
 import com.github.andreyasadchy.xtra.player.ads.StreamDataSources
 import com.github.andreyasadchy.xtra.player.lowlatency.HlsPlaylistParser
@@ -1292,6 +1293,12 @@ class ExoPlayerService : BasePlaybackService() {
                 ?.mapNotNull { it.endDateUs }?.maxOrNull()?.div(1000)
         }
         applyAdActions(controller.onPrimaryPlaylist(ads, AdDetector.adStartDelayMs(adPlaylist, position), AdDetector.adEndDelayMs(adPlaylist, position)))
+        // no layer took the break (only the gap filter): nothing restores the player, so catch up here
+        // once it fell out of the live window
+        // (current position: a restore that ran just now has already moved it)
+        if (!ads && controller.state == AdController.State.Idle) {
+            player?.takeIf { it.playWhenReady && it.currentPosition < 0 }?.let { catchUpWithLiveEdge(it) }
+        }
         updateAdStatus()
         recordAdBreak(ads)
     }
@@ -1443,6 +1450,27 @@ class ExoPlayerService : BasePlaybackService() {
                 previousQuality = previous
             }
             player.volume = prefs().getInt(C.PLAYER_VOLUME, 100) / 100f
+            catchUpWithLiveEdge(player)
+        }
+    }
+
+    /**
+     * The primary player held its position at the ad gaps while the live window moved on, see
+     * [LiveEdge]. Jumps to the live edge when it is too far behind, else it replays the break's
+     * content (already shown by the secondary) or, past the window, buffers forever.
+     */
+    private fun catchUpWithLiveEdge(player: ExoPlayer) {
+        if (type != STREAM || player.currentTimeline.isEmpty || !player.isCurrentMediaItemLive) {
+            return
+        }
+        val position = player.currentPosition
+        val liveOffset = player.currentLiveOffset.takeIf { it != androidx.media3.common.C.TIME_UNSET }
+        val targetOffset = player.currentTimeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+            .liveConfiguration?.targetOffsetMs?.takeIf { it != androidx.media3.common.C.TIME_UNSET }
+        val catchUp = LiveEdge.needsCatchUp(position, liveOffset, targetOffset)
+        AdLog.i("primary after the break: pos=$position liveOffset=$liveOffset target=$targetOffset state=${player.playbackState}${if (catchUp) ", seeking to the live edge" else ""}")
+        if (catchUp) {
+            player.seekToDefaultPosition()
         }
     }
 

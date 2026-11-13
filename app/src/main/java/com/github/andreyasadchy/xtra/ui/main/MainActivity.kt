@@ -23,7 +23,6 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
-import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -43,6 +42,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
@@ -54,9 +54,9 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.NavigationUI
-import androidx.navigation.ui.setupWithNavController
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -79,6 +79,13 @@ import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
 import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.games.GamesFragmentDirections
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel.Companion.MainViewModelFactory
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellBottomBar
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellRail
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellState
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellTabs
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.design.theme.WidthClass
 import com.github.andreyasadchy.xtra.ui.player.BasePlaybackService
 import com.github.andreyasadchy.xtra.ui.player.ExoPlayerFragment
 import com.github.andreyasadchy.xtra.ui.player.PlayerFragment
@@ -87,14 +94,12 @@ import com.github.andreyasadchy.xtra.ui.saved.SavedPagerFragment
 import com.github.andreyasadchy.xtra.ui.saved.downloads.DownloadsFragment
 import com.github.andreyasadchy.xtra.ui.team.TeamFragmentDirections
 import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
-import com.github.andreyasadchy.xtra.util.USE_MATERIAL3
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.applyTheme
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.chromium.net.CronetProvider
@@ -102,7 +107,7 @@ import java.util.Timer
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.schedule
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), ShellHost {
 
     companion object {
         const val KEY_VIDEO = "video"
@@ -129,6 +134,8 @@ class MainActivity : AppCompatActivity() {
     var logoutResultLauncher: ActivityResultLauncher<Intent>? = null
     private var updateDownloadDialogBinding: DialogUpdateDownloadBinding? = null
     private var updateDownloadDialog: AlertDialog? = null
+    override var shell: ShellState? = null
+        private set
 
     //Lifecycle methods
 
@@ -162,12 +169,16 @@ class MainActivity : AppCompatActivity() {
                 windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime() or WindowInsetsCompat.Type.displayCutout())
             }
             binding.navHostFragment.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                leftMargin = insets.left
+                // the rail already sits after the left inset
+                leftMargin = if (binding.navRail.isVisible) 0 else insets.left
                 rightMargin = insets.right
             }
             binding.navBarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 leftMargin = insets.left
                 rightMargin = insets.right
+            }
+            binding.navRail.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                leftMargin = insets.left
             }
             windowInsets
         }
@@ -623,6 +634,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        applyShellLayout(newConfig)
         setNavBarColor(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT)
     }
 
@@ -833,11 +845,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             INTENT_OPEN_DOWNLOADS_TAB -> {
-                binding.navBar.selectedItemId = if (prefs.getBoolean(C.UI_SAVED_PAGER, true)) {
-                    R.id.savedPagerFragment
-                } else {
-                    R.id.savedMediaFragment
-                }
+                shell?.tabs?.indexOfFirst { it.key == ShellTabs.KEY_MINE }?.takeIf { it != -1 }?.let { selectTab(it) }
             }
             INTENT_OPEN_DOWNLOADED_VIDEO -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -984,6 +992,7 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.playerContainer, fragment).commit()
         viewModel.isPlayerOpened = true
+        onPlayerModeChanged()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
             prefs.getBoolean(C.PLAYER_PICTURE_IN_PICTURE, true)
@@ -1002,6 +1011,7 @@ class MainActivity : AppCompatActivity() {
         }
         playerFragment = null
         viewModel.isPlayerOpened = false
+        onPlayerModeChanged()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
             setPictureInPictureParams(PictureInPictureParams.Builder().setAutoEnterEnabled(false).build())
         }
@@ -1012,6 +1022,7 @@ class MainActivity : AppCompatActivity() {
     private fun restorePlayerFragment() {
         if (playerFragment == null) {
             playerFragment = supportFragmentManager.findFragmentById(R.id.playerContainer) as? PlayerFragment
+            onPlayerModeChanged()
             if (playerFragment == null) {
                 viewModel.getPlaybackStates()
             }
@@ -1082,86 +1093,111 @@ class MainActivity : AppCompatActivity() {
 
     private fun initNavigation() {
         navController = (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).navController
-        val tabList = prefs.getString(C.UI_NAVIGATION_TAB_LIST, null).let { tabPref ->
-            val defaultTabs = C.DEFAULT_NAVIGATION_TAB_LIST.split(',')
-            if (tabPref != null) {
-                val list = tabPref.split(',').filter { item ->
-                    defaultTabs.find { it.first() == item.first() } != null
-                }.toMutableList()
-                defaultTabs.forEachIndexed { index, item ->
-                    if (list.find { it.first() == item.first() } == null) {
-                        list.add(index, item)
-                    }
-                }
-                list
-            } else defaultTabs
-        }
+        val tabPref = prefs.getString(C.UI_NAVIGATION_TAB_LIST, null)
+        val savedPager = prefs.getBoolean(C.UI_SAVED_PAGER, true)
         navController.setGraph(navController.navInflater.inflate(R.navigation.nav_graph).also {
-            // There is no Popular tab: start on Following unless another tab was picked as the default one
-            val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "2"
-            when {
-                defaultItem != "0" && defaultItem != "3" -> {
-                    if (prefs.getBoolean(C.UI_FOLLOW_PAGER, true)) {
-                        it.setStartDestination(R.id.followPagerFragment)
-                    } else {
-                        it.setStartDestination(R.id.followMediaFragment)
-                    }
-                }
-                defaultItem == "0" -> it.setStartDestination(R.id.rootGamesFragment)
-                defaultItem == "3" -> {
-                    if (prefs.getBoolean(C.UI_SAVED_PAGER, true)) {
-                        it.setStartDestination(R.id.savedPagerFragment)
-                    } else {
-                        it.setStartDestination(R.id.savedMediaFragment)
-                    }
-                }
-            }
+            it.setStartDestination(ShellTabs.startDestination(tabPref, savedPager))
         }, null)
-        binding.navBar.apply {
-            if (!prefs.getBoolean(C.UI_THEME_BOTTOM_NAV_COLOR, true) && USE_MATERIAL3) {
-                setBackgroundColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface))
+        val state = ShellState(ShellTabs.tabs(tabPref, savedPager))
+        shell = state
+        binding.navBar.setContent {
+            LagoonTheme {
+                ShellBottomBar(state, ::selectTab)
             }
-            if (tabList.any { it.split(':')[2] != "0" }) {
-                tabList.forEach {
-                    val split = it.split(':')
-                    val key = split[0]
-                    val enabled = split[2] != "0"
-                    if (enabled) {
-                        when (key) {
-                            "0" -> menu.add(Menu.NONE, R.id.rootGamesFragment, Menu.NONE, R.string.games).setIcon(R.drawable.ic_games_black_24dp)
-                            "2" -> {
-                                if (prefs.getBoolean(C.UI_FOLLOW_PAGER, true)) {
-                                    menu.add(Menu.NONE, R.id.followPagerFragment, Menu.NONE, R.string.following).setIcon(R.drawable.ic_favorite_black_24dp)
-                                } else {
-                                    menu.add(Menu.NONE, R.id.followMediaFragment, Menu.NONE, R.string.following).setIcon(R.drawable.ic_favorite_black_24dp)
-                                }
-                            }
-                            "3" -> {
-                                if (prefs.getBoolean(C.UI_SAVED_PAGER, true)) {
-                                    menu.add(Menu.NONE, R.id.savedPagerFragment, Menu.NONE, R.string.saved).setIcon(R.drawable.ic_file_download_black_24dp)
-                                } else {
-                                    menu.add(Menu.NONE, R.id.savedMediaFragment, Menu.NONE, R.string.saved).setIcon(R.drawable.ic_file_download_black_24dp)
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                binding.navBarContainer.visibility = View.GONE
+        }
+        binding.navRail.setContent {
+            LagoonTheme {
+                ShellRail(state, ::selectTab)
             }
-            setupWithNavController(navController)
-            setOnItemSelectedListener {
-                NavigationUI.onNavDestinationSelected(it, navController)
-                return@setOnItemSelectedListener true
+        }
+        binding.navBarContainer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateShellPadding() }
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            ShellTabs.indexOf(state.tabs, destination.id).takeIf { it != -1 }?.let { state.selectedIndex = it }
+            state.legacyPage = destination.id != R.id.followPagerFragment && destination.id != R.id.followMediaFragment
+            updateShellPadding()
+        }
+        addOnPictureInPictureModeChangedListener { info ->
+            // the player fills the picture-in-picture window; keep the navigation out of it and away from screen readers
+            inPictureInPicture = info.isInPictureInPictureMode
+            applyShellLayout(resources.configuration)
+        }
+        applyShellLayout(resources.configuration)
+    }
+
+    private var inPictureInPicture = false
+
+    /** Rail on the left above 840 dp, floating pill at the bottom below (plan 4); v0.1 hid the bar when every tab was off. */
+    private fun applyShellLayout(configuration: Configuration) {
+        val state = shell ?: return
+        val hasNavigation = ShellTabs.showNavigation(prefs.getString(C.UI_NAVIGATION_TAB_LIST, null)) && state.tabs.isNotEmpty()
+        val rail = hasNavigation && WidthClass.of(configuration.screenWidthDp) == WidthClass.Expanded
+        state.useRail = rail
+        binding.navRail.isVisible = rail
+        // stays visible with the rail, holding only the gesture bar's height (see ShellBottomBar)
+        binding.navBarContainer.isVisible = hasNavigation
+        // invisible, not gone: the mini player keeps its place above the pill
+        binding.navBar.visibility = if (inPictureInPicture) View.INVISIBLE else View.VISIBLE
+        binding.navRail.alpha = if (inPictureInPicture) 0f else 1f
+        ViewCompat.requestApplyInsets(binding.root)
+        updateShellPadding()
+    }
+
+    /**
+     * Old Fragment pages stop above the floating pill; Compose pages fill the window and pad their own content, so
+     * they can scroll under the pill and let it hide.
+     */
+    private fun updateShellPadding() {
+        val state = shell ?: return
+        val barHeight = if (binding.navBarContainer.isVisible) binding.navBarContainer.height else 0
+        state.bottomBarHeightPx = barHeight
+        val padding = if (state.legacyPage) barHeight else 0
+        if (binding.navHostFragment.paddingBottom != padding) {
+            binding.navHostFragment.updatePadding(bottom = padding)
+        }
+    }
+
+    /** Called by the player when it opens, closes, minimizes or maximizes (U0 spike 3, point 2). */
+    fun onPlayerModeChanged() {
+        val player = playerFragment as? PlayerFragment
+        val maximized = player != null && player.isPlayerMaximized()
+        shell?.miniPlayer = player != null && !maximized
+        // the maximized player covers the shell; keep screen readers off the pages and navigation underneath
+        val accessibility = if (maximized) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        binding.navBarContainer.importantForAccessibility = accessibility
+        binding.navRail.importantForAccessibility = accessibility
+        binding.navHostFragment.importantForAccessibility = accessibility
+    }
+
+    /**
+     * A tap on a navigation item. Like v0.1 (NavigationUI with a bottom bar): every tab keeps its own back stack; a tap
+     * on the current tab goes back to its first page, or scrolls that page to the top.
+     */
+    fun selectTab(index: Int) {
+        val state = shell ?: return
+        val tab = state.tabs.getOrNull(index) ?: return
+        if (index == state.selectedIndex) {
+            if (!navController.popBackStack(tab.destinationId, false)) {
+                val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
+                (currentFragment as? Scrollable)?.scrollToTop()
             }
-            setOnItemReselectedListener {
-                if (!navController.popBackStack(it.itemId, false)) {
-                    val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                    if (currentFragment is Scrollable) {
-                        currentFragment.scrollToTop()
-                    }
-                }
-            }
+            return
+        }
+        val forward = index > state.selectedIndex
+        val options = NavOptions.Builder()
+            .setLaunchSingleTop(true)
+            .setRestoreState(true)
+            .setPopUpTo(navController.graph.findStartDestination().id, inclusive = false, saveState = true)
+            .setEnterAnim(if (forward) R.anim.shell_sibling_enter_next else R.anim.shell_sibling_enter_prev)
+            .setExitAnim(if (forward) R.anim.shell_sibling_exit_next else R.anim.shell_sibling_exit_prev)
+            .setPopEnterAnim(R.anim.shell_back_enter)
+            .setPopExitAnim(R.anim.shell_back_exit)
+            .build()
+        try {
+            navController.navigate(tab.destinationId, null, options)
+            state.selectedIndex = index
+            state.hideOnScroll.show()
+        } catch (e: IllegalArgumentException) {
+            // the destination is not in the graph; NavigationUI.onNavDestinationSelected returned false here
         }
     }
 

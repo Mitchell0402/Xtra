@@ -100,6 +100,14 @@ abstract class PlayerFragment : BaseNetworkFragment(), RadioButtonDialogFragment
 
     private var isPortrait = false
     protected var isMaximized = true
+        set(value) {
+            val changed = field != value
+            field = value
+            // the shell keeps the navigation still under the mini player and hides it from screen readers when maximized
+            if (changed) (activity as? MainActivity)?.onPlayerModeChanged()
+        }
+
+    fun isPlayerMaximized() = isMaximized
     private var isChatOpen = true
     private var isKeyboardShown = false
     private var resizeMode = 0

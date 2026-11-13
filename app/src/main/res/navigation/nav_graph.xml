@@ -38,6 +38,10 @@
     </fragment>
     <action
         android:id="@+id/action_global_gamesFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/gamesFragment" />
     <fragment
         android:id="@+id/topFragment"
@@ -55,13 +59,17 @@
     </fragment>
     <action
         android:id="@+id/action_global_topFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/topFragment" />
     <fragment
         android:id="@+id/followPagerFragment"
-        android:name="com.github.andreyasadchy.xtra.ui.following.FollowPagerFragment" />
+        android:name="com.github.andreyasadchy.xtra.ui.following.FollowingFragment" />
     <fragment
         android:id="@+id/followMediaFragment"
-        android:name="com.github.andreyasadchy.xtra.ui.following.FollowMediaFragment" />
+        android:name="com.github.andreyasadchy.xtra.ui.following.FollowingFragment" />
     <fragment
         android:id="@+id/savedPagerFragment"
         android:name="com.github.andreyasadchy.xtra.ui.saved.SavedPagerFragment" />
@@ -73,6 +81,10 @@
         android:name="com.github.andreyasadchy.xtra.ui.search.SearchPagerFragment" />
     <action
         android:id="@+id/action_global_searchPagerFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/searchPagerFragment" />
     <fragment
         android:id="@+id/gamePagerFragment"
@@ -114,6 +126,10 @@
     </fragment>
     <action
         android:id="@+id/action_global_gamePagerFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/gamePagerFragment" />
     <fragment
         android:id="@+id/gameMediaFragment"
@@ -155,6 +171,10 @@
     </fragment>
     <action
         android:id="@+id/action_global_gameMediaFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/gameMediaFragment" />
     <fragment
         android:id="@+id/channelPagerFragment"
@@ -191,6 +211,10 @@
     </fragment>
     <action
         android:id="@+id/action_global_channelPagerFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/channelPagerFragment" />
     <fragment
         android:id="@+id/teamFragment"
@@ -203,5 +227,9 @@
     </fragment>
     <action
         android:id="@+id/action_global_teamFragment"
+        app:enterAnim="@anim/shell_forward_enter"
+        app:exitAnim="@anim/shell_forward_exit"
+        app:popEnterAnim="@anim/shell_back_enter"
+        app:popExitAnim="@anim/shell_back_exit"
         app:destination="@id/teamFragment" />
 </navigation>

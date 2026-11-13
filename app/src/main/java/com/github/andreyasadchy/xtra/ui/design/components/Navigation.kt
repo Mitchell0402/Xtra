@@ -353,6 +353,12 @@ class HideOnScrollState {
 
     private var travel = 0f
 
+    /** Brings the bar back at once, e.g. when the page changes or the lock changes. */
+    fun show() {
+        visible = true
+        travel = 0f
+    }
+
     val nestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
             if (locked) {

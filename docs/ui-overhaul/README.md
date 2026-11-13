@@ -23,8 +23,8 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
   groups results by these suffixes.
 - **Builds**: `qa` = release code with R8, debug key, id `io.github.mitchell0402.lagoon.qa` (manual tests);
   `benchmark` = qa plus profileable plus the lab screens, id `...lagoon.bench` (`:benchmark` module).
-- **Lab** (`app/src/lab`, debug and benchmark builds only): the U0 spikes. `LabShellProvider` wraps MainActivity in a
-  Compose shell when `files/lab_compose_shell` exists in the app's data directory.
+- **Lab** (`app/src/lab`, debug and benchmark builds only): the U0 spikes (chat list, player surface switch) and the
+  U1 component showcase. The U0 Compose shell spike was replaced by the real shell in U2 (`ui/main/shell`).
 
 ## Design system (U1)
 

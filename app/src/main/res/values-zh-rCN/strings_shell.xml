@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U2: the app shell and the Following page -->
+<resources>
+    <string name="shell_nav_browse">浏览</string>
+    <string name="shell_nav_mine">我的</string>
+    <string name="following_account">账号和设置</string>
+    <string name="following_not_logged_in">未登录</string>
+    <string name="following_logged_in_as">已登录为 %s</string>
+    <string name="following_log_out">退出登录</string>
+    <string name="following_log_out_confirm">退出 %s 的登录？</string>
+    <string name="following_log_out_message">下载、书签和本地关注都会保留在这台设备上。</string>
+    <string name="following_cancel">取消</string>
+    <string name="following_live_now">正在直播</string>
+    <string name="following_live_now_count">正在直播 · %d</string>
+    <string name="following_empty_live">你关注的频道现在都没有在直播。</string>
+    <string name="following_empty_live_logged_out">登录后这里会显示你关注的直播。不登录时，在频道页点关注会保存为本地关注。</string>
+    <string name="following_recently_live">最近开播</string>
+    <string name="following_empty_videos">你关注的频道还没有新视频。</string>
+    <string name="following_empty_channels">你还没有关注任何频道。</string>
+    <string name="following_empty_games">你还没有关注任何游戏。</string>
+    <string name="following_open_channel">打开频道</string>
+    <string name="following_open_game">打开 %s</string>
+    <string name="following_browse_tag">浏览标签 %s</string>
+    <string name="following_record">录制</string>
+    <string name="following_unfollowed">已取消关注 %s</string>
+    <string name="following_unfollow_failed">取消关注失败：%s</string>
+    <string name="following_retry_more">更多内容加载失败，点此重试</string>
+    <string name="following_follow_account">账号</string>
+    <string name="following_follow_local">本地</string>
+</resources>

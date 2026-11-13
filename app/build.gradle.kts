@@ -51,7 +51,7 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 3
+        versionCode = 4
         versionName = "0.1"
     }
 
@@ -188,6 +188,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     implementation(libs.coil.compose)
+    implementation(libs.paging.compose)
     // only the U0 lab spikes use these so far
     listOf("debugImplementation", "benchmarkImplementation").forEach { conf ->
         add(conf, libs.compose.ui.viewbinding)

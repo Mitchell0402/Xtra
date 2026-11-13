@@ -115,8 +115,8 @@
     <string name="alphabetically">字母顺序</string>
     <string name="last_broadcast">上一次直播</string>
     <string name="order">排序</string>
-    <string name="descending">递增</string>
-    <string name="ascending">递减</string>
+    <string name="descending">降序</string>
+    <string name="ascending">升序</string>
     <string name="logout_title">注销？</string>
     <string name="logout_msg">登录为 %s</string>
     <string name="language">语言</string>

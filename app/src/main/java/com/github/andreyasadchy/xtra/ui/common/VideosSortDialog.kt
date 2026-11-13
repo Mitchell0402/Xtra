@@ -11,7 +11,6 @@ import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.databinding.DialogVideosSortBinding
 import com.github.andreyasadchy.xtra.ui.channel.clips.ChannelClipsFragment
 import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosFragment
-import com.github.andreyasadchy.xtra.ui.following.videos.FollowedVideosFragment
 import com.github.andreyasadchy.xtra.ui.game.clips.GameClipsFragment
 import com.github.andreyasadchy.xtra.ui.game.videos.GameVideosFragment
 import com.github.andreyasadchy.xtra.util.C
@@ -99,11 +98,6 @@ class VideosSortDialog : BottomSheetDialogFragment(), SelectLanguagesDialog.OnSe
                     selectLanguages.visibility = View.GONE
                     saveSort.text = getString(R.string.save_sort_channel)
                     saveSortLayout.isVisible = parentFragment?.arguments?.getString(C.CHANNEL_ID).isNullOrBlank() == false
-                }
-                is FollowedVideosFragment -> {
-                    period.visibility = View.GONE
-                    selectLanguages.visibility = View.GONE
-                    saveSortLayout.visibility = View.GONE
                 }
                 is GameVideosFragment -> {
                     if (TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()) {

@@ -36,9 +36,5 @@
             </intent-filter>
         </activity>
 
-        <provider
-            android:name="com.github.andreyasadchy.xtra.lab.LabShellProvider"
-            android:authorities="${applicationId}.labshell"
-            android:exported="false" />
     </application>
 </manifest>

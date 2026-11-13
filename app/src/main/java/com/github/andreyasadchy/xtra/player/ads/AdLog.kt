@@ -1,3 +1,4 @@
+// trial PR: deliberate change to protected code, never merged
 package com.github.andreyasadchy.xtra.player.ads
 
 import android.util.Log

@@ -322,7 +322,7 @@ fun LargeTopBar(
                 .padding(
                     start = lerp(startExpanded.value, startCollapsed.value, fraction).dp,
                     end = lerp(20f, 120f, fraction).dp,
-                    bottom = lerp(8f, 14f, fraction).dp,
+                    bottom = lerp(8f, 21f, fraction).dp,
                 )
                 // measure at the size it is drawn: the scaled-down title may use the room its full size would not
                 .layout { measurable, constraints ->

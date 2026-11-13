@@ -51,7 +51,7 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 2
+        versionCode = 3
         versionName = "0.1"
     }
 
@@ -180,22 +180,19 @@ dependencies {
 
     testImplementation(libs.junit)
 
-    // Compose is only used by the U0 lab screens and tests for now; U1 moves it to implementation.
+    // Compose: the Lagoon design system (ui/design) from U1 on; screens move over stage by stage (plan section 8)
     val compose = platform(libs.compose.bom)
+    implementation(compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.activity.compose)
+    implementation(libs.coil.compose)
+    // only the U0 lab spikes use these so far
     listOf("debugImplementation", "benchmarkImplementation").forEach { conf ->
-        add(conf, compose)
-        add(conf, libs.compose.ui)
-        add(conf, libs.compose.foundation)
-        add(conf, libs.compose.material3)
         add(conf, libs.compose.ui.viewbinding)
-        add(conf, libs.activity.compose)
         add(conf, libs.media3.ui.compose)
-        add(conf, libs.coil.compose)
     }
-    // the Compose compiler plugin needs the runtime on every variant's compile classpath; release and qa
-    // have no Compose code yet, so nothing of it ends up in those APKs
-    compileOnly(compose)
-    compileOnly(libs.compose.runtime)
     implementation(libs.profileinstaller)
     debugImplementation(libs.compose.ui.test.manifest)
     testImplementation(compose)

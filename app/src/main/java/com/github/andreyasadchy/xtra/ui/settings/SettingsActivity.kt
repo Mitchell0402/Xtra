@@ -317,9 +317,8 @@ class SettingsActivity : AppCompatActivity() {
                             setValueIndex(findIndexOfValue(
                                 lang.toLanguageTags().substringBefore("-").let {
                                     when (it) {
-                                        "id" -> "in"
-                                        "pt" -> "pt-BR"
-                                        "zh" -> "zh-TW"
+                                        // only English and Simplified Chinese remain (plan section 12)
+                                        "zh" -> "zh-CN"
                                         else -> it
                                     }
                                 }
@@ -367,6 +366,8 @@ class SettingsActivity : AppCompatActivity() {
                 )
                 true
             }
+            // Lagoon is dark only (U1): the theme page is hidden, its keys keep their stored values
+            findPreference<Preference>("theme_settings")?.isVisible = false
             findPreference<Preference>("theme_settings")?.setOnPreferenceClickListener {
                 requireActivity().findViewById<AppBarLayout>(R.id.appBar)?.setExpanded(true)
                 findNavController().navigate(SettingsNavGraphDirections.actionGlobalThemeSettingsFragment())

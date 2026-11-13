@@ -15,10 +15,15 @@ enum class FormFactor(private val device: String, private val orientation: Strin
     PhoneLandscape(RobolectricDeviceQualifiers.Pixel7, "+land"),
     TabletLandscape(RobolectricDeviceQualifiers.MediumTablet, "+land");
 
-    /** Device first, then the orientation on top ("+" overrides one qualifier, Robolectric rejects "-land" appended). */
-    fun apply() {
+    /**
+     * Device first, then the orientation on top ("+" overrides one qualifier, Robolectric rejects "-land" appended).
+     * [heightDp] makes the window taller than the device so a long component sheet fits in one image; the width, and
+     * with it the layout class, stays the device's.
+     */
+    fun apply(heightDp: Int? = null) {
         RuntimeEnvironment.setQualifiers(device)
         RuntimeEnvironment.setQualifiers(orientation)
+        if (heightDp != null) RuntimeEnvironment.setQualifiers("+h${heightDp}dp")
     }
 }
 

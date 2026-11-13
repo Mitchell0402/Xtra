@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="design_back">返回</string>
+    <string name="design_more">更多</string>
+    <string name="design_close">关闭</string>
+    <string name="design_retry">重试</string>
+    <string name="design_undo">撤销</string>
+    <string name="design_live">直播中</string>
+    <string name="design_clear">清除</string>
+    <string name="design_search">搜索</string>
+    <string name="design_selected">已选中</string>
+    <string name="design_not_selected">未选中</string>
+    <string name="design_follow">关注</string>
+    <string name="design_following">已关注</string>
+    <string name="design_viewers">%1$s 人观看</string>
+    <string name="design_loading">加载中</string>
+    <string name="design_download">下载</string>
+    <string name="design_watched">已看 %1$d%%</string>
+    <string name="design_load_failed">加载失败</string>
+    <string name="design_pull_to_refresh">下拉刷新</string>
+</resources>

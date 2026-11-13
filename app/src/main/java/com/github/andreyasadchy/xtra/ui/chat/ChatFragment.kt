@@ -48,6 +48,7 @@ import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.player.PlayerFragment
 import com.github.andreyasadchy.xtra.ui.view.AutoCompleteAdapter
+import com.github.andreyasadchy.xtra.util.USE_MATERIAL3
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
@@ -162,7 +163,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                         backgroundColor = MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorSurface),
                         dialogBackgroundColor = MaterialColors.getColor(
                             requireView(),
-                            if (requireContext().prefs().getBoolean(C.UI_THEME_MATERIAL3, true)) {
+                            if (USE_MATERIAL3) {
                                 com.google.android.material.R.attr.colorSurfaceContainerLow
                             } else {
                                 com.google.android.material.R.attr.colorSurface

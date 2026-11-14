@@ -200,7 +200,7 @@ fun WatchProgress(progress: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** A game (plan 6): portrait box art, name and viewer count. */
+/** A game (plan 6): portrait box art, name and viewer count; [subtitle] is an optional second line (broadcaster count). */
 @Composable
 fun GamePoster(
     name: String,
@@ -210,6 +210,7 @@ fun GamePoster(
     viewers: String? = null,
     onLongClick: (() -> Unit)? = null,
     boxArtModifier: Modifier = Modifier,
+    subtitle: String? = null,
 ) {
     MediaCardFrame(onClick, onLongClick, modifier) {
         Thumbnail(boxArt, boxArtModifier.fillMaxWidth().aspectRatio(3f / 4f)) {
@@ -223,6 +224,16 @@ fun GamePoster(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (subtitle != null) {
+            Text(
+                subtitle,
+                modifier = Modifier.padding(start = 6.dp, end = 6.dp),
+                style = Lagoon.type.label,
+                color = Lagoon.colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

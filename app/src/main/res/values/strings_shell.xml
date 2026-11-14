@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U2: the app shell and the Following page -->
+<resources>
+    <string name="shell_nav_browse">Browse</string>
+    <string name="shell_nav_mine">Me</string>
+    <string name="following_account">Account and settings</string>
+    <string name="following_not_logged_in">Not logged in</string>
+    <string name="following_logged_in_as">Logged in as %s</string>
+    <string name="following_log_out">Log out</string>
+    <string name="following_log_out_confirm">Log out of %s?</string>
+    <string name="following_log_out_message">Your downloads, bookmarks and local follows stay on this device.</string>
+    <string name="following_cancel">Cancel</string>
+    <string name="following_live_now">Live now</string>
+    <string name="following_live_now_count">Live now · %d</string>
+    <string name="following_empty_live">None of the channels you follow is live right now.</string>
+    <string name="following_empty_live_logged_out">Log in to see the live channels you follow. Without an account, channels you follow on their page are kept on this device.</string>
+    <string name="following_recently_live">Recently live</string>
+    <string name="following_empty_videos">No new videos from the channels you follow.</string>
+    <string name="following_empty_channels">You do not follow any channels yet.</string>
+    <string name="following_empty_games">You do not follow any games yet.</string>
+    <string name="following_open_channel">Open channel</string>
+    <string name="following_open_game">Open %s</string>
+    <string name="following_browse_tag">Browse tag %s</string>
+    <string name="following_record">Record</string>
+    <string name="following_unfollowed">Unfollowed %s</string>
+    <string name="following_unfollow_failed">Could not unfollow: %s</string>
+    <string name="following_retry_more">Could not load more. Try again</string>
+    <string name="following_follow_account">Account</string>
+    <string name="following_follow_local">Local</string>
+    <string name="following_load_error">Twitch did not answer. Check the connection and try again.</string>
+</resources>

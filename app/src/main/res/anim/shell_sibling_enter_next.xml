@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Switching between tabs (plan 5): cross fade and a small horizontal shift (24 dp, about 6 % of a phone width). Short, 200 ms. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="200"
+    android:interpolator="@interpolator/lagoon_standard"
+    android:shareInterpolator="true">
+    <translate android:fromXDelta="6%" android:toXDelta="0" />
+    <alpha android:fromAlpha="0" android:toAlpha="1" />
+</set>

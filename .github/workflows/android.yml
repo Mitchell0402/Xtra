@@ -95,6 +95,14 @@ jobs:
         cache-provider: 'basic'
     - name: Build the qa APK
       run: ./gradlew :app:assembleQa
+    # glass stage G: the benchmark glass switch and every other lab screen live in src/lab, which only debug and
+    # benchmark builds compile; this proves none of it reaches qa (and so release, which shares the source sets)
+    - name: No lab code in qa
+      run: |
+        if grep -q "com.github.andreyasadchy.xtra.lab\." app/build/outputs/mapping/qa/mapping.txt; then
+          echo "lab classes found in the qa build:"; grep "com.github.andreyasadchy.xtra.lab\." app/build/outputs/mapping/qa/mapping.txt | head; exit 1
+        fi
+        echo "qa build has no lab classes" | tee -a "$GITHUB_STEP_SUMMARY"
     - name: APK size
       run: |
         size=$(stat -c %s app/build/outputs/apk/qa/app-qa.apk)

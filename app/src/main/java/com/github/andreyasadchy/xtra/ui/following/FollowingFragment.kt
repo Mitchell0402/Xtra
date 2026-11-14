@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,8 @@ import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
 import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
 import com.github.andreyasadchy.xtra.ui.following.channels.FollowedChannelsViewModel
@@ -157,6 +160,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
                     }
                     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     val bottomPadding = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
                     FollowingScreen(
                         segments = segments,
                         selected = selected,
@@ -182,6 +186,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
                         // MainActivity only fills isNetworkAvailable once the network callback fires
                         offline = online == false || (online == null && !hasValidatedNetwork()),
                     )
+                    }
                 }
             }
         }

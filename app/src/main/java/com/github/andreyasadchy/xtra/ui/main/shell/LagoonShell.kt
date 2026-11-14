@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -13,10 +14,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.design.components.FloatingNavBar
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.glassWindowAllowsBlur
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonHazeState
 import com.github.andreyasadchy.xtra.ui.design.components.FloatingNavRail
 import com.github.andreyasadchy.xtra.ui.design.components.HideOnScrollState
 import com.github.andreyasadchy.xtra.ui.design.components.NavItem
@@ -48,6 +54,25 @@ class ShellState(val tabs: List<ShellTab>) {
     val hideOnScroll = HideOnScrollState()
 
     val navLocked: Boolean get() = miniPlayer || legacyPage
+
+    /** The backdrop Compose pages register and the pill blurs (glass plan section 6): one per activity. */
+    val hazeState = lagoonHazeState()
+
+    /** Set by the activity; null (tests, no activity) means glass stays solid. */
+    var glassPolicy: GlassPolicy? by mutableStateOf(null)
+
+    /**
+     * Glass starts solid and blurs from the third frame on, so the first frame (cold start) does not wait for the blur
+     * pipeline to be set up (stage G, real-device cold start gate).
+     */
+    var warmedUp by mutableStateOf(false)
+
+    /** Whether the system and the "透明效果" setting allow blur right now. */
+    val blurAllowed: Boolean get() = warmedUp && glassPolicy?.conditions?.blurAllowed == true
+
+    /** What a Compose page provides as [LocalGlass] around its content. */
+    @Composable
+    fun pageGlass(): GlassContext = GlassContext(hazeState, blurAllowed && glassWindowAllowsBlur())
 }
 
 /** Implemented by the activity that hosts the shell, so Compose pages can reach it from their fragment. */
@@ -73,6 +98,13 @@ private fun navItems(tabs: List<ShellTab>): List<NavItem> {
 @Composable
 private fun SyncLock(state: ShellState) {
     LaunchedEffect(state) {
+        if (!state.warmedUp) {
+            withFrameNanos { }
+            withFrameNanos { }
+            state.warmedUp = true
+        }
+    }
+    LaunchedEffect(state) {
         snapshotFlow { state.navLocked }.collect { locked ->
             state.hideOnScroll.locked = locked
             state.hideOnScroll.show()
@@ -92,13 +124,17 @@ fun ShellBottomBar(state: ShellState, onSelect: (Int) -> Unit, modifier: Modifie
         Spacer(modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
         return
     }
-    FloatingNavBar(
-        items = navItems(state.tabs),
-        selectedIndex = state.selectedIndex,
-        onSelect = onSelect,
-        modifier = modifier,
-        visible = state.hideOnScroll.visible || state.navLocked,
-    )
+    // the pill blurs only over a Compose page: old pages end above it, so there is nothing to blur (plan section 6)
+    val glass = GlassContext(state.hazeState, state.blurAllowed && !state.legacyPage && glassWindowAllowsBlur())
+    CompositionLocalProvider(LocalGlass provides glass) {
+        FloatingNavBar(
+            items = navItems(state.tabs),
+            selectedIndex = state.selectedIndex,
+            onSelect = onSelect,
+            modifier = modifier,
+            visible = state.hideOnScroll.visible || state.navLocked,
+        )
+    }
 }
 
 /** The tablet navigation: the floating rail on the left. */

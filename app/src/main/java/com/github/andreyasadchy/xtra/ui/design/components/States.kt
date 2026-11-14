@@ -232,6 +232,8 @@ fun LagoonPullToRefresh(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     state: PullToRefreshState = rememberPullToRefreshState(),
+    /** Room above the indicator, for pages whose top bar floats over the list (stage G). */
+    indicatorTop: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -243,7 +245,7 @@ fun LagoonPullToRefresh(
         },
         modifier = modifier,
         state = state,
-        indicator = { RefreshIndicator(state, isRefreshing, Modifier.align(Alignment.TopCenter)) },
+        indicator = { RefreshIndicator(state, isRefreshing, Modifier.align(Alignment.TopCenter).padding(top = indicatorTop)) },
         content = content,
     )
 }

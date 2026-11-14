@@ -189,6 +189,8 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.coil.compose)
     implementation(libs.paging.compose)
+    // glass stage G: background blur for the floating layers on API 32+ (plan "磨砂玻璃" section 6)
+    implementation(libs.haze.blur)
     // only the U0 lab spikes use these so far
     listOf("debugImplementation", "benchmarkImplementation").forEach { conf ->
         add(conf, libs.compose.ui.viewbinding)

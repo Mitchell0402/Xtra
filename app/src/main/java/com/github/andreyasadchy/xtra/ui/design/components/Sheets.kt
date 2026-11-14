@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -21,11 +24,13 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonSpacing
@@ -59,17 +64,25 @@ internal fun LagoonBottomSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = Lagoon.colors
+    // the sheet is its own window over the 60 % scrim, so it is the thick grade: solid glass, never blurred
+    // (glass plan sections 5 and 6); the material is drawn by our surface, Material's container stays empty
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         modifier = modifier,
         sheetState = state,
         shape = LagoonShapes.sheet,
-        containerColor = colors.card,
+        containerColor = Color.Transparent,
         contentColor = colors.textPrimary,
         scrimColor = colors.scrim,
-        dragHandle = { SheetHandle() },
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
-        SheetBody(title, content = content)
+        GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, Modifier.fillMaxWidth()) {
+            Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) {
+                SheetHandle()
+                SheetBody(title, content = content)
+            }
+        }
     }
 }
 
@@ -100,9 +113,11 @@ fun SheetBody(title: String?, modifier: Modifier = Modifier, content: @Composabl
 /** A sheet drawn in place, without a window: for the showcase and screenshot tests. */
 @Composable
 fun SheetSurface(modifier: Modifier = Modifier, title: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.background(Lagoon.colors.card, LagoonShapes.sheet)) {
-        SheetHandle()
-        SheetBody(title, content = content)
+    GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, modifier) {
+        Column {
+            SheetHandle()
+            SheetBody(title, content = content)
+        }
     }
 }
 

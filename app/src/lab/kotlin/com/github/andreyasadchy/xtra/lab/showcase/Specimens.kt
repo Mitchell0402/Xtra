@@ -68,7 +68,7 @@ import com.github.andreyasadchy.xtra.ui.design.theme.currentWidthClass
  * screenshot tests capture them in the three form factors (plan 10.2).
  */
 
-/** The 14 components of plan section 6, in its order. */
+/** The 14 components of plan section 6, in its order, and the glass sheet of stage G. */
 enum class Specimen(val title: String) {
     LiveCards("直播卡片 Live card"),
     VideoCards("视频卡片 Video card"),
@@ -84,6 +84,7 @@ enum class Specimen(val title: String) {
     States("状态页 States"),
     Toasts("提示条 Toast"),
     Controls("按钮与开关 Buttons and switches"),
+    Glass("玻璃 Glass"),
 }
 
 @Composable
@@ -100,6 +101,7 @@ fun SpecimenContent(specimen: Specimen) {
         Specimen.Pickers -> PickerSpecimen()
         Specimen.FilterChips -> FilterChipSpecimen()
         Specimen.Navigation -> NavigationSpecimen()
+        Specimen.Glass -> GlassSpecimen()
         Specimen.States -> StatesSpecimen()
         Specimen.Toasts -> ToastSpecimen()
         Specimen.Controls -> ControlsSpecimen()

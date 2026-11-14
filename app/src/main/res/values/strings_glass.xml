@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- glass stage G: the "transparency effects" switch -->
+    <string name="glass_effects">Transparency effects</string>
+    <string name="glass_effects_summary">Frosted glass on the navigation, tabs and floating buttons. Off draws them solid, which also saves a little battery.</string>
+</resources>

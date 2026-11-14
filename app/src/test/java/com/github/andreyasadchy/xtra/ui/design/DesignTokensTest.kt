@@ -11,6 +11,8 @@ import com.github.andreyasadchy.xtra.ui.design.components.HideOnScrollState
 import com.github.andreyasadchy.xtra.ui.design.components.TopBarState
 import com.github.andreyasadchy.xtra.ui.design.theme.DarkLagoonColors
 import com.github.andreyasadchy.xtra.ui.design.theme.DefaultLagoonType
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonGlass
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
 import com.github.andreyasadchy.xtra.ui.design.theme.WidthClass
 import org.junit.Assert.assertEquals
@@ -40,6 +42,49 @@ class DesignTokensTest {
         assertTrue("text on accent buttons", contrast(c.onAccent, c.accent) >= 4.5)
         assertTrue("danger text on card", contrast(c.danger, c.card) >= 4.5)
         assertTrue("white chip text on overlay", contrast(Color.White, c.overlay.compositeOver(Color.White)) >= 4.5)
+    }
+
+    /**
+     * Glass plan section 8, worst case: pure white behind the glass, no credit for the blur. Blurred glass dims the
+     * backdrop to [LagoonGlass.backdropDim] and lays its tint on top; solid glass lays its tint straight on white.
+     * Every colour that can appear on a grade must clear 4.5:1 with 0.2 to spare (icons 3:1).
+     */
+    @Test
+    fun glassTextReachesContrastOverWhite() {
+        val c = DarkLagoonColors
+        val dimmedWhite = Color(LagoonGlass.backdropDim, LagoonGlass.backdropDim, LagoonGlass.backdropDim)
+        fun blurred(level: GlassLevel) = level.base(c).copy(alpha = level.blurAlpha).compositeOver(dimmedWhite)
+        fun solid(level: GlassLevel) = level.base(c).copy(alpha = level.solidAlpha).compositeOver(Color.White)
+        val minimum = 4.5 + 0.2
+        for (level in listOf(GlassLevel.Float, GlassLevel.Bar)) {
+            for ((name, bg) in listOf("blurred" to blurred(level), "solid" to solid(level))) {
+                for ((what, fg) in listOf("primary" to c.textPrimary, "glass secondary" to LagoonGlass.textSecondary, "accent" to c.accent)) {
+                    val ratio = contrast(fg, bg)
+                    assertTrue("$what on $name $level is $ratio:1", ratio >= minimum)
+                }
+                // the selected segment: a lighter lens under primary text
+                val lens = LagoonGlass.segmentSelected.compositeOver(bg)
+                assertTrue("primary on the segment lens over $name $level", contrast(c.textPrimary, lens) >= minimum)
+            }
+        }
+        // the selected navigation item is solid teal with dark text, whatever the glass (decision 1a)
+        assertTrue("onAccent on the selected nav item", contrast(c.onAccent, c.accent) >= minimum)
+        // the thick grade sits over the 60 % scrim; hints and red are allowed there
+        val thick = GlassLevel.Thick.base(c).copy(alpha = GlassLevel.Thick.solidAlpha).compositeOver(c.scrim.compositeOver(Color.White))
+        for ((what, fg) in listOf("primary" to c.textPrimary, "secondary" to c.textSecondary, "hint" to c.textHint, "danger" to c.danger, "accent" to c.accent)) {
+            val ratio = contrast(fg, thick)
+            assertTrue("$what on thick is $ratio:1", ratio >= minimum)
+        }
+    }
+
+    @Test
+    fun glassLayersKeepTheirOrder() {
+        val c = DarkLagoonColors
+        // over the page, the floating glass is lighter than a card and the thick grade sits at card level
+        val float = GlassLevel.Float.base(c).copy(alpha = GlassLevel.Float.solidAlpha).compositeOver(c.page)
+        assertTrue(float.luminance() > c.card.luminance())
+        assertEquals(c.card, GlassLevel.Thick.base(c))
+        assertTrue(GlassLevel.Float.blurs && GlassLevel.Bar.blurs && !GlassLevel.Thick.blurs)
     }
 
     @Test

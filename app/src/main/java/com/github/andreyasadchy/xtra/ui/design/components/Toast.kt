@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import kotlinx.coroutines.CompletableDeferred
@@ -102,12 +103,17 @@ fun ToastHost(state: ToastHostState, modifier: Modifier = Modifier) {
 @Composable
 fun Toast(data: ToastData, modifier: Modifier = Modifier) {
     val colors = Lagoon.colors
-    Row(
+    GlassSurface(
+        GlassLevel.Float,
+        LagoonShapes.pill,
         modifier
             .widthIn(max = 560.dp)
             .heightIn(min = 52.dp)
-            .shadow(16.dp, LagoonShapes.pill, ambientColor = Color.Black, spotColor = Color.Black)
-            .background(colors.control, LagoonShapes.pill)
+            .shadow(16.dp, LagoonShapes.pill, ambientColor = Color.Black, spotColor = Color.Black),
+    ) {
+    Row(
+        Modifier
+            .heightIn(min = 52.dp)
             .padding(start = 20.dp, end = if (data.actionLabel != null) 6.dp else 20.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,
@@ -126,4 +132,5 @@ fun Toast(data: ToastData, modifier: Modifier = Modifier) {
             )
         }
     }
+}
 }

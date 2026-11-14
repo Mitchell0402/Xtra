@@ -79,6 +79,7 @@ import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
 import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.games.GamesFragmentDirections
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel.Companion.MainViewModelFactory
+import com.github.andreyasadchy.xtra.ui.main.shell.GlassPolicy
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellBottomBar
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellRail
@@ -1099,6 +1100,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
             it.setStartDestination(ShellTabs.startDestination(tabPref, savedPager))
         }, null)
         val state = ShellState(ShellTabs.tabs(tabPref, savedPager))
+        state.glassPolicy = GlassPolicy(this).also { lifecycle.addObserver(it) }
         shell = state
         binding.navBar.setContent {
             LagoonTheme {

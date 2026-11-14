@@ -1,6 +1,14 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <SwitchPreferenceCompat
+        android:defaultValue="true"
+        android:key="ui_glass_effects"
+        android:summary="@string/glass_effects_summary"
+        android:title="@string/glass_effects"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false" />
+
     <ListPreference
         android:defaultValue="@string/portraitColumns"
         android:key="columnsPortrait"

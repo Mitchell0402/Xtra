@@ -14,6 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.traversalIndex
+import com.github.andreyasadchy.xtra.ui.design.components.GlassBackdrop
+import com.github.andreyasadchy.xtra.ui.design.components.TopBarCollapsed
+import com.github.andreyasadchy.xtra.ui.design.components.TopBarExpanded
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -235,57 +243,75 @@ fun FollowingScreen(
             gridStates[selected]?.animateScrollToItem(0)
         }
     }
+    // the bar floats over the list (stage G) and collapses as the list scrolls under it
+    val collapseRange = with(density) { (TopBarExpanded - TopBarCollapsed).toPx() }
+    val shownGrid = gridStates.getValue(selected)
+    LaunchedEffect(shownGrid, collapseRange) {
+        snapshotFlow { if (shownGrid.firstVisibleItemIndex > 0) collapseRange else shownGrid.firstVisibleItemScrollOffset.toFloat() }
+            .collect { topBar.snapTo(it / collapseRange) }
+    }
     // v0.1 asked for a new integrity token from the list fragments when a page failed the check
     listOfNotNull(lists.streams, lists.videos, lists.channels, lists.games).forEach { items ->
         val failed = items.loadState.refresh.integrityFailed || items.loadState.append.integrityFailed
         LaunchedEffect(items, failed) { if (failed) actions.integrityCheckFailed() }
     }
 
-    Box(modifier.fillMaxSize().background(colors.page)) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)
-            .nestedScroll(topBar.nestedScrollConnection)
-    ) {
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val segmentBlock = if (segments.size > 1) LagoonSpacing.touchTarget + LagoonSpacing.xs * 2 else 0.dp
+    // where the lists start: under the expanded bar and the tabs, as before the bar floated
+    val listTop = statusTop + TopBarExpanded + segmentBlock
+    Box(modifier.fillMaxSize()) {
+        GlassBackdrop(
+            Modifier
+                .fillMaxSize()
+                .then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)
+        ) {
+            AnimatedContent(
+                targetState = selected,
+                transitionSpec = { siblingBy(motion, density) { segments.indexOf(it) } },
+                label = "followingSegment",
+                modifier = Modifier.fillMaxSize(),
+            ) { segment ->
+                val state = gridStates.getValue(segment)
+                val insets = ListInsets(listTop, bottomPadding)
+                CompositionLocalProvider(LocalOffline provides offline) {
+                when (segment) {
+                    FollowingSegment.Live -> LiveSegment(lists.streams, lists.recentlyLive, account, options, actions, state, insets)
+                    FollowingSegment.Videos -> VideosSegment(lists.videos, options, videoSort, videoPositions, bookmarkedVideoIds, actions, state, insets)
+                    FollowingSegment.Channels -> ChannelsSegment(lists.channels, options, channelSort, actions, state, insets)
+                    FollowingSegment.Games -> GamesSegment(lists.games, options, actions, state, insets)
+                }
+                }
+            }
+        }
+        // the floating layer: drawn over the backdrop, never inside it, so the glass does not sample itself
         LargeTopBar(
             title = stringResource(R.string.following),
             state = topBar,
+            floating = true,
+            modifier = Modifier.semantics { isTraversalGroup = true; traversalIndex = -1f },
             actions = {
                 LagoonIconButton(LucideIcons.Search, stringResource(R.string.search), actions::search)
-                LagoonIconButton(LucideIcons.User, stringResource(R.string.following_account), { accountSheet = true })
+                LagoonIconButton(LucideIcons.User, stringResource(R.string.following_account), { accountSheet = true }, Modifier.testTag("followingAccount"))
             },
+            bottom = if (segments.size > 1) {
+                {
+                    SegmentedControl(
+                        options = segments.map { stringResource(it.label) },
+                        selectedIndex = segments.indexOf(selected).coerceAtLeast(0),
+                        onSelect = { onSelectSegment(segments[it]) },
+                        glass = true,
+                        modifier = Modifier
+                            .padding(horizontal = LagoonSpacing.pageSide, vertical = LagoonSpacing.xs)
+                            .widthIn(max = 560.dp)
+                            .testTag(SegmentTabsTag),
+                    )
+                }
+            } else null,
         )
-        if (segments.size > 1) {
-            SegmentedControl(
-                options = segments.map { stringResource(it.label) },
-                selectedIndex = segments.indexOf(selected).coerceAtLeast(0),
-                onSelect = { onSelectSegment(segments[it]) },
-                modifier = Modifier
-                    .padding(horizontal = LagoonSpacing.pageSide, vertical = LagoonSpacing.xs)
-                    .widthIn(max = 560.dp),
-            )
+        if (toast != null) {
+            ToastHost(toast, Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding))
         }
-        AnimatedContent(
-            targetState = selected,
-            transitionSpec = { siblingBy(motion, density) { segments.indexOf(it) } },
-            label = "followingSegment",
-            modifier = Modifier.fillMaxSize(),
-        ) { segment ->
-            val state = gridStates.getValue(segment)
-            CompositionLocalProvider(LocalOffline provides offline) {
-            when (segment) {
-                FollowingSegment.Live -> LiveSegment(lists.streams, lists.recentlyLive, account, options, actions, state, bottomPadding)
-                FollowingSegment.Videos -> VideosSegment(lists.videos, options, videoSort, videoPositions, bookmarkedVideoIds, actions, state, bottomPadding)
-                FollowingSegment.Channels -> ChannelsSegment(lists.channels, options, channelSort, actions, state, bottomPadding)
-                FollowingSegment.Games -> GamesSegment(lists.games, options, actions, state, bottomPadding)
-            }
-            }
-        }
-    }
-    if (toast != null) {
-        ToastHost(toast, Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPadding))
-    }
     }
 
     if (accountSheet) {
@@ -301,6 +327,14 @@ fun FollowingScreen(
         )
     }
 }
+
+/** Room the lists leave for the floating bar above and the navigation below. */
+@Immutable
+private data class ListInsets(val top: Dp, val bottom: Dp)
+
+/** Test tags of the floating segment tabs and the shown list. */
+const val SegmentTabsTag = "followingSegmentTabs"
+const val FollowingListTag = "followingList"
 
 private val FollowingSegment.label: Int
     get() = when (this) {
@@ -322,7 +356,7 @@ private fun <T : Any> SegmentGrid(
     items: LazyPagingItems<T>?,
     columns: Int,
     state: LazyGridState,
-    bottomPadding: Dp,
+    insets: ListInsets,
     skeleton: @Composable (Int) -> Unit,
     empty: LazyGridScope.() -> Unit,
     header: (LazyGridScope.() -> Unit)? = null,
@@ -336,14 +370,15 @@ private fun <T : Any> SegmentGrid(
         isRefreshing = refresh is LoadState.Loading && !first,
         onRefresh = { items?.refresh() },
         modifier = Modifier.fillMaxSize(),
+        indicatorTop = insets.top,
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = state,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag(FollowingListTag),
             contentPadding = PaddingValues(
-                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = LagoonSpacing.xs,
-                bottom = bottomPadding + LagoonSpacing.m,
+                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = insets.top + LagoonSpacing.xs,
+                bottom = insets.bottom + LagoonSpacing.m,
             ),
             verticalArrangement = Arrangement.spacedBy(gap),
             horizontalArrangement = Arrangement.spacedBy(gap),
@@ -407,7 +442,7 @@ private fun LiveSegment(
     options: FollowingListOptions,
     actions: FollowingActions,
     state: LazyGridState,
-    bottomPadding: Dp,
+    insets: ListInsets,
 ) {
     val configuration = LocalConfiguration.current
     val columns = liveColumns(WidthClass.of(configuration.screenWidthDp), configuration.screenWidthDp)
@@ -416,7 +451,7 @@ private fun LiveSegment(
         items = streams,
         columns = columns,
         state = state,
-        bottomPadding = bottomPadding,
+        insets = insets,
         skeleton = { SkeletonLiveCard() },
         empty = {
             item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
@@ -583,7 +618,7 @@ private fun VideosSegment(
     bookmarked: Set<String>,
     actions: FollowingActions,
     state: LazyGridState,
-    bottomPadding: Dp,
+    insets: ListInsets,
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -596,7 +631,7 @@ private fun VideosSegment(
         items = videos,
         columns = columns,
         state = state,
-        bottomPadding = bottomPadding,
+        insets = insets,
         skeleton = { SkeletonLiveCard() },
         header = {
             item(span = { GridItemSpan(maxLineSpan) }, contentType = "chips") {
@@ -721,7 +756,7 @@ private fun ChannelsSegment(
     sort: ChannelSortChoice,
     actions: FollowingActions,
     state: LazyGridState,
-    bottomPadding: Dp,
+    insets: ListInsets,
 ) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -734,7 +769,7 @@ private fun ChannelsSegment(
         items = channels,
         columns = columns,
         state = state,
-        bottomPadding = bottomPadding,
+        insets = insets,
         gap = LagoonSpacing.xs,
         skeleton = { SkeletonRow(Modifier.background(Lagoon.colors.card, LagoonShapes.row)) },
         header = {
@@ -854,7 +889,7 @@ private fun GamesSegment(
     options: FollowingListOptions,
     actions: FollowingActions,
     state: LazyGridState,
-    bottomPadding: Dp,
+    insets: ListInsets,
 ) {
     val columns = gameColumns(WidthClass.of(LocalConfiguration.current.screenWidthDp))
     var menuFor by remember { mutableStateOf<Game?>(null) }
@@ -862,7 +897,7 @@ private fun GamesSegment(
         items = games,
         columns = columns,
         state = state,
-        bottomPadding = bottomPadding,
+        insets = insets,
         skeleton = { Box(Modifier.fillMaxWidth().height(180.dp).shimmer(LagoonShapes.card)) },
         empty = {
             item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {

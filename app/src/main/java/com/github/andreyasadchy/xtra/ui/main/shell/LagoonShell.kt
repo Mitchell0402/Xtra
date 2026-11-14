@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.github.andreyasadchy.xtra.R
@@ -60,8 +61,14 @@ class ShellState(val tabs: List<ShellTab>) {
     /** Set by the activity; null (tests, no activity) means glass stays solid. */
     var glassPolicy: GlassPolicy? by mutableStateOf(null)
 
+    /**
+     * Glass starts solid and blurs from the third frame on, so the first frame (cold start) does not wait for the blur
+     * pipeline to be set up (stage G, real-device cold start gate).
+     */
+    var warmedUp by mutableStateOf(false)
+
     /** Whether the system and the "透明效果" setting allow blur right now. */
-    val blurAllowed: Boolean get() = glassPolicy?.conditions?.blurAllowed == true
+    val blurAllowed: Boolean get() = warmedUp && glassPolicy?.conditions?.blurAllowed == true
 
     /** What a Compose page provides as [LocalGlass] around its content. */
     @Composable
@@ -90,6 +97,13 @@ private fun navItems(tabs: List<ShellTab>): List<NavItem> {
 /** Keeps the hide-on-scroll lock in step with the mini player and the kind of page shown, and shows the pill again when the lock changes. */
 @Composable
 private fun SyncLock(state: ShellState) {
+    LaunchedEffect(state) {
+        if (!state.warmedUp) {
+            withFrameNanos { }
+            withFrameNanos { }
+            state.warmedUp = true
+        }
+    }
     LaunchedEffect(state) {
         snapshotFlow { state.navLocked }.collect { locked ->
             state.hideOnScroll.locked = locked

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -132,26 +133,31 @@ fun Avatar(
     }
 }
 
-/** The soft red live dot. It breathes slowly (plan 5); with reduced motion it stays still. */
+/**
+ * Whether live dots breathe. A page whose content is the backdrop of real glass turns it off (glass decision 4a):
+ * every breath redraws the page, and the glass over it re-blurs 60 times a second while nothing else moves.
+ */
+val LocalLiveDotBreathing = staticCompositionLocalOf { true }
+
+/** The soft red live dot. It breathes slowly (plan 5); with reduced motion, or over a glass backdrop, it stays still. */
 @Composable
 fun LiveDot(modifier: Modifier = Modifier, size: Dp = 7.dp) {
     val motion = Lagoon.motion
-    val alpha = if (motion.reduced) {
-        1f
-    } else {
+    val breathe = !motion.reduced && LocalLiveDotBreathing.current
+    val alpha = if (breathe) {
         val breathing = rememberInfiniteTransition(label = "liveDot")
-        val value by breathing.animateFloat(
+        breathing.animateFloat(
             initialValue = 1f,
             targetValue = 0.35f,
             animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Reverse),
             label = "liveDotAlpha",
         )
-        value
-    }
+    } else null
     Box(
         modifier
             .size(size)
-            .graphicsLayer { this.alpha = alpha }
+            // read in the draw phase only: the breath redraws the dot without recomposing it
+            .graphicsLayer { this.alpha = alpha?.value ?: 1f }
             .background(Lagoon.colors.danger, CircleShape)
     )
 }

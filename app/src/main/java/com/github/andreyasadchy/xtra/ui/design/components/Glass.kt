@@ -151,8 +151,10 @@ fun GlassBackdrop(modifier: Modifier = Modifier, content: @Composable BoxScope.(
                     drawRect(glow)
                 }
             },
-        content = content,
-    )
+    ) {
+        // decision 4a: nothing under real glass moves on its own (see LocalLiveDotBreathing)
+        CompositionLocalProvider(LocalLiveDotBreathing provides !glass.canBlur) { content() }
+    }
 }
 
 /**

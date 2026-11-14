@@ -9,6 +9,7 @@ import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.LocalChannelFollowsRepository
 import com.github.andreyasadchy.xtra.repository.OfflineVideosRepository
 import com.github.andreyasadchy.xtra.util.C
+import kotlin.coroutines.cancellation.CancellationException
 
 class FollowedChannelsDataSource(
     private val sort: String,
@@ -27,7 +28,19 @@ class FollowedChannelsDataSource(
     private var api: String? = null
     private var offset: String? = null
 
+    // v0.1 only loaded these lists while online; the Compose Following page (U2) also loads them offline, where a
+    // request outside the per-API fallbacks used to throw out of the pager and crash the app
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, User> {
+        return try {
+            loadPage(params)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LoadResult.Error(e)
+        }
+    }
+
+    private suspend fun loadPage(params: LoadParams<Int>): LoadResult<Int, User> {
         return if (!offset.isNullOrBlank()) {
             val list = mutableListOf<User>()
             val result = try {

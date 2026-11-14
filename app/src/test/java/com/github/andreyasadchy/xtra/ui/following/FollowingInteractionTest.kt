@@ -40,6 +40,7 @@ class FollowingInteractionTest {
         start: FollowingSegment = FollowingSegment.Live,
         emptyLive: Boolean = false,
         liveState: LoadStates? = null,
+        offline: Boolean = false,
     ) {
         compose.setContent {
             LagoonTheme(reducedMotion = true) {
@@ -57,6 +58,7 @@ class FollowingInteractionTest {
                     videoPositions = FollowingFixtures.positions,
                     bookmarkedVideoIds = emptySet(),
                     actions = actions,
+                    offline = offline,
                 )
             }
         }
@@ -124,6 +126,13 @@ class FollowingInteractionTest {
     fun failedLoadShowsRetry() {
         show(liveState = FollowingFixtures.error)
         compose.onNodeWithText("Retry", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyListWhileOfflineShowsTheConnectionError() {
+        show(emptyLive = true, offline = true)
+        compose.onNodeWithText("No Internet connection").assertIsDisplayed()
+        compose.onNodeWithText("Retry").assertIsDisplayed()
     }
 
     @Test

@@ -29,6 +29,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,6 +105,9 @@ import com.github.andreyasadchy.xtra.ui.main.shell.FollowingSegment
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import kotlin.time.Instant
 
+/** Whether the device has no connection; the lists then show the error state instead of "nothing here". */
+private val LocalOffline = staticCompositionLocalOf { false }
+
 /** v0.1 list settings that change how items read (kept as they are, plan 10.1 rule 2). */
 @Immutable
 data class FollowingListOptions(
@@ -175,7 +180,7 @@ fun displayName(name: String?, login: String?, mode: String): String = when {
 }
 
 private fun liveColumns(widthClass: WidthClass, widthDp: Int) = when (widthClass) {
-    WidthClass.Expanded -> if (widthDp >= 1200) 4 else 3
+    WidthClass.Expanded -> if (widthDp >= 1440) 4 else 3
     else -> widthClass.cardColumns
 }
 
@@ -214,6 +219,7 @@ fun FollowingScreen(
     navScroll: NestedScrollConnection? = null,
     scrollToTopRequests: Int = 0,
     toast: ToastHostState? = null,
+    offline: Boolean = false,
 ) {
     val colors = Lagoon.colors
     val motion = Lagoon.motion
@@ -267,11 +273,13 @@ fun FollowingScreen(
             modifier = Modifier.fillMaxSize(),
         ) { segment ->
             val state = gridStates.getValue(segment)
+            CompositionLocalProvider(LocalOffline provides offline) {
             when (segment) {
                 FollowingSegment.Live -> LiveSegment(lists.streams, lists.recentlyLive, account, options, actions, state, bottomPadding)
                 FollowingSegment.Videos -> VideosSegment(lists.videos, options, videoSort, videoPositions, bookmarkedVideoIds, actions, state, bottomPadding)
                 FollowingSegment.Channels -> ChannelsSegment(lists.channels, options, channelSort, actions, state, bottomPadding)
                 FollowingSegment.Games -> GamesSegment(lists.games, options, actions, state, bottomPadding)
+            }
             }
         }
     }
@@ -323,6 +331,7 @@ private fun <T : Any> SegmentGrid(
 ) {
     val refresh = items?.loadState?.refresh
     val first = items == null || items.itemCount == 0
+    val offline = LocalOffline.current
     LagoonPullToRefresh(
         isRefreshing = refresh is LoadState.Loading && !first,
         onRefresh = { items?.refresh() },
@@ -345,8 +354,17 @@ private fun <T : Any> SegmentGrid(
                 first && refresh is LoadState.Loading -> items(6, contentType = { "skeleton" }) { skeleton(it) }
                 first && refresh is LoadState.Error -> item(span = { GridItemSpan(maxLineSpan) }, contentType = "error") {
                     ErrorState(
-                        message = refresh.error.message?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_connection),
-                        onRetry = { items.retry() },
+                        message = stringResource(if (offline) R.string.no_connection else R.string.following_load_error),
+                        onRetry = { items.refresh() },
+                        modifier = Modifier.padding(top = 48.dp),
+                    )
+                }
+                // the followed lists fall back to an empty page when every API fails, so an empty list while
+                // offline is shown as the connection error it is (plan 10.5)
+                first && offline -> item(span = { GridItemSpan(maxLineSpan) }, contentType = "error") {
+                    ErrorState(
+                        message = stringResource(R.string.no_connection),
+                        onRetry = { items.refresh() },
                         modifier = Modifier.padding(top = 48.dp),
                     )
                 }

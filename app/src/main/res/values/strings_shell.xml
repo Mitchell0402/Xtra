@@ -27,4 +27,5 @@
     <string name="following_retry_more">Could not load more. Try again</string>
     <string name="following_follow_account">Account</string>
     <string name="following_follow_local">Local</string>
+    <string name="following_load_error">Twitch did not answer. Check the connection and try again.</string>
 </resources>

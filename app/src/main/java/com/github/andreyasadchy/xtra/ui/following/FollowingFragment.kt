@@ -1,6 +1,9 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -123,6 +126,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
                     val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
                     val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
                     val toast = rememberToastHostState()
+                    val online by mainViewModel.isNetworkAvailable.collectAsState()
                     LaunchedEffect(refreshRequests.intValue) {
                         if (refreshRequests.intValue > 0) {
                             streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
@@ -142,10 +146,11 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
                     }
                     // v0.1 retried the lists when the connection came back (BaseNetworkFragment.onNetworkRestored)
                     LaunchedEffect(Unit) {
-                        var wasOnline = mainViewModel.isNetworkAvailable.value
+                        // the followed lists turn failed requests into empty pages, so reload them rather than retry
+                        var wasOnline = mainViewModel.isNetworkAvailable.value ?: hasValidatedNetwork()
                         mainViewModel.isNetworkAvailable.collectLatest { online ->
-                            if (online == true && wasOnline == false) {
-                                streams.retry(); videos.retry(); channels.retry(); games.retry(); recentlyLive.retry()
+                            if (online == true && !wasOnline) {
+                                streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
                             }
                             if (online != null) wasOnline = online
                         }
@@ -174,6 +179,8 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
                         navScroll = shell?.hideOnScroll?.nestedScrollConnection,
                         scrollToTopRequests = scrollToTopRequests.intValue,
                         toast = toast,
+                        // MainActivity only fills isNetworkAvailable once the network callback fires
+                        offline = online == false || (online == null && !hasValidatedNetwork()),
                     )
                 }
             }
@@ -181,6 +188,13 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
     }
 
     private var lastUnfollowedName: String? = null
+
+    private fun hasValidatedNetwork(): Boolean {
+        val connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+        return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     override fun scrollToTop() {
         scrollToTopRequests.intValue++

@@ -7,6 +7,7 @@ import com.github.andreyasadchy.xtra.graphql.type.VideoSort
 import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.util.C
+import kotlin.coroutines.cancellation.CancellationException
 
 class FollowedVideosDataSource(
     private val gqlQueryType: BroadcastType?,
@@ -19,7 +20,19 @@ class FollowedVideosDataSource(
     private var api: String? = null
     private var offset: String? = null
 
+    // v0.1 only loaded these lists while online; the Compose Following page (U2) also loads them offline, where a
+    // request outside the per-API fallbacks used to throw out of the pager and crash the app
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Video> {
+        return try {
+            loadPage(params)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LoadResult.Error(e)
+        }
+    }
+
+    private suspend fun loadPage(params: LoadParams<Int>): LoadResult<Int, Video> {
         return if (!offset.isNullOrBlank()) {
             try {
                 loadFromApi(params)

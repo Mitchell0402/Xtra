@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.testing.FormFactor
 import com.github.andreyasadchy.xtra.testing.ScreenshotRules
+import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.design.theme.WidthClass
 import com.github.andreyasadchy.xtra.ui.main.shell.FollowingSegment
@@ -94,7 +96,7 @@ internal fun ShellFrame(modifier: Modifier = Modifier, content: @Composable (bot
     val state = ShellState(tabs).apply { legacyPage = false }
     val wide = WidthClass.of(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp) == WidthClass.Expanded
     if (wide) {
-        Row(modifier.fillMaxSize()) {
+        Row(modifier.fillMaxSize().background(Lagoon.colors.page)) {
             ShellRail(state, onSelect = {})
             Box(Modifier.weight(1f)) { content(16.dp) }
         }

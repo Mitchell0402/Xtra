@@ -27,4 +27,5 @@
     <string name="following_retry_more">更多内容加载失败，点此重试</string>
     <string name="following_follow_account">账号</string>
     <string name="following_follow_local">本地</string>
+    <string name="following_load_error">Twitch 没有响应，请检查网络后重试。</string>
 </resources>

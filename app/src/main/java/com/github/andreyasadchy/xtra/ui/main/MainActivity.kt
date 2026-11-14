@@ -64,7 +64,6 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.databinding.ActivityMainBinding
-import com.github.andreyasadchy.xtra.databinding.DialogUpdateDownloadBinding
 import com.github.andreyasadchy.xtra.model.PlaybackState
 import com.github.andreyasadchy.xtra.model.ui.Clip
 import com.github.andreyasadchy.xtra.model.ui.OfflineVideo
@@ -72,6 +71,9 @@ import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
+import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
+import com.github.andreyasadchy.xtra.ui.settings.UpdatePrompt
+import com.github.andreyasadchy.xtra.ui.settings.UpdatePromptState
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
 import com.github.andreyasadchy.xtra.ui.download.StreamDownloadService
 import com.github.andreyasadchy.xtra.ui.download.VideoDownloadService
@@ -133,8 +135,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
     var settingsResultLauncher: ActivityResultLauncher<Intent>? = null
     var loginResultLauncher: ActivityResultLauncher<Intent>? = null
     var logoutResultLauncher: ActivityResultLauncher<Intent>? = null
-    private var updateDownloadDialogBinding: DialogUpdateDownloadBinding? = null
-    private var updateDownloadDialog: AlertDialog? = null
+    private val updatePrompt = UpdatePromptState()
     override var shell: ShellState? = null
         private set
 
@@ -184,7 +185,10 @@ class MainActivity : AppCompatActivity(), ShellHost {
             windowInsets
         }
         settingsResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
+            if (result.data?.getBooleanExtra(SettingsActivity.EXTRA_ACCOUNT_CHANGED, false) == true) {
+                // logged in or out from settings: same as the login launchers below
+                restartActivity()
+            } else if (result.resultCode == RESULT_OK) {
                 recreate()
             }
         }
@@ -329,85 +333,45 @@ class MainActivity : AppCompatActivity(), ShellHost {
                 }
             }
         }
+        // the update prompt (U3): Compose sheets in place of the two v0.1 dialogs; check, download and install unchanged
+        binding.sheetHost.setContent {
+            LagoonTheme {
+                UpdatePrompt(
+                    updatePrompt,
+                    onUpdate = { url ->
+                        if (prefs.getBoolean(C.UPDATE_USE_BROWSER, false)) {
+                            updatePrompt.close()
+                            try {
+                                startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
+                                tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) }
+                            } catch (e: ActivityNotFoundException) {
+                                Toast.makeText(this@MainActivity, R.string.no_browser_found, Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            updatePrompt.startDownload(viewModel.updateSize)
+                            viewModel.downloadUpdate(prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP), url)
+                        }
+                    },
+                    onLater = { tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) } },
+                    onCancelDownload = { viewModel.updateJob?.cancel() },
+                )
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.updateUrl.collectLatest {
-                    if (it != null) {
-                        getAlertDialogBuilder()
-                            .setTitle(getString(R.string.update_available))
-                            .setMessage(getString(R.string.update_message))
-                            .setPositiveButton(getString(R.string.yes)) { _, _ ->
-                                if (prefs.getBoolean(C.UPDATE_USE_BROWSER, false)) {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, it.toUri()).apply {
-                                            addCategory(Intent.CATEGORY_BROWSABLE)
-                                        }
-                                        startActivity(intent)
-                                        tokenPrefs().edit {
-                                            putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis())
-                                        }
-                                    } catch (e: ActivityNotFoundException) {
-                                        Toast.makeText(this@MainActivity, R.string.no_browser_found, Toast.LENGTH_LONG).show()
-                                    }
-                                } else {
-                                    val binding = DialogUpdateDownloadBinding.inflate(layoutInflater)
-                                    updateDownloadDialogBinding = binding
-                                    val size = viewModel.updateSize
-                                    if (size != null) {
-                                        binding.textView.text = getString(
-                                            R.string.downloading_update_progress,
-                                            Formatter.formatFileSize(this@MainActivity, 0),
-                                            Formatter.formatFileSize(this@MainActivity, size),
-                                        )
-                                    } else {
-                                        binding.textView.text = getString(R.string.downloading_update)
-                                        binding.progressBar.visibility = View.GONE
-                                    }
-                                    viewModel.downloadUpdate(prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP), it)
-                                    val dialog = getAlertDialogBuilder()
-                                        .setView(binding.root)
-                                        .setNegativeButton(getString(android.R.string.cancel), null)
-                                        .setOnDismissListener {
-                                            viewModel.updateJob?.cancel()
-                                            updateDownloadDialogBinding = null
-                                            updateDownloadDialog = null
-                                        }
-                                        .show()
-                                    updateDownloadDialog = dialog
-                                }
-                            }
-                            .setNegativeButton(getString(R.string.no)) { _, _ ->
-                                tokenPrefs().edit {
-                                    putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis())
-                                }
-                            }
-                            .show()
-                    }
+                    if (it != null) updatePrompt.offer(it)
                 }
             }
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.updateProgress.collectLatest {
-                    updateDownloadDialogBinding?.let { binding ->
-                        val size = viewModel.updateSize
-                        if (size != null) {
-                            binding.textView.text = getString(
-                                R.string.downloading_update_progress,
-                                Formatter.formatFileSize(this@MainActivity, it.toLong()),
-                                Formatter.formatFileSize(this@MainActivity, size),
-                            )
-                            binding.progressBar.progress = (((it.toFloat() / size) * 100)).toInt()
-                        }
-                    }
-                }
+                viewModel.updateProgress.collectLatest { updatePrompt.downloaded = it.toLong() }
             }
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.closeUpdateDialog.collectLatest {
-                    updateDownloadDialog?.dismiss()
-                }
+                viewModel.closeUpdateDialog.collectLatest { updatePrompt.close() }
             }
         }
         val callback = object : ConnectivityManager.NetworkCallback() {

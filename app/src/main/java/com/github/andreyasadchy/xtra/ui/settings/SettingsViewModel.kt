@@ -451,9 +451,15 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Restores a backup: the preferences file and/or the database. The app restarts afterwards (U3): v0.1 restarted
+     * only after a database restore, so a restored preferences file could be overwritten again by the settings still
+     * held in memory. The preferences file goes first, so picking both files restores both.
+     */
     fun restoreSettings(list: List<String>, networkLibrary: String?, gqlHeaders: Map<String, String>, helixHeaders: Map<String, String>) {
         viewModelScope.launch(Dispatchers.IO) {
-            list.take(2).forEach { url ->
+            var restored = false
+            list.take(2).sortedBy { !it.endsWith(".xml") }.forEach { url ->
                 if (url.endsWith(".xml")) {
                     FileOutputStream("${applicationContext.applicationInfo.dataDir}/shared_prefs/${applicationContext.packageName}_preferences.xml").use { outputStream ->
                         applicationContext.contentResolver.openInputStream(url.toUri())!!.use { inputStream ->
@@ -466,6 +472,7 @@ class SettingsViewModel(
                     toggleNotifications(prefs.contains("name=\"${C.LIVE_NOTIFICATIONS_ENABLED}\" value=\"true\""), networkLibrary, gqlHeaders, helixHeaders)
                     val language = Regex("<string name=\"${C.UI_LANGUAGE}\">(.+?)</string>").find(prefs)?.groups?.get(1)?.value
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language.takeIf { it != "auto" }))
+                    restored = true
                 } else {
                     val database = applicationContext.getDatabasePath("database")
                     File(database.parent, "database-shm").delete()
@@ -475,13 +482,18 @@ class SettingsViewModel(
                             inputStream.copyTo(outputStream)
                         }
                     }
-                    applicationContext.startActivity(
-                        Intent(applicationContext, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                    )
-                    exitProcess(0)
+                    restored = true
                 }
+            }
+            if (restored) {
+                // the notification worker is scheduled before the restart, as before
+                kotlinx.coroutines.delay(500)
+                applicationContext.startActivity(
+                    Intent(applicationContext, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    }
+                )
+                exitProcess(0)
             }
         }
     }

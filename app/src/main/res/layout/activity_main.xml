@@ -48,6 +48,14 @@
             android:layout_height="wrap_content" />
     </LinearLayout>
 
+    <!-- holds the Compose sheets the activity itself shows (the update prompt, U3); draws nothing in place -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/sheetHost"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <FrameLayout
         android:id="@+id/playerContainer"
         android:layout_width="match_parent"

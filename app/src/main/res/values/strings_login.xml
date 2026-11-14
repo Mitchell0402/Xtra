@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Login and integrity check (stage U3). Keep values and values-zh-rCN in step (TranslationsTest). -->
+<resources>
+    <string name="login_title">Log in to Twitch</string>
+    <string name="login_step_web">Step 1 of 2 · Twitch account</string>
+    <string name="login_step_tv">Step 2 of 2 · Android TV device</string>
+    <string name="login_intro_title">Log in to Twitch</string>
+    <string name="login_intro_body">Your follows, chat and channel points need your Twitch account. Lagoon only talks to Twitch.</string>
+    <string name="login_intro_step1">Log in on the Twitch web page</string>
+    <string name="login_intro_step2">Then sign in as an Android TV device too, which unlocks every feature</string>
+    <string name="login_start">Start</string>
+    <string name="login_checking">Checking your login</string>
+    <string name="login_code_title">Enter this code</string>
+    <string name="login_code_body">Open twitch.tv/activate in a browser where you are logged in, enter the code, press Activate and then Authorize. Then come back here.</string>
+    <string name="login_copy_code">Copy</string>
+    <string name="login_code_copied">Code copied</string>
+    <string name="login_open_activate">Open the page</string>
+    <string name="login_code_done">I have activated it</string>
+    <string name="login_tv_hint">Copy the code on the page above, press Next, enter it on the page that opens, then press Activate and Authorize.</string>
+    <string name="login_tv_title">One more step</string>
+    <string name="login_tv_skip">Skip</string>
+    <string name="login_tv_continue">Continue</string>
+    <string name="login_paste_hint">Paste the address of the error page here</string>
+    <string name="login_paste_continue">Continue</string>
+    <string name="login_zoom_summary">Makes the text on the login page bigger or smaller</string>
+    <string name="integrity_title">Verify it is you</string>
+    <string name="integrity_summary">Twitch asks for a quick check. It closes by itself when done.</string>
+</resources>

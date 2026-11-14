@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonSpacing
@@ -61,17 +62,23 @@ fun LagoonButton(
     enabled: Boolean = true,
 ) {
     val colors = Lagoon.colors
-    val (bg, fg) = when (style) {
-        ButtonStyle.Primary -> colors.accent to colors.onAccent
-        ButtonStyle.Secondary -> colors.control to colors.textPrimary
-        ButtonStyle.Danger -> colors.dangerSoft to colors.danger
+    val fg = when (style) {
+        ButtonStyle.Primary -> colors.onAccent
+        ButtonStyle.Secondary -> colors.textPrimary
+        ButtonStyle.Danger -> colors.danger
+    }
+    // secondary buttons are glass without the blur (glass plan, stage G: actionable buttons get the material)
+    val surface = when (style) {
+        ButtonStyle.Primary -> Modifier.background(colors.accent)
+        ButtonStyle.Secondary -> Modifier.glassSolid(GlassLevel.Float, LagoonShapes.pill)
+        ButtonStyle.Danger -> Modifier.background(colors.dangerSoft)
     }
     Row(
         modifier
             .defaultMinSize(minHeight = LagoonSpacing.touchTarget)
             .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
             .pressable(onClick = onClick, shape = LagoonShapes.pill, enabled = enabled)
-            .background(bg)
+            .then(surface)
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -83,7 +90,7 @@ fun LagoonButton(
 
 /**
  * Round icon button. The visible circle is [size] (44 dp by default) inside a 48 dp touch target (plan 10.5).
- * [filled] puts it on the card layer, as in top bars; otherwise only the icon shows.
+ * [filled] gives it the glass material, as in top bars (stage G); otherwise only the icon shows.
  */
 @Composable
 fun LagoonIconButton(
@@ -102,7 +109,7 @@ fun LagoonIconButton(
                 .size(size)
                 .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
                 .pressable(onClick = onClick, shape = LagoonShapes.pill, enabled = enabled)
-                .background(if (filled) Lagoon.colors.card else Color.Transparent)
+                .then(if (filled) Modifier.glassSolid(GlassLevel.Float, LagoonShapes.pill) else Modifier)
                 .semantics { this.contentDescription = contentDescription },
             contentAlignment = Alignment.Center,
         ) {

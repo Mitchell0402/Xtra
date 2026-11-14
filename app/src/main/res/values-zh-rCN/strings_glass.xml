@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="glass_effects">透明效果</string>
+    <string name="glass_effects_summary">导航栏、分段标签和悬浮按钮使用磨砂玻璃。关闭后改为实色，也更省电一点。</string>
+</resources>

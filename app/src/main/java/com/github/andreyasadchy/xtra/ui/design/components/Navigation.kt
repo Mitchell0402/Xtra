@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -39,8 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -53,6 +57,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -60,6 +65,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonSpacing
@@ -101,14 +107,16 @@ fun FloatingNavBar(
                 alpha = 1f - hide
             }
     ) {
-        Box(
+        GlassSurface(
+            GlassLevel.Float,
+            LagoonShapes.pill,
             Modifier
                 .fillMaxWidth()
                 .height(64.dp)
                 .shadow(24.dp, LagoonShapes.pill, ambientColor = Color.Black, spotColor = Color.Black)
-                .background(colors.control, LagoonShapes.pill)
-                .padding(6.dp)
+                .testTag(NavBarTag),
         ) {
+          Box(Modifier.fillMaxSize().padding(6.dp)) {
             val start by animateFloatAsState(tracker.starts[selectedIndex] ?: 0f, motion.steady(), label = "navIndicatorX")
             val width by animateFloatAsState(tracker.sizes[selectedIndex] ?: 0f, motion.steady(), label = "navIndicatorW")
             if (width > 0f) {
@@ -117,14 +125,14 @@ fun FloatingNavBar(
                         .graphicsLayer { translationX = start }
                         .width(with(density) { width.toDp() })
                         .fillMaxHeight()
-                        .background(colors.accentSoft, LagoonShapes.pill)
+                        .background(colors.accent, LagoonShapes.pill)
                 )
             }
             Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 items.forEachIndexed { index, item ->
                     val selected = index == selectedIndex
                     val weight by animateFloatAsState(if (selected) 1.3f else 1f, motion.steady(), label = "navWeight")
-                    val tint by animateColorAsState(if (selected) colors.accent else colors.textSecondary, motion.fade(), label = "navTint")
+                    val tint by animateColorAsState(if (selected) colors.onAccent else Lagoon.colors.textSecondary, motion.fade(), label = "navTint")
                     Row(
                         Modifier
                             .weight(weight)
@@ -155,6 +163,7 @@ fun FloatingNavBar(
                     }
                 }
             }
+          }
         }
     }
 }
@@ -184,12 +193,18 @@ fun FloatingNavRail(
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
+        // nothing ever scrolls behind the rail (pages start to its right), so it is glass without the blur
+        GlassSurface(
+            GlassLevel.Float,
+            LagoonShapes.card,
             Modifier
                 .width(80.dp)
                 .shadow(24.dp, LagoonShapes.card, ambientColor = Color.Black, spotColor = Color.Black)
-                .background(colors.control, LagoonShapes.card)
-                .padding(6.dp),
+                .testTag(NavRailTag),
+            blur = false,
+        ) {
+        Column(
+            Modifier.padding(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (header != null) {
@@ -205,13 +220,13 @@ fun FloatingNavRail(
                             .graphicsLayer { translationY = top }
                             .fillMaxWidth()
                             .height(with(density) { height.toDp() })
-                            .background(colors.accentSoft, LagoonShapes.row)
+                            .background(colors.accent, LagoonShapes.row)
                     )
                 }
                 Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items.forEachIndexed { index, item ->
                         val selected = index == selectedIndex
-                        val tint by animateColorAsState(if (selected) colors.accent else colors.textSecondary, motion.fade(), label = "railTint")
+                        val tint by animateColorAsState(if (selected) colors.onAccent else Lagoon.colors.textSecondary, motion.fade(), label = "railTint")
                         Column(
                             Modifier
                                 .fillMaxWidth()
@@ -234,8 +249,13 @@ fun FloatingNavRail(
                 }
             }
         }
+        }
     }
 }
+
+/** Test tags of the navigation surfaces (blur-area and layout tests). */
+const val NavBarTag = "lagoonNavBar"
+const val NavRailTag = "lagoonNavRail"
 
 /**
  * Collapse state of a [LargeTopBar]. Scrolling the content up collapses the bar first; it expands again only when the
@@ -270,8 +290,9 @@ class TopBarState(private val collapseRangePx: Float) {
     }
 }
 
-private val TopBarExpanded = 112.dp
-private val TopBarCollapsed = 64.dp
+/** Height of a [LargeTopBar]'s title area, expanded and collapsed (pages with a floating bar pad their lists by it). */
+val TopBarExpanded = 112.dp
+val TopBarCollapsed = 64.dp
 
 @Composable
 fun rememberTopBarState(): TopBarState {
@@ -281,7 +302,12 @@ fun rememberTopBarState(): TopBarState {
 
 /**
  * Top bar with a large page title that shrinks into a small one as the page scrolls (plan 5 and 6). Actions sit on
- * the right as round icon buttons; [navigationIcon] usually holds the back button.
+ * the right as round icon buttons; [navigationIcon] usually holds the back button. [bottom] holds controls that
+ * belong to the bar, such as the segment tabs (glass plan section 9).
+ *
+ * [floating]: the bar is drawn over the list, which scrolls underneath (stage G). It is clear while expanded; as it
+ * collapses, the page colour fades in behind the title and fades out again across [bottom], so the floating glass
+ * tabs keep content around and behind them. The bar itself is not glass: glass is for what can be tapped.
  */
 @Composable
 fun LargeTopBar(
@@ -290,15 +316,56 @@ fun LargeTopBar(
     modifier: Modifier = Modifier,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    bottom: (@Composable () -> Unit)? = null,
+    floating: Boolean = false,
 ) {
-    val type = Lagoon.type
     val fraction = state.collapsedFraction
-    val smallScale = type.headline.fontSize.value / type.display.fontSize.value
-    Box(
+    val page = Lagoon.colors.page
+    val density = LocalDensity.current
+    val statusTop = WindowInsets.statusBars.getTop(density)
+    Column(
         modifier
             .fillMaxWidth()
-            .background(Lagoon.colors.page)
+            .then(
+                if (floating) {
+                    Modifier.drawBehind {
+                        if (fraction > 0f) {
+                            val titleBottom = statusTop + lerp(TopBarExpanded.value, TopBarCollapsed.value, fraction).dp.toPx()
+                            val fadeEnd = maxOf(size.height, titleBottom + 16.dp.toPx())
+                            drawRect(page.copy(alpha = fraction), size = Size(size.width, titleBottom))
+                            drawRect(
+                                Brush.verticalGradient(
+                                    listOf(page.copy(alpha = fraction), page.copy(alpha = 0f)),
+                                    startY = titleBottom, endY = fadeEnd,
+                                ),
+                                topLeft = Offset(0f, titleBottom),
+                                size = Size(size.width, fadeEnd - titleBottom),
+                            )
+                        }
+                    }
+                } else {
+                    Modifier.background(page)
+                }
+            )
             .windowInsetsPadding(WindowInsets.statusBars)
+    ) {
+        TopBarTitle(title, fraction, navigationIcon, actions)
+        bottom?.invoke()
+    }
+}
+
+@Composable
+private fun TopBarTitle(
+    title: String,
+    fraction: Float,
+    navigationIcon: (@Composable () -> Unit)?,
+    actions: @Composable RowScope.() -> Unit,
+) {
+    val type = Lagoon.type
+    val smallScale = type.headline.fontSize.value / type.display.fontSize.value
+    Box(
+        Modifier
+            .fillMaxWidth()
             .height(lerp(TopBarExpanded.value, TopBarCollapsed.value, fraction).dp)
     ) {
         Row(

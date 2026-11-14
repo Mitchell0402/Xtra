@@ -91,6 +91,8 @@ object C {
     const val UI_DEFAULT_PAGE = "ui_default_page"
     const val UI_NAVIGATION_TABS = "ui_navigation_tabs"
     const val UI_NAVIGATION_TAB_LIST = "ui_navigation_tab_list"
+    /** "透明效果" (glass stage G): frosted glass on the floating layers; off draws them solid. */
+    const val UI_GLASS = "ui_glass_effects"
     const val UI_FOLLOWING_TABS = "ui_following_tabs"
     const val UI_SAVED_TABS = "ui_saved_tabs"
     const val UI_CHANNEL_TABS = "ui_channel_tabs"

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -43,7 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
+import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonGlass
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonSpacing
 
@@ -186,17 +189,27 @@ fun SegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    glass: Boolean = false,
 ) {
+    if (glass) {
+        // floating over a list (glass plan, Mitchell's note: switchable tabs are glass): the selected segment is a
+        // lighter lens, so the teal block stays the navigation's alone
+        GlassSurface(GlassLevel.Float, LagoonShapes.pill, modifier.fillMaxWidth().height(LagoonSpacing.touchTarget)) {
+            SegmentedTrack(options, selectedIndex, onSelect, LagoonGlass.segmentSelected)
+        }
+    } else {
+        Box(modifier.fillMaxWidth().height(LagoonSpacing.touchTarget).background(Lagoon.colors.card, LagoonShapes.pill)) {
+            SegmentedTrack(options, selectedIndex, onSelect, Lagoon.colors.selectedTrack)
+        }
+    }
+}
+
+@Composable
+private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, selectedColor: Color) {
     val colors = Lagoon.colors
     val motion = Lagoon.motion
     val haptics = LocalHapticFeedback.current
-    BoxWithConstraints(
-        modifier
-            .fillMaxWidth()
-            .height(LagoonSpacing.touchTarget)
-            .background(colors.card, LagoonShapes.pill)
-            .padding(4.dp)
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
         val segment = maxWidth / options.size.coerceAtLeast(1)
         val offset by animateDpAsState(segment * selectedIndex, motion.steady(), label = "segmentOffset")
         Box(
@@ -204,7 +217,7 @@ fun SegmentedControl(
                 .offset(x = offset)
                 .width(segment)
                 .fillMaxHeight()
-                .background(colors.selectedTrack, LagoonShapes.pill)
+                .background(selectedColor, LagoonShapes.pill)
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup()) {
             options.forEachIndexed { index, label ->

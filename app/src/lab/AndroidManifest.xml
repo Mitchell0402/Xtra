@@ -36,5 +36,18 @@
             </intent-filter>
         </activity>
 
+        <!-- stage G: Following with fixed data, the pill in its own root as in the shell; GlassBenchmark scrolls it -->
+        <activity
+            android:name="com.github.andreyasadchy.xtra.lab.glass.GlassLabActivity"
+            android:exported="true"
+            android:label="Glass lab"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
+        <!-- stage G: lets a launch extra force glass on or off (benchmark A/B); not in qa or release -->
+        <provider
+            android:name="com.github.andreyasadchy.xtra.lab.glass.LabGlassInit"
+            android:authorities="${applicationId}.labglass"
+            android:exported="false" />
+
     </application>
 </manifest>

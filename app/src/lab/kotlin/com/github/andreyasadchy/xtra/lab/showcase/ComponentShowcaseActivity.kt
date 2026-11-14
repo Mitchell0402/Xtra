@@ -34,6 +34,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,6 +57,14 @@ import com.github.andreyasadchy.xtra.ui.design.components.EmptyState
 import com.github.andreyasadchy.xtra.ui.design.components.FloatingNavBar
 import com.github.andreyasadchy.xtra.ui.design.components.FloatingNavRail
 import com.github.andreyasadchy.xtra.ui.design.components.FollowButton
+import com.github.andreyasadchy.xtra.ui.design.components.GlassBackdrop
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.glassWindowAllowsBlur
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonHazeState
+import com.github.andreyasadchy.xtra.ui.main.shell.GlassPolicy
+import com.github.andreyasadchy.xtra.util.C
+import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.ui.design.components.GamePoster
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonBottomSheet
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonButton
@@ -97,14 +106,22 @@ class ComponentShowcaseActivity : ComponentActivity() {
         // dark only: light status and navigation bar icons whatever the system mode
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         super.onCreate(savedInstanceState)
-        setContent { LagoonTheme { ShowcaseApp() } }
+        val policy = GlassPolicy(this).also { lifecycle.addObserver(it) }
+        val hazeState = lagoonHazeState()
+        setContent {
+            LagoonTheme {
+                CompositionLocalProvider(LocalGlass provides GlassContext(hazeState, policy.conditions.blurAllowed && glassWindowAllowsBlur())) {
+                    ShowcaseApp(policy)
+                }
+            }
+        }
     }
 }
 
-private enum class Tab(val label: String) { Components("组件"), Motion("动效"), Tokens("参数") }
+private enum class Tab(val label: String) { Components("组件"), Glass("玻璃"), Motion("动效"), Tokens("参数") }
 
 @Composable
-fun ShowcaseApp() {
+fun ShowcaseApp(policy: GlassPolicy? = null) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val widthClass = currentWidthClass()
     val topBar = rememberTopBarState()
@@ -114,12 +131,15 @@ fun ShowcaseApp() {
     val motion = Lagoon.motion
     val items = listOf(
         com.github.andreyasadchy.xtra.ui.design.components.NavItem(Tab.Components.label, LucideIcons.LayoutGrid, LucideIcons.LayoutGridFilled),
+        com.github.andreyasadchy.xtra.ui.design.components.NavItem(Tab.Glass.label, LucideIcons.Eye),
         com.github.andreyasadchy.xtra.ui.design.components.NavItem(Tab.Motion.label, LucideIcons.Sparkles),
         com.github.andreyasadchy.xtra.ui.design.components.NavItem(Tab.Tokens.label, LucideIcons.Palette),
     )
     Row(Modifier.fillMaxSize().background(Lagoon.colors.page)) {
         if (widthClass == WidthClass.Expanded) FloatingNavRail(items, tab, { tab = it })
         Box(Modifier.weight(1f).fillMaxSize()) {
+            // the page is the glass backdrop; the toast and the pill float over it, outside (glass plan section 6)
+            GlassBackdrop(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().nestedScroll(navScroll.nestedScrollConnection).nestedScroll(topBar.nestedScrollConnection)) {
                 LargeTopBar(Tab.entries[tab].label + " · Lagoon", topBar)
                 AnimatedContent(
@@ -129,12 +149,14 @@ fun ShowcaseApp() {
                 ) { t ->
                     when (Tab.entries[t]) {
                         Tab.Components -> ComponentsTab()
+                        Tab.Glass -> GlassTab(policy)
                         Tab.Motion -> MotionTab(onToast = { message, undo ->
                             if (toasts.show(message, if (undo) "撤销" else null) == ToastResult.ActionPerformed) toasts.show("已撤销")
                         })
                         Tab.Tokens -> TokensTab()
                     }
                 }
+            }
             }
             Column(Modifier.align(Alignment.BottomCenter)) {
                 ToastHost(toasts)
@@ -145,6 +167,38 @@ fun ShowcaseApp() {
 }
 
 private val bottomRoom = 120.dp
+
+/**
+ * Stage G: the glass sheet with the temporary "透明效果" switch (the real one is in Settings > UI; U3 moves it to the
+ * appearance page) and why glass is solid right now, then a long colourful list to scroll under the real pill.
+ */
+@Composable
+private fun GlassTab(policy: GlassPolicy?) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember(context) { context.prefs() }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomRoom)) {
+        item {
+            Column(Modifier.padding(horizontal = LagoonSpacing.pageSide)) {
+                val on = policy?.conditions?.settingOff != true
+                SettingRow(
+                    "透明效果 Transparency effects",
+                    description = policy?.conditions?.reasons()?.takeIf { it.isNotEmpty() }?.joinToString(prefix = "Solid now: ") ?: "Blur allowed",
+                    trailing = SettingTrailing.Toggle(on) { prefs.edit().putBoolean(C.UI_GLASS, it).apply() },
+                )
+            }
+        }
+        item { SpecimenPage(Specimen.Glass) }
+        itemsIndexed(List(12) { it }) { i, _ ->
+            Box(
+                Modifier
+                    .padding(horizontal = LagoonSpacing.pageSide, vertical = 6.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(LagoonShapes.card)
+            ) { LagoonImage(cover(i), contentDescription = null, modifier = Modifier.fillMaxSize()) }
+        }
+    }
+}
 
 @Composable
 private fun ComponentsTab() {

@@ -27,8 +27,11 @@ enum class GlassLevel(
     /** A bar across the page (kept for U6/U7 bars; G uses it nowhere by default). */
     Bar({ it.page }, blurAlpha = 0.75f, solidAlpha = 0.94f, blurs = true, glassText = true),
 
-    /** Sheets, menus and dialogs: their own window over a 60 % scrim, never blurred. */
-    Thick({ it.card }, blurAlpha = 0.94f, solidAlpha = 0.94f, blurs = false, glassText = false),
+    /**
+     * Sheets, menus and dialogs: their own window over a 60 % scrim, never blurred. Opaque (the plan had 94 %): without
+     * blur, the 6 % let the teal navigation show through a sheet as a smudge, not as frost. Grain and highlight stay.
+     */
+    Thick({ it.card }, blurAlpha = 1f, solidAlpha = 1f, blurs = false, glassText = false),
 }
 
 object LagoonGlass {
@@ -43,7 +46,7 @@ object LagoonGlass {
     const val saturation = 1.5f
 
     /** The blurred backdrop is dimmed to this brightness before the tint, so a white backdrop cannot wash text out. */
-    const val backdropDim = 0.8f
+    const val backdropDim = 0.75f
 
     /** Haze's own grain on blurred glass; tuned in the showcase to match [noiseAlpha] on the fallback. */
     const val hazeNoise = 0.08f

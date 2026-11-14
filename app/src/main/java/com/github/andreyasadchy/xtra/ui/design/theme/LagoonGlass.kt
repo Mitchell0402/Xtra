@@ -14,7 +14,10 @@ enum class GlassLevel(
     val base: (LagoonColors) -> Color,
     /** Tint over the blurred backdrop. */
     val blurAlpha: Float,
-    /** Tint when nothing is blurred (fallback): the material without the blur. */
+    /**
+     * Tint when nothing is blurred (fallback): the material without the blur. Opaque since stage G's screenshots: at
+     * the plan's 94 % the white titles of the cards underneath showed through the pill as ghost text.
+     */
     val solidAlpha: Float,
     /** Whether this grade may blur at all. */
     val blurs: Boolean,
@@ -22,10 +25,10 @@ enum class GlassLevel(
     val glassText: Boolean,
 ) {
     /** Floating controls: navigation pill and rail, segment tabs, floating buttons, toasts. */
-    Float({ it.control }, blurAlpha = 0.72f, solidAlpha = 0.94f, blurs = true, glassText = true),
+    Float({ it.control }, blurAlpha = 0.72f, solidAlpha = 1f, blurs = true, glassText = true),
 
     /** A bar across the page (kept for U6/U7 bars; G uses it nowhere by default). */
-    Bar({ it.page }, blurAlpha = 0.75f, solidAlpha = 0.94f, blurs = true, glassText = true),
+    Bar({ it.page }, blurAlpha = 0.75f, solidAlpha = 1f, blurs = true, glassText = true),
 
     /**
      * Sheets, menus and dialogs: their own window over a 60 % scrim, never blurred. Opaque (the plan had 94 %): without

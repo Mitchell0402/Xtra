@@ -98,8 +98,27 @@ U4 认领的行已在 `feature-inventory.md` 勾选：7 个导航目的地、5 �
 
 ## 5. 性能与体积
 
-PERF_PLACEHOLDER
+冷启动在你 2026-11-15 定下的安排里留到 U8 处理，这一阶段的要求是“不能更慢”。
+
+**真机（OnePlus 15，Android 17，亮屏解锁）**
+
+| 指标 | v0.1 | master（合并 U4 之前，6a1fd4c5） | U4 | 说明 |
+| --- | --- | --- | --- | --- |
+| 冷启动 `am start -W`，两包都 `speed-profile` 编译，与 v0.1 交替各 10 次、新装后各测两轮 | 122.5–131.5 毫秒 | 105.5% / 105.3% | 106.4% / 100.4% | U4 与 master 在同一水平，都在 110% 门槛内 |
+| 游戏列表滚动卡顿帧比例（Macrobenchmark `scrollGames`，各 10 次中位数） | 1.77% | — | 0.70% | 真机门槛 < 5%，且不高于 v0.1：通过 |
+| 滚动帧 CPU 耗时 P50 / P90 | 2.88 / 6.31 毫秒 | — | 4.08 / 6.02 毫秒 | 参考 |
+| 冷启动 Macrobenchmark（默认编译，各 10 次中位数） | 189.8 毫秒 | — | 256.8 毫秒（135%） | 默认编译下 v0.1 包没有基线配置文件、新包有，两边条件不同；这组只作参考，和 U3 时记下的差距一致，留给 U8 |
+
+另外一次 `am start -W` 测量里手机中途锁了屏，那组数据作废。
+
+**模拟器（SwiftShader 软件渲染）**：Macrobenchmark 冷启动 v0.1 1018 毫秒、U4 1460 毫秒；滚动帧 CPU P50 25.8 对 50.0 毫秒。G 阶段起模拟器上的 Compose 加玻璃页面一律比 v0.1 慢一截（GPU 工作全在 CPU 上），只作能跑通的证明，不作门槛（同 g-report 第 6 节）。
+
+**真机上的转场**：录屏（31 fps）逐帧看过，从网格打开游戏页时封面从海报飞到页头；慢速返回手势时封面跟着手指退回原位，网格一直在下面，没有空白帧或闪烁。
+
+**安装包体积（qa 包）**：37.10 MB；v0.1 36.04 MB（+1.06 MB，门槛 4 MB），U3 37.04 MB。
+
+数据：`E:/Projects/Lagoon-baseline/results/phone-compare-v01-vs-u4.json`、`compare-v01-vs-u4.json`（模拟器），对比用的 master 测试包 `master-6a1fd4c5-bench.apk`。
 
 ## 6. 交付
 
-- qa 包：`E:/Projects/Lagoon-baseline/u4/lagoon-u4-qa.apk`（调试密钥签名，包名 `io.github.mitchell0402.lagoon.qa`），混淆映射在同一目录。
+- qa 包：`E:/Projects/Lagoon-baseline/u4/lagoon-u4-qa.apk`（调试密钥签名，包名 `io.github.mitchell0402.lagoon.qa`），混淆映射在同一目录。已经装到你的手机上（覆盖 U3 的 qa 包）。

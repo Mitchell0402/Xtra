@@ -7,6 +7,10 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlassDecor
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
@@ -77,8 +81,16 @@ fun LagoonTheme(
             bodySmall = type.label, labelLarge = type.labelStrong, labelMedium = type.label, labelSmall = type.caption,
         )
     }
+    // glass decorations from the third frame on (see LocalGlassDecor)
+    val glassDecor = remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        withFrameNanos { }
+        glassDecor.value = true
+    }
     MaterialTheme(colorScheme = scheme, typography = typography) {
         CompositionLocalProvider(
+            LocalGlassDecor provides glassDecor,
             LocalLagoonColors provides colors,
             LocalLagoonType provides type,
             LocalLagoonMotion provides motion,

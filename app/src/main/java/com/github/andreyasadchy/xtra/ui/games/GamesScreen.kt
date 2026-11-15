@@ -35,6 +35,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,6 +99,7 @@ const val GamesGridTag = "gamesGrid"
  *
  * @param posterModifier marks a poster's box art as the shared element of the poster-to-page transition.
  */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun GamesScreen(
     root: Boolean,
@@ -138,7 +140,8 @@ fun GamesScreen(
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val listTop = statusTop + TopBarExpanded
     val removeTag: (FilterTag) -> Unit = { tag -> actions.applyFilter(filter.copy(tags = filter.tags - tag)) }
-    Box(modifier.fillMaxSize()) {
+    // the grid's test tag doubles as a resource id for the macrobenchmark's scroll test (plan 10.4)
+    Box(modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
         GlassBackdrop(Modifier.fillMaxSize().then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)) {
             CompositionLocalProvider(LocalBrowseOffline provides offline) {
                 LagoonPullToRefresh(

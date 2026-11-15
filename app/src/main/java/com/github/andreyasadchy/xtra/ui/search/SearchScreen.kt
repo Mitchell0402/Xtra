@@ -196,7 +196,8 @@ fun SearchScreen(
     // a common multiple, so card rows and poster rows can share one grid
     val posterColumns = posterColumns(widthDp)
     val columns = lcm(cardColumns, posterColumns)
-    LaunchedEffect(Unit) { if (autoFocus) focus.requestFocus() }
+    // the keyboard comes up for a new search, not when coming back to results
+    LaunchedEffect(Unit) { if (autoFocus && query.isEmpty()) focus.requestFocus() }
     // v0.1 searched 750 ms after the last key; results now follow the typing more closely
     LaunchedEffect(query) {
         if (query.isNotBlank()) delay(300)
@@ -267,7 +268,19 @@ fun SearchScreen(
                                     val items = results.of(group)
                                     items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading)
                                 }
-                                if (allEmpty) {
+                                val allFailed = groups.all { group ->
+                                    val items = results.of(group)
+                                    items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.Error)
+                                }
+                                if (allFailed) {
+                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "error") {
+                                        ErrorState(
+                                            message = stringResource(if (offline) R.string.no_connection else R.string.following_load_error),
+                                            onRetry = { groups.forEach { results.of(it)?.refresh() } },
+                                            modifier = Modifier.padding(top = 32.dp),
+                                        )
+                                    }
+                                } else if (allEmpty) {
                                     item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
                                         EmptyState(stringResource(R.string.browse_search_empty, query.trim()), icon = LucideIcons.Search, modifier = Modifier.padding(top = 24.dp))
                                     }

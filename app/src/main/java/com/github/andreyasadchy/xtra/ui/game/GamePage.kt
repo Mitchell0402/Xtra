@@ -88,7 +88,6 @@ class GamePage(
     private val hasHelixToken get() = !TwitchApiHelper.getHelixHeaders(context)[C.HEADER_TOKEN].isNullOrBlank()
     private val networkLibrary get() = context.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP)
     private val enableIntegrity get() = context.prefs().getBoolean(C.ENABLE_INTEGRITY, false)
-    private var toast: ToastHostState? = null
     private var refreshLists: () -> Unit = {}
 
     /** v0.1's initialize(): the lists' first filters from the remembered choices, the game, follow state, local update. */
@@ -267,7 +266,6 @@ class GamePage(
         val positions by remember { videos.positions }.collectAsState(emptyList())
         val bookmarks by remember { videos.bookmarks }.collectAsState(emptyList())
         val online by mainViewModel.isNetworkAvailable.collectAsState()
-        this.toast = toast
         refreshLists = { streamItems.refresh(); videoItems.refresh(); clipItems.refresh() }
 
         LaunchedEffect(Unit) {

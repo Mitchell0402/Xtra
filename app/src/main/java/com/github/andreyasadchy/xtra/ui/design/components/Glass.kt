@@ -6,6 +6,7 @@ import android.graphics.Shader
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -60,6 +61,16 @@ class GlassContext(val state: HazeState?, val blur: Boolean) {
 }
 
 val LocalGlass = staticCompositionLocalOf { GlassContext.Solid }
+
+/**
+ * Whether the glass decorations (grain, top highlight, the backdrop's ambient light) draw yet. LagoonTheme turns it
+ * on from the third frame: each of them is a GPU program of its own, and compiling them all for the first frame
+ * delayed cold start (U3 trace: 23 shader compiles on the first frame instead of 7). Read in the draw phase only, so
+ * switching it on redraws without recomposing. Always on in tests and previews.
+ */
+val LocalGlassDecor = staticCompositionLocalOf<State<Boolean>> { AlwaysOn }
+
+private val AlwaysOn: State<Boolean> = object : State<Boolean> { override val value = true }
 
 /** Marks a surface that draws real blur, for the blur-area test (glass plan section 7). */
 val GlassBlurKey = SemanticsPropertyKey<Boolean>("GlassBlur")
@@ -137,6 +148,7 @@ fun GlassSurface(
 fun GlassBackdrop(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val colors = Lagoon.colors
     val glass = LocalGlass.current
+    val decor = LocalGlassDecor.current
     Box(
         modifier
             .then(if (glass.canBlur) Modifier.hazeSource(glass.state!!) else Modifier)
@@ -148,7 +160,7 @@ fun GlassBackdrop(modifier: Modifier = Modifier, content: @Composable BoxScope.(
                 )
                 onDrawBehind {
                     drawRect(colors.page)
-                    drawRect(glow)
+                    if (decor.value) drawRect(glow)
                 }
             },
     ) {
@@ -174,7 +186,8 @@ fun Modifier.glassSolid(level: GlassLevel, shape: Shape, highlight: Boolean = tr
 @Composable
 fun Modifier.glassNoise(alpha: Float = LagoonGlass.noiseAlpha): Modifier {
     val brush = rememberNoiseBrush(LocalDensity.current)
-    return drawBehind { drawRect(brush, alpha = alpha) }
+    val decor = LocalGlassDecor.current
+    return drawBehind { if (decor.value) drawRect(brush, alpha = alpha) }
 }
 
 @Composable
@@ -193,7 +206,13 @@ private fun rememberNoiseBrush(density: Density): ShaderBrush {
 private var noiseBitmap: android.graphics.Bitmap? = null
 
 /** The thin highlight along the top edge, following the shape's corners and fading out by half the height. */
-fun Modifier.glassHighlight(shape: Shape): Modifier = drawWithCache {
+@Composable
+fun Modifier.glassHighlight(shape: Shape): Modifier {
+    val decor = LocalGlassDecor.current
+    return highlight(shape, decor)
+}
+
+private fun Modifier.highlight(shape: Shape, decor: State<Boolean>): Modifier = drawWithCache {
     val width = LagoonGlass.highlightWidth.toPx()
     val inset = width / 2f
     val outline = shape.createOutline(Size(size.width - width, size.height - width), layoutDirection, this)
@@ -205,6 +224,6 @@ fun Modifier.glassHighlight(shape: Shape): Modifier = drawWithCache {
     )
     onDrawWithContent {
         drawContent()
-        translate(inset, inset) { drawOutline(outline, brush, style = Stroke(width)) }
+        if (decor.value) translate(inset, inset) { drawOutline(outline, brush, style = Stroke(width)) }
     }
 }

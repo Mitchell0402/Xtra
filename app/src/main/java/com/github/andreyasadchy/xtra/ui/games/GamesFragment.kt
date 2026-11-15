@@ -1,244 +1,240 @@
 package com.github.andreyasadchy.xtra.ui.games
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.stringResource
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupWithNavController
-import androidx.paging.PagingData
-import androidx.paging.PagingDataAdapter
-import androidx.recyclerview.widget.RecyclerView
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.R
-import com.github.andreyasadchy.xtra.databinding.FragmentGamesBinding
 import com.github.andreyasadchy.xtra.model.ui.Game
 import com.github.andreyasadchy.xtra.model.ui.Tag
-import com.github.andreyasadchy.xtra.ui.common.GamesAdapter
-import com.github.andreyasadchy.xtra.ui.common.PagedListFragment
+import com.github.andreyasadchy.xtra.ui.browse.BrowseFilter
+import com.github.andreyasadchy.xtra.ui.browse.FilterLogic
+import com.github.andreyasadchy.xtra.ui.browse.FilterTag
+import com.github.andreyasadchy.xtra.ui.browse.FragmentBrowseActions
+import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
+import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
+import com.github.andreyasadchy.xtra.ui.common.SearchTagsViewModel
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.following.AccountSheet
+import com.github.andreyasadchy.xtra.ui.following.ConfirmSheet
+import com.github.andreyasadchy.xtra.ui.following.FollowingAccount
+import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
+import com.github.andreyasadchy.xtra.ui.game.GamePage
 import com.github.andreyasadchy.xtra.ui.games.GamesViewModel.Companion.GamesViewModelFactory
-import com.github.andreyasadchy.xtra.ui.login.LoginActivity
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
+import com.github.andreyasadchy.xtra.ui.main.MainViewModel
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
-class GamesFragment : PagedListFragment(), Scrollable, GamesSortDialog.OnFilter {
+/**
+ * The Browse page in Compose (U4): the games grid, and a game opened from it as a page over the grid in the same
+ * composition, for the box-art shared transition and gesture-following back (plan 5 and 10.6 U4). Also the "games
+ * with this tag" destination. It stays a Fragment of the old navigation graph until U8.
+ */
+class GamesFragment : Fragment(), Scrollable, IntegrityDialog.Listener, GamesGridActions {
 
-    private var _binding: FragmentGamesBinding? = null
-    private val binding get() = _binding!!
     private val args: GamesFragmentArgs by navArgs()
     private val viewModel: GamesViewModel by viewModels { GamesViewModelFactory }
-    private lateinit var pagingAdapter: PagingDataAdapter<Game, out RecyclerView.ViewHolder>
+    private val tagsViewModel: SearchTagsViewModel by viewModels { SearchTagsViewModel.SearchTagsViewModelFactory }
+    private val detail: BrowseDetailViewModel by viewModels { BrowseDetailViewModel.Factory }
+    private val mainViewModel: MainViewModel by activityViewModels { MainViewModel.Companion.MainViewModelFactory }
+    private val pages = mutableMapOf<String, GamePage>()
+    private val scrollToTopRequests = mutableIntStateOf(0)
+    private val refreshRequests = mutableIntStateOf(0)
+    private val accountRequests = mutableIntStateOf(0)
+    private val actions by lazy { object : FragmentBrowseActions(this@GamesFragment) {
+        override fun toggleBookmark(video: com.github.andreyasadchy.xtra.model.ui.Video) {}
+    } }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        tagsViewModel.getGameTags = true
+        // v0.1 initialize(): the tags from the link, kept when the page comes back
+        if (viewModel.filter.value == null) {
+            viewModel.setFilter(viewModel.tags.ifEmpty { args.tags })
+        }
+    }
+
+    private fun page(ref: GameRef): GamePage = pages.getOrPut(ref.key) {
+        GamePage(this, detail.owner(ref.key), ref.args(), mainViewModel) { detail.close() }.also { it.start() }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentGamesBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        with(binding) {
-            val activity = requireActivity() as MainActivity
-            val isLoggedIn = !TwitchApiHelper.getGQLHeaders(requireContext(), true)[C.HEADER_TOKEN].isNullOrBlank() ||
-                    !TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()
-            val navController = findNavController()
-            val appBarConfiguration = AppBarConfiguration(setOf(R.id.rootGamesFragment, R.id.rootTopFragment, R.id.followPagerFragment, R.id.followMediaFragment, R.id.savedPagerFragment, R.id.savedMediaFragment))
-            toolbar.setupWithNavController(navController, appBarConfiguration)
-            toolbar.menu.findItem(R.id.login).title = if (isLoggedIn) getString(R.string.log_out) else getString(R.string.log_in)
-            toolbar.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.search -> {
-                        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
-                        true
-                    }
-                    R.id.settings -> {
-                        activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
-                        true
-                    }
-                    R.id.login -> {
-                        if (isLoggedIn) {
-                            activity.getAlertDialogBuilder().apply {
-                                setTitle(getString(R.string.logout_title))
-                                requireContext().tokenPrefs().getString(C.USERNAME, null)?.let { setMessage(getString(R.string.logout_msg, it)) }
-                                setNegativeButton(getString(R.string.no), null)
-                                setPositiveButton(getString(R.string.yes)) { _, _ -> activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java)) }
-                            }.show()
-                        } else {
-                            activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
+        val context = requireContext()
+        val prefs = context.prefs()
+        val root = args.tags.isNullOrEmpty()
+        val shell = (activity as? ShellHost)?.shell
+        val options = FollowingListOptions(
+            nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
+            showTags = prefs.getBoolean(C.UI_TAGS, true),
+            truncateCounts = prefs.getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
+            showBroadcasters = prefs.getBoolean(C.UI_BROADCASTERS_COUNT, true),
+        )
+        val gqlToken = TwitchApiHelper.getGQLHeaders(context, true)[C.HEADER_TOKEN]
+        val loggedIn = !gqlToken.isNullOrBlank() || !TwitchApiHelper.getHelixHeaders(context)[C.HEADER_TOKEN].isNullOrBlank()
+        val account = FollowingAccount(loggedIn, context.tokenPrefs().getString(C.USERNAME, null))
+        return ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LagoonTheme {
+                    val filterValue by viewModel.filter.collectAsState()
+                    val games = (if (filterValue != null) viewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+                    val tagResults = tagsViewModel.flow.collectAsLazyPagingItems()
+                    val open by detail.open.collectAsState()
+                    val online by mainViewModel.isNetworkAvailable.collectAsState()
+                    val grid = rememberLazyGridState()
+                    val toast = rememberToastHostState()
+                    var accountSheet by rememberSaveable { mutableStateOf(false) }
+                    var logOutSheet by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(accountRequests.intValue) { if (accountRequests.intValue > 0) accountSheet = true }
+                    LaunchedEffect(refreshRequests.intValue) { if (refreshRequests.intValue > 0) games.refresh() }
+                    LaunchedEffect(Unit) {
+                        var wasOnline = mainViewModel.isNetworkAvailable.value ?: context.hasValidatedNetwork()
+                        mainViewModel.isNetworkAvailable.collectLatest { now ->
+                            if (now == true && !wasOnline) games.retry()
+                            if (now != null) wasOnline = now
                         }
-                        true
                     }
-                    else -> false
-                }
-            }
-            if (requireContext().prefs().getBoolean(C.UI_THEME_APPBAR_LIFT, true)) {
-                recyclerViewLayout.recyclerView.let {
-                    appBar.setLiftOnScrollTargetView(it)
-                    it.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                            super.onScrolled(recyclerView, dx, dy)
-                            appBar.isLifted = recyclerView.canScrollVertically(-1)
-                        }
-                    })
-                    it.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                        appBar.isLifted = it.canScrollVertically(-1)
-                    }
-                }
-            } else {
-                appBar.setLiftable(false)
-                appBar.background = null
-            }
-            ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                toolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    topMargin = insets.top
-                }
-                if (activity.findViewById<LinearLayout>(R.id.navBarContainer)?.isVisible == false) {
-                    val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    recyclerViewLayout.recyclerView.updatePadding(bottom = systemBars.bottom)
-                }
-                WindowInsetsCompat.CONSUMED
-            }
-        }
-        pagingAdapter = GamesAdapter(this) { addTag(it) }
-        setAdapter(binding.recyclerViewLayout.recyclerView, pagingAdapter)
-    }
-
-    override fun initialize() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            if (viewModel.filter.value == null) {
-                viewModel.setFilter(viewModel.tags.ifEmpty { args.tags })
-                viewModel.filtersText.value = if (viewModel.tags.isNotEmpty()) {
-                    buildString {
-                        append(
-                            resources.getQuantityString(
-                                R.plurals.tags,
-                                viewModel.tags.size,
-                                viewModel.tags.mapNotNull { it.name }.joinToString()
-                            )
+                    val offline = online == false || (online == null && !context.hasValidatedNetwork())
+                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+                    val navScroll = shell?.hideOnScroll?.nestedScrollConnection
+                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+                        BrowseDetailHost(
+                            open = open,
+                            onClose = detail::close,
+                            onSettled = { settled ->
+                                detail.release(settled?.key)
+                                pages.keys.retainAll(setOfNotNull(settled?.key))
+                            },
+                            backEnabled = shell?.playerMaximized != true,
+                            grid = { share ->
+                                GamesScreen(
+                                    root = root,
+                                    games = games.takeIf { filterValue != null },
+                                    filter = BrowseFilter(tags = viewModel.tags.map { FilterTag(it.id, it.name.orEmpty()) }),
+                                    options = options,
+                                    actions = this@GamesFragment,
+                                    grid = grid,
+                                    tagResults = tagResults,
+                                    posterModifier = { game -> Modifier.sharedBoxArt(share, GameRef(game.id, game.slug, game.name, game.boxArt).key) },
+                                    bottomPadding = bottom,
+                                    navScroll = navScroll,
+                                    scrollToTopRequests = scrollToTopRequests.intValue,
+                                    toast = toast,
+                                    offline = offline,
+                                )
+                            },
+                            detail = { ref, share ->
+                                val page = remember(ref.key) { page(ref) }
+                                page.Content(
+                                    bottomPadding = bottom,
+                                    navScroll = navScroll,
+                                    scrollToTopRequests = 0,
+                                    toast = toast,
+                                    boxArtModifier = Modifier.sharedBoxArt(share, ref.key),
+                                )
+                            },
                         )
                     }
-                } else null
-            }
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.flow.collectLatest { pagingData ->
-                    pagingAdapter.submitData(pagingData)
-                }
-            }
-        }
-        val enableScrollTopButton = !args.tags.isNullOrEmpty()
-        initializeAdapter(binding.recyclerViewLayout, pagingAdapter, enableScrollTopButton = enableScrollTopButton)
-        if (enableScrollTopButton && requireContext().prefs().getBoolean(C.UI_SCROLL_TOP, true)) {
-            binding.recyclerViewLayout.scrollTop.setOnClickListener {
-                scrollToTop()
-                it.visibility = View.GONE
-            }
-        }
-        with(binding) {
-            sortBar.root.visibility = View.VISIBLE
-            sortBar.root.setOnClickListener {
-                val tags = viewModel.tags.mapNotNull { tag ->
-                    if (tag.id != null && tag.name != null) {
-                        tag.id to tag.name
-                    } else null
-                }.toMap()
-                GamesSortDialog.newInstance(
-                    tagIds = tags.keys.toTypedArray(),
-                    tagNames = tags.values.toTypedArray(),
-                ).show(childFragmentManager, null)
-            }
-            sortBar.sortText.visibility = View.GONE
-            viewLifecycleOwner.lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    viewModel.filtersText.collectLatest {
-                        if (it != null) {
-                            sortBar.filtersText.visibility = View.VISIBLE
-                            sortBar.filtersText.text = it
-                        } else {
-                            sortBar.filtersText.visibility = View.GONE
-                        }
+                    if (accountSheet) {
+                        AccountSheet(
+                            account,
+                            onSettings = actions::settings,
+                            onLogIn = actions::logIn,
+                            onDismiss = { accountSheet = false },
+                            onLogOut = { logOutSheet = true },
+                        )
+                    }
+                    if (logOutSheet) {
+                        ConfirmSheet(
+                            title = stringResource(R.string.following_log_out_confirm, account.name ?: ""),
+                            message = stringResource(R.string.following_log_out_message),
+                            confirm = stringResource(R.string.following_log_out),
+                            onConfirm = actions::logOut,
+                            onDismiss = { logOutSheet = false },
+                        )
                     }
                 }
             }
         }
     }
 
-    private fun addTag(tag: Tag) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            pagingAdapter.submitData(PagingData.empty())
-            val tags = viewModel.tags.plus(tag).sortedBy { it.id }.toTypedArray()
-            viewModel.setFilter(tags)
-            viewModel.filtersText.value = buildString {
-                append(
-                    resources.getQuantityString(
-                        R.plurals.tags,
-                        viewModel.tags.size,
-                        viewModel.tags.mapNotNull { it.name }.joinToString()
-                    )
-                )
-            }
-        }
-    }
-
-    override fun onChange(tags: Array<Tag>) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            pagingAdapter.submitData(PagingData.empty())
-            viewModel.setFilter(tags)
-            viewModel.filtersText.value = if (viewModel.tags.isNotEmpty()) {
-                buildString {
-                    append(
-                        resources.getQuantityString(
-                            R.plurals.tags,
-                            viewModel.tags.size,
-                            viewModel.tags.mapNotNull { it.name }.joinToString()
-                        )
-                    )
-                }
-            } else null
-        }
-    }
-
+    /** A tap on the current tab: closes an open game first (v0.1 popped back to the tab's first page), else scrolls up. */
     override fun scrollToTop() {
-        with(binding) {
-            appBar.setExpanded(true, true)
-            recyclerViewLayout.recyclerView.scrollToPosition(0)
-        }
-    }
-
-    override fun onNetworkRestored() {
-        pagingAdapter.retry()
+        if (detail.open.value != null) detail.close() else scrollToTopRequests.intValue++
     }
 
     override fun onIntegrityTokenLoaded(callback: String?) {
-        when (callback) {
-            "refresh" -> {
-                pagingAdapter.refresh()
+        val open = detail.open.value
+        if (open != null) {
+            page(open).onIntegrityTokenLoaded(callback)
+        } else if (callback == FragmentBrowseActions.CALLBACK_REFRESH) {
+            refreshRequests.intValue++
+        }
+    }
+
+    // GamesGridActions
+
+    override fun openGame(game: Game) {
+        detail.open(GameRef(game.id, game.slug, game.name, game.boxArt))
+    }
+
+    override fun search() = actions.search()
+
+    override fun account() {
+        accountRequests.intValue++
+    }
+
+    override fun back() = actions.back()
+
+    /** GamesFragment.onChange in v0.1: the tags sorted by id, the list reloaded only when they changed. */
+    override fun applyFilter(filter: BrowseFilter) {
+        val new = FilterLogic.normalizeGames(filter)
+        val old = BrowseFilter(tags = viewModel.tags.map { FilterTag(it.id, it.name.orEmpty()) })
+        if (FilterLogic.changed(old, new)) {
+            lifecycleScope.launch {
+                viewModel.setFilter(new.tags.map { Tag(id = it.id, name = it.name) }.toTypedArray())
             }
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    override fun tagQuery(query: String) {
+        tagsViewModel.setQuery(query)
     }
+
+    override fun integrityCheckFailed() = actions.integrityCheckFailed()
 }

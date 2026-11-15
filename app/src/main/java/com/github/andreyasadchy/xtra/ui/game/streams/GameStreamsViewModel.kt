@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.github.andreyasadchy.xtra.ui.game.GameArgsKey
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.graphql.type.Language
 import com.github.andreyasadchy.xtra.graphql.type.StreamSort
@@ -21,7 +22,7 @@ import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.SavedFiltersRepository
 import com.github.andreyasadchy.xtra.repository.datasource.GameStreamsDataSource
-import com.github.andreyasadchy.xtra.ui.common.StreamsSortDialog
+import com.github.andreyasadchy.xtra.ui.common.StreamSorts
 import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
@@ -45,7 +46,7 @@ class GameStreamsViewModel(
     val filtersText = MutableStateFlow<CharSequence?>(null)
 
     val sort: String
-        get() = filter.value?.sort ?: StreamsSortDialog.SORT_VIEWERS
+        get() = filter.value?.sort ?: StreamSorts.SORT_VIEWERS
     val tags: Array<String>
         get() = filter.value?.tags ?: emptyArray()
     val languages: Array<String>
@@ -68,16 +69,16 @@ class GameStreamsViewModel(
                     Language.entries.find { it.rawValue == language }
                 },
                 gqlQuerySort = when (sort) {
-                    StreamsSortDialog.SORT_VIEWERS -> StreamSort.VIEWER_COUNT
-                    StreamsSortDialog.SORT_VIEWERS_ASC -> StreamSort.VIEWER_COUNT_ASC
-                    StreamsSortDialog.RECENT -> StreamSort.RECENT
+                    StreamSorts.SORT_VIEWERS -> StreamSort.VIEWER_COUNT
+                    StreamSorts.SORT_VIEWERS_ASC -> StreamSort.VIEWER_COUNT_ASC
+                    StreamSorts.RECENT -> StreamSort.RECENT
                     else -> StreamSort.VIEWER_COUNT
                 },
                 gqlLanguages = languages.ifEmpty { null }?.toList(),
                 gqlSort = when (sort) {
-                    StreamsSortDialog.SORT_VIEWERS -> "VIEWER_COUNT"
-                    StreamsSortDialog.SORT_VIEWERS_ASC -> "VIEWER_COUNT_ASC"
-                    StreamsSortDialog.RECENT -> "RECENT"
+                    StreamSorts.SORT_VIEWERS -> "VIEWER_COUNT"
+                    StreamSorts.SORT_VIEWERS_ASC -> "VIEWER_COUNT_ASC"
+                    StreamSorts.RECENT -> "RECENT"
                     else -> "VIEWER_COUNT"
                 },
                 tags = tags.ifEmpty { null }?.toList(),
@@ -120,7 +121,7 @@ class GameStreamsViewModel(
     companion object {
         val GameStreamsViewModelFactory = viewModelFactory {
             initializer {
-                val savedStateHandle = createSavedStateHandle()
+                val savedStateHandle = this[GameArgsKey]?.toSavedStateHandle() ?: createSavedStateHandle()
                 val application = (this[APPLICATION_KEY] as XtraApp)
                 val xtraModule = application.xtraModule
                 GameStreamsViewModel(application.applicationContext, xtraModule.gameSortRepository, xtraModule.savedFiltersRepository, xtraModule.graphQLRepository, xtraModule.helixRepository, savedStateHandle)

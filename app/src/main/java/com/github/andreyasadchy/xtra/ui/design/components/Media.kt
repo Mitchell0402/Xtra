@@ -79,7 +79,9 @@ fun LagoonImage(
     AsyncImage(
         model = model,
         contentDescription = contentDescription,
-        modifier = modifier.graphicsLayer { this.alpha = alpha.value },
+        // read at draw time: an image from the memory cache shows on its first frame, before the effect has run
+        // (a poster coming back in the box-art transition must never be blank for a frame, U4)
+        modifier = modifier.graphicsLayer { this.alpha = if (fadeIn == false) 1f else alpha.value },
         contentScale = contentScale,
         onSuccess = { state -> fadeIn = (state.result as? SuccessResult)?.dataSource != DataSource.MEMORY_CACHE },
     )

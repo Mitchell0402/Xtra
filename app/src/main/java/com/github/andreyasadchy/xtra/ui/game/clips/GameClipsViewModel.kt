@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.github.andreyasadchy.xtra.ui.game.GameArgsKey
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.graphql.type.ClipsPeriod
 import com.github.andreyasadchy.xtra.graphql.type.Language
@@ -129,7 +130,7 @@ class GameClipsViewModel(
     companion object {
         val GameClipsViewModelFactory = viewModelFactory {
             initializer {
-                val savedStateHandle = createSavedStateHandle()
+                val savedStateHandle = this[GameArgsKey]?.toSavedStateHandle() ?: createSavedStateHandle()
                 val application = (this[APPLICATION_KEY] as XtraApp)
                 val xtraModule = application.xtraModule
                 GameClipsViewModel(application.applicationContext, xtraModule.gameSortRepository, xtraModule.graphQLRepository, xtraModule.helixRepository, savedStateHandle)

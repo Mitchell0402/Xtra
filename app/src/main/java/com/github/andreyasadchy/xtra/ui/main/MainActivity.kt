@@ -122,6 +122,13 @@ class MainActivity : AppCompatActivity(), ShellHost {
         const val INTENT_OPEN_PLAYER = "com.github.andreyasadchy.xtra.OPEN_PLAYER"
         const val INTENT_START_AUDIO_ONLY = "com.github.andreyasadchy.xtra.START_AUDIO_ONLY"
         const val INTENT_PLAY_PAUSE_PLAYER = "com.github.andreyasadchy.xtra.PLAY_PAUSE_PLAYER"
+
+        /** Destinations drawn in Compose: they fill the window and scroll under the floating navigation. */
+        val ComposeDestinations = setOf(
+            R.id.followPagerFragment, R.id.followMediaFragment, // U2
+            R.id.rootGamesFragment, R.id.gamesFragment, R.id.gamePagerFragment, R.id.gameMediaFragment, // U4
+            R.id.rootTopFragment, R.id.topFragment, R.id.searchPagerFragment, // U4
+        )
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -1079,7 +1086,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
         binding.navBarContainer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateShellPadding() }
         navController.addOnDestinationChangedListener { _, destination, _ ->
             ShellTabs.indexOf(state.tabs, destination.id).takeIf { it != -1 }?.let { state.selectedIndex = it }
-            state.legacyPage = destination.id != R.id.followPagerFragment && destination.id != R.id.followMediaFragment
+            state.legacyPage = destination.id !in ComposeDestinations
             updateShellPadding()
         }
         addOnPictureInPictureModeChangedListener { info ->
@@ -1127,6 +1134,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
         val player = playerFragment as? PlayerFragment
         val maximized = player != null && player.isPlayerMaximized()
         shell?.miniPlayer = player != null && !maximized
+        shell?.playerMaximized = maximized
         // the maximized player covers the shell; keep screen readers off the pages and navigation underneath
         val accessibility = if (maximized) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
         binding.navBarContainer.importantForAccessibility = accessibility

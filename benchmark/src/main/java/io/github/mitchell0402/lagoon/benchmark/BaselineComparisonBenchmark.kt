@@ -9,7 +9,6 @@ import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
-import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,11 +51,15 @@ class BaselineComparisonBenchmark(private val run: Int, private val pkg: String)
         setupBlock = {
             pressHome()
             startActivityAndWait(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.twitch.tv/directory")).setPackage(pkg))
-            device.wait(Until.hasObject(By.res(pkg, "recyclerView")), 15_000)
+            // v0.1: the RecyclerView; since U4: the Compose grid, its test tag exposed as resource id
+            val deadline = System.currentTimeMillis() + 15_000
+            while (System.currentTimeMillis() < deadline && !device.hasObject(By.res(pkg, "recyclerView")) && !device.hasObject(By.res(GAMES_GRID))) {
+                Thread.sleep(200)
+            }
             Thread.sleep(3000) // let the first page and its images arrive
         },
     ) {
-        val list = device.findObject(By.res(pkg, "recyclerView")) ?: error("games list not found")
+        val list = device.findObject(By.res(pkg, "recyclerView")) ?: device.findObject(By.res(GAMES_GRID)) ?: error("games list not found")
         list.setGestureMargin(device.displayWidth / 5)
         repeat(3) { list.fling(Direction.DOWN); device.waitForIdle() }
         repeat(3) { list.fling(Direction.UP); device.waitForIdle() }
@@ -64,6 +67,7 @@ class BaselineComparisonBenchmark(private val run: Int, private val pkg: String)
 
     companion object {
         const val BASELINE = "io.github.mitchell0402.lagoon.bench.v01"
+        const val GAMES_GRID = "gamesGrid"
 
         @JvmStatic
         @Parameterized.Parameters(name = "{0}-{1}")

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U4: Browse, game pages, streams by tag, search -->
+<resources>
+    <string name="browse_back">Back</string>
+    <string name="browse_filter_title">Sort and filter</string>
+    <string name="browse_filter_tags">Tags</string>
+    <string name="browse_filter_any_language">Any language</string>
+    <string name="browse_filter_more">%1$s +%2$d</string>
+    <string name="browse_filter_no_tags">None</string>
+    <string name="browse_filter_clear">Clear</string>
+    <string name="browse_filter_reset">Reset</string>
+    <string name="browse_filter_remember_description">This game opens with these choices next time</string>
+    <string name="browse_filter_default_description">Every game without its own choices opens with these</string>
+    <string name="browse_filter_default_top_description">This page opens with these choices next time</string>
+    <string name="browse_filter_save_filters_description">Keep the tags and languages under Filters on the Me page</string>
+    <string name="browse_filter_tags_hint">Type to find tags. Chosen tags show above.</string>
+    <string name="browse_filter_tags_none">No tags found</string>
+    <string name="browse_filter_tags_error">Could not load tags. Check the connection and try again.</string>
+    <string name="browse_games_empty">No games to show right now.</string>
+    <string name="browse_games_empty_tags">No games have all of these tags.</string>
+    <string name="browse_game_empty_live">Nobody is streaming this game with these filters right now.</string>
+    <string name="browse_game_empty_videos">No videos of this game with these filters.</string>
+    <string name="browse_game_empty_clips">No clips of this game in this period.</string>
+    <string name="browse_streams_empty">No live streams with these filters right now.</string>
+    <string name="browse_search_placeholder">Channels, streams, games, videos</string>
+    <string name="browse_search_recent">Recent searches</string>
+    <string name="browse_search_clear_recent">Clear</string>
+    <string name="browse_search_forget">Remove %s from recent searches</string>
+    <string name="browse_search_hint">Search for channels, live streams, games and videos.</string>
+    <string name="browse_search_empty">Nothing found for “%s”.</string>
+    <string name="browse_search_see_all">See all</string>
+    <string name="browse_search_look_up">Look up</string>
+</resources>

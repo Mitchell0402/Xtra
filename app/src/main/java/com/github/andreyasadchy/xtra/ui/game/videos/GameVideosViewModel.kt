@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.github.andreyasadchy.xtra.ui.game.GameArgsKey
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.graphql.type.BroadcastType
 import com.github.andreyasadchy.xtra.graphql.type.VideoSort
@@ -373,7 +374,7 @@ class GameVideosViewModel(
     companion object {
         val GameVideosViewModelFactory = viewModelFactory {
             initializer {
-                val savedStateHandle = createSavedStateHandle()
+                val savedStateHandle = this[GameArgsKey]?.toSavedStateHandle() ?: createSavedStateHandle()
                 val application = (this[APPLICATION_KEY] as XtraApp)
                 val xtraModule = application.xtraModule
                 GameVideosViewModel(application.applicationContext, xtraModule.gameSortRepository, xtraModule.playerRepository, xtraModule.bookmarksRepository, xtraModule.graphQLRepository, xtraModule.helixRepository, xtraModule.httpEngine, xtraModule.cronetEngine, xtraModule.cronetExecutor, xtraModule.okHttpClient, savedStateHandle)

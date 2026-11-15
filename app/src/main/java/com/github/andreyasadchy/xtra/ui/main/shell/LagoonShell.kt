@@ -48,6 +48,9 @@ class ShellState(val tabs: List<ShellTab>) {
     /** The mini player is on screen: the pill stays put so the two never move against each other (plan 7.4). */
     var miniPlayer by mutableStateOf(false)
 
+    /** The player covers the window: pages leave the back gesture to it (U4, Browse's game page). */
+    var playerMaximized by mutableStateOf(false)
+
     /** The current page is an old Fragment page: its content stops above the pill, so the pill never hides. */
     var legacyPage by mutableStateOf(true)
 

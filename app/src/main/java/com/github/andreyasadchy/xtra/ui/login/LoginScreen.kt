@@ -341,7 +341,7 @@ private fun LoginPromptSheet(prompt: LoginPrompt, onDismiss: () -> Unit) {
             }
         }
         is LoginPrompt.Trouble -> {
-            val context = androidx.compose.ui.platform.LocalContext.current
+            val pasteHint = stringResource(R.string.login_paste_hint)
             var text by remember { mutableStateOf("") }
             LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.trouble_logging_in), skipHalfHeight = true) {
                 Text(
@@ -360,7 +360,7 @@ private fun LoginPromptSheet(prompt: LoginPrompt, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .background(Lagoon.colors.card, LagoonShapes.input)
                         .padding(horizontal = 16.dp, vertical = 13.dp)
-                        .semantics { contentDescription = context.getString(R.string.login_paste_hint) },
+                        .semantics { contentDescription = pasteHint },
                     textStyle = Lagoon.type.label.copy(color = Lagoon.colors.textPrimary, fontFamily = FontFamily.Monospace),
                     cursorBrush = SolidColor(Lagoon.colors.accent),
                     maxLines = 3,

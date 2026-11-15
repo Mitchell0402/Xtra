@@ -22,7 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import android.widget.LinearLayout
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.ViewCompat
@@ -120,6 +121,8 @@ class IntegrityDialog : DialogFragment() {
                             ).toString())
                         }
                         listener?.onIntegrityTokenLoaded(requireArguments().getString(KEY_CALLBACK))
+                        // settings shows a confirmation: with a fresh login the token often arrives before the page draws
+                        view.post { if (isAdded) parentFragmentManager.setFragmentResult(RESULT_LOADED, Bundle.EMPTY) }
                         dismiss()
                     }
                     return super.shouldInterceptRequest(view, webViewRequest)
@@ -138,7 +141,7 @@ class IntegrityDialog : DialogFragment() {
                         Modifier
                             .fillMaxWidth()
                             .background(colors.page)
-                            .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout))
+                            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
                             .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -159,7 +162,8 @@ class IntegrityDialog : DialogFragment() {
             addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
             ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
                 val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.ime())
-                v.updatePadding(bottom = bars.bottom)
+                val sides = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                v.updatePadding(left = sides.left, right = sides.right, bottom = bars.bottom)
                 insets
             }
         }
@@ -178,6 +182,7 @@ class IntegrityDialog : DialogFragment() {
 
     companion object {
         private const val KEY_CALLBACK = "callback"
+        const val RESULT_LOADED = "integrity_loaded"
 
         fun newInstance(callback: String?): IntegrityDialog {
             return IntegrityDialog().apply {

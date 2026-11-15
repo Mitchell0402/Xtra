@@ -41,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
@@ -452,14 +453,14 @@ class SettingsViewModel(
     }
 
     /**
-     * Restores a backup: the preferences file and/or the database. The app restarts afterwards (U3): v0.1 restarted
-     * only after a database restore, so a restored preferences file could be overwritten again by the settings still
-     * held in memory. The preferences file goes first, so picking both files restores both.
+     * Restores a backup: the preferences file and/or the database, in the order picked, as in v0.1. U3 adds a restart
+     * after a preferences-only restore too (v0.1 restarted only after a database restore, so the settings still held
+     * in memory could write over the restored file), once the notification baseline it starts has been written.
      */
     fun restoreSettings(list: List<String>, networkLibrary: String?, gqlHeaders: Map<String, String>, helixHeaders: Map<String, String>) {
         viewModelScope.launch(Dispatchers.IO) {
             var restored = false
-            list.take(2).sortedBy { !it.endsWith(".xml") }.forEach { url ->
+            list.take(2).forEach { url ->
                 if (url.endsWith(".xml")) {
                     FileOutputStream("${applicationContext.applicationInfo.dataDir}/shared_prefs/${applicationContext.packageName}_preferences.xml").use { outputStream ->
                         applicationContext.contentResolver.openInputStream(url.toUri())!!.use { inputStream ->
@@ -469,9 +470,12 @@ class SettingsViewModel(
                     val prefs = applicationContext.contentResolver.openInputStream(url.toUri())!!.bufferedReader().use {
                         it.readText()
                     }
-                    toggleNotifications(prefs.contains("name=\"${C.LIVE_NOTIFICATIONS_ENABLED}\" value=\"true\""), networkLibrary, gqlHeaders, helixHeaders)
+                    // finished before anything else is replaced or the process restarts
+                    toggleNotifications(prefs.contains("name=\"${C.LIVE_NOTIFICATIONS_ENABLED}\" value=\"true\""), networkLibrary, gqlHeaders, helixHeaders).join()
                     val language = Regex("<string name=\"${C.UI_LANGUAGE}\">(.+?)</string>").find(prefs)?.groups?.get(1)?.value
-                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language.takeIf { it != "auto" }))
+                    withContext(Dispatchers.Main) {
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language.takeIf { it != "auto" }))
+                    }
                     restored = true
                 } else {
                     val database = applicationContext.getDatabasePath("database")
@@ -486,8 +490,6 @@ class SettingsViewModel(
                 }
             }
             if (restored) {
-                // the notification worker is scheduled before the restart, as before
-                kotlinx.coroutines.delay(500)
                 applicationContext.startActivity(
                     Intent(applicationContext, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -498,7 +500,7 @@ class SettingsViewModel(
         }
     }
 
-    fun toggleNotifications(enabled: Boolean, networkLibrary: String?, gqlHeaders: Map<String, String>, helixHeaders: Map<String, String>) {
+    fun toggleNotifications(enabled: Boolean, networkLibrary: String?, gqlHeaders: Map<String, String>, helixHeaders: Map<String, String>) =
         viewModelScope.launch(Dispatchers.IO) {
             if (enabled) {
                 notificationsRepository.getNewStreams(networkLibrary, gqlHeaders, helixHeaders)
@@ -518,7 +520,6 @@ class SettingsViewModel(
                 WorkManager.getInstance(applicationContext).cancelUniqueWork("live_notifications")
             }
         }
-    }
 
     companion object {
         val SettingsViewModelFactory = viewModelFactory {

@@ -206,7 +206,7 @@ private fun TextSheet(setting: TextSetting, store: SettingsStore, host: Settings
             if (setting.kind == TextKind.Secret) {
                 LagoonIconButton(
                     LucideIcons.Eye, stringResource(if (reveal) R.string.st_hide_value else R.string.st_show_value),
-                    onClick = { reveal = !reveal }, filled = false, tint = colors.textSecondary, size = 40.dp,
+                    onClick = { reveal = !reveal }, filled = false, tint = colors.textSecondary,
                 )
             }
         }
@@ -251,17 +251,17 @@ private fun TabsSheet(setting: TabOrderSetting, store: SettingsStore, host: Sett
                     LagoonIconButton(
                         LucideIcons.House, stringResource(R.string.st_tab_make_default, label),
                         onClick = { tabs = TabOrder.setDefault(tabs, tab.key) }, filled = false,
-                        tint = if (tab.isDefault) colors.accent else colors.textSecondary, size = 40.dp,
+                        tint = if (tab.isDefault) colors.accent else colors.textSecondary,
                     )
                     LagoonIconButton(
                         LucideIcons.ArrowUp, stringResource(R.string.st_move_up, label),
                         onClick = { tabs = TabOrder.move(tabs, index, index - 1) }, filled = false,
-                        tint = colors.textSecondary, size = 40.dp, enabled = index > 0,
+                        tint = colors.textSecondary, enabled = index > 0,
                     )
                     LagoonIconButton(
                         LucideIcons.ArrowDown, stringResource(R.string.st_move_down, label),
                         onClick = { tabs = TabOrder.move(tabs, index, index + 1) }, filled = false,
-                        tint = colors.textSecondary, size = 40.dp, enabled = index < tabs.lastIndex,
+                        tint = colors.textSecondary, enabled = index < tabs.lastIndex,
                     )
                     LagoonSwitch(
                         checked = tab.enabled,

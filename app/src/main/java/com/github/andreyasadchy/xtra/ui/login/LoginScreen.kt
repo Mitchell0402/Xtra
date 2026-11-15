@@ -108,7 +108,8 @@ class LoginUiState {
  * code, and is gone while a token is checked; the second shows only in the TV step.
  */
 fun primaryWebVisibility(step: LoginStep): Int = when (step) {
-    LoginStep.Web, LoginStep.Intro -> View.VISIBLE
+    // invisible under the intro, so taps and the screen reader cannot reach the page behind it; it still loads
+    LoginStep.Web -> View.VISIBLE
     LoginStep.Busy -> View.GONE
     else -> View.INVISIBLE
 }
@@ -148,7 +149,8 @@ fun LoginTopHost(state: LoginUiState, onClose: () -> Unit, onTextZoom: () -> Uni
         Modifier
             .fillMaxWidth()
             .background(Lagoon.colors.page)
-            .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)))
+            // the activity pads the sides for the whole layout
+            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
     ) {
         LoginTopBar(state.step, onClose, onTextZoom)
     }
@@ -178,7 +180,7 @@ fun LoginOverlayHost(
 @Composable
 fun LoginBottomHost(state: LoginUiState, onTrouble: () -> Unit, onTvNext: () -> Unit) {
     val step = state.step
-    Box(Modifier.fillMaxWidth().background(Lagoon.colors.page).windowInsetsPadding(WindowInsets.navigationBars)) {
+    Box(Modifier.fillMaxWidth().background(Lagoon.colors.page).windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) {
         AnimatedVisibility(step == LoginStep.Web || step == LoginStep.TvWeb) {
             LoginBottomBar(step, onTrouble, onTvNext)
         }
@@ -339,6 +341,7 @@ private fun LoginPromptSheet(prompt: LoginPrompt, onDismiss: () -> Unit) {
             }
         }
         is LoginPrompt.Trouble -> {
+            val context = androidx.compose.ui.platform.LocalContext.current
             var text by remember { mutableStateOf("") }
             LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.trouble_logging_in), skipHalfHeight = true) {
                 Text(
@@ -357,7 +360,7 @@ private fun LoginPromptSheet(prompt: LoginPrompt, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .background(Lagoon.colors.card, LagoonShapes.input)
                         .padding(horizontal = 16.dp, vertical = 13.dp)
-                        .semantics { contentDescription = "url" },
+                        .semantics { contentDescription = context.getString(R.string.login_paste_hint) },
                     textStyle = Lagoon.type.label.copy(color = Lagoon.colors.textPrimary, fontFamily = FontFamily.Monospace),
                     cursorBrush = SolidColor(Lagoon.colors.accent),
                     maxLines = 3,

@@ -107,7 +107,9 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState?.getBoolean(KEY_CHANGED) == true) {
+        wasLoggedIn = savedInstanceState?.getBoolean(KEY_WAS_LOGGED_IN) == true
+        accountChanged = savedInstanceState?.getBoolean(KEY_ACCOUNT_CHANGED) == true
+        if (savedInstanceState?.getBoolean(KEY_CHANGED) == true || accountChanged) {
             changed = true
             publishResult()
         }
@@ -141,6 +143,9 @@ class SettingsActivity : AppCompatActivity() {
                 { ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_LOCAL_NETWORK), 1) }
             } else null,
         )
+        supportFragmentManager.setFragmentResultListener(IntegrityDialog.RESULT_LOADED, this) { _, _ ->
+            messages.tryEmit(getString(R.string.st_integrity_loaded))
+        }
         val host = Host(environment(), lists)
         setContent {
             LagoonTheme {
@@ -366,11 +371,15 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(KEY_CHANGED, changed)
+        outState.putBoolean(KEY_WAS_LOGGED_IN, wasLoggedIn)
+        outState.putBoolean(KEY_ACCOUNT_CHANGED, accountChanged)
         super.onSaveInstanceState(outState)
     }
 
     companion object {
         const val KEY_CHANGED = "changed"
+        private const val KEY_WAS_LOGGED_IN = "was_logged_in"
+        private const val KEY_ACCOUNT_CHANGED = "account_changed"
         const val EXTRA_ACCOUNT_CHANGED = "account_changed"
         const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/Mitchell0402/Xtra/releases/latest"
         const val PROJECT_URL = "https://github.com/Mitchell0402/Xtra"

@@ -384,7 +384,9 @@ class LoginActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            view.updatePadding(bottom = (ime - nav).coerceAtLeast(0))
+            // the Compose bars pad themselves; the web views between them need the side bars and cutout (landscape)
+            val sides = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            view.updatePadding(left = sides.left, right = sides.right, bottom = (ime - nav).coerceAtLeast(0))
             insets
         }
         lifecycleScope.launch {

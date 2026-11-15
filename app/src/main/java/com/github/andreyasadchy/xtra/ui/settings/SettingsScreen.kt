@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -224,7 +225,9 @@ fun SettingsApp(
                     compact = true,
                 )
                 Box(Modifier.weight(1f).fillMaxHeight()) {
-                    PageHost(nav.top.takeIf { it != SettingsNav.HOME } ?: SettingsCatalog.categories.first().id.name, store, host, nav, actions, showBack = nav.stack.size > 2)
+                    val route = nav.top.takeIf { it != SettingsNav.HOME } ?: SettingsCatalog.categories.first().id.name
+                    // each page keeps its own scroll position
+                    key(route) { PageHost(route, store, host, nav, actions, showBack = nav.stack.size > 2) }
                 }
             }
         } else {
@@ -323,7 +326,7 @@ private fun HomeScreen(
                     item(key = "home$groupTitle") {
                         SettingsGroup(title = stringResource(groupTitle)) {
                             pages.forEach { page ->
-                                CategoryRow(page, store, host, selected = selected == page.id.name, showSummary = !compact) { nav.openCategory(page.id) }
+                                CategoryRow(page, store, host, selected = selected == page.id.name) { nav.openCategory(page.id) }
                             }
                         }
                     }
@@ -334,13 +337,13 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun CategoryRow(page: SettingsPageSpec, store: SettingsStore, host: SettingsHost, selected: Boolean, showSummary: Boolean, onClick: () -> Unit) {
+private fun CategoryRow(page: SettingsPageSpec, store: SettingsStore, host: SettingsHost, selected: Boolean, onClick: () -> Unit) {
     val value = categoryValue(page, store, host)
     val background by animateColorAsState(if (selected) Lagoon.colors.control else Color.Transparent, Lagoon.motion.fade(), label = "categorySelected")
     SettingRow(
         title = stringResource(page.title),
-        // the side list on wide windows is a list of names, as in the tablet design
-        description = page.summary?.takeIf { showSummary }?.let { stringResource(it) },
+        // names only (Mitchell, U3): the one-line contents made the home screen too busy; search still finds them
+        description = null,
         icon = page.icon,
         highlight = page.highlight || selected,
         trailing = if (value != null) SettingTrailing.Value(value) else SettingTrailing.Chevron,

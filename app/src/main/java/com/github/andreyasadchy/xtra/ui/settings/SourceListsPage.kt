@@ -248,9 +248,9 @@ private fun ListRowControls(
     onDelete: () -> Unit,
 ) {
     val colors = Lagoon.colors
-    LagoonIconButton(LucideIcons.ArrowUp, stringResource(R.string.st_move_up, label), onUp, filled = false, tint = colors.textSecondary, size = 40.dp, enabled = canMoveUp)
-    LagoonIconButton(LucideIcons.ArrowDown, stringResource(R.string.st_move_down, label), onDown, filled = false, tint = colors.textSecondary, size = 40.dp, enabled = canMoveDown)
-    LagoonIconButton(LucideIcons.Trash2, stringResource(R.string.st_delete_named, label), onDelete, filled = false, tint = colors.danger, size = 40.dp)
+    LagoonIconButton(LucideIcons.ArrowUp, stringResource(R.string.st_move_up, label), onUp, filled = false, tint = colors.textSecondary, enabled = canMoveUp)
+    LagoonIconButton(LucideIcons.ArrowDown, stringResource(R.string.st_move_down, label), onDown, filled = false, tint = colors.textSecondary, enabled = canMoveDown)
+    LagoonIconButton(LucideIcons.Trash2, stringResource(R.string.st_delete_named, label), onDelete, filled = false, tint = colors.danger)
     LagoonSwitch(enabled, onEnabled, Modifier.semantics { contentDescription = label })
 }
 

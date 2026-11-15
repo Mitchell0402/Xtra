@@ -65,7 +65,8 @@ fun UpdatePrompt(
 ) {
     val url = state.offeredUrl
     if (url != null) {
-        LagoonBottomSheet(onDismiss = { state.close(); onLater() }, title = stringResource(R.string.update_available)) {
+        // v0.1: only "No" postponed the next automatic check; closing the sheet does not
+        LagoonBottomSheet(onDismiss = { state.close() }, title = stringResource(R.string.update_available)) {
             Column(Modifier.padding(horizontal = 20.dp)) {
                 SettingIconTile(LucideIcons.Package, highlight = true)
             }

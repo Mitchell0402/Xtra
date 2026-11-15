@@ -178,4 +178,5 @@
     <string name="st_preview_game">Music</string>
     <string name="st_preview_tag1">Chill</string>
     <string name="st_preview_tag2">English</string>
+    <string name="st_integrity_loaded">Integrity token received</string>
 </resources>

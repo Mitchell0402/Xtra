@@ -18,22 +18,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import android.widget.LinearLayout
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import com.github.andreyasadchy.xtra.ui.design.theme.DarkLagoonColors
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
@@ -43,7 +48,6 @@ import com.github.andreyasadchy.xtra.ui.design.components.LagoonIconButton
 import com.github.andreyasadchy.xtra.ui.design.components.SettingIconTile
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
-import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.util.C
@@ -124,34 +128,39 @@ class IntegrityDialog : DialogFragment() {
             loadUrl("https://www.twitch.tv/login")
         }
         webView = view
-        return ComposeView(context).apply {
+        // the web view is a plain view under a Compose header: hosted inside Compose it stayed blank (U3, emulator)
+        val header = ComposeView(context).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 LagoonTheme {
                     val colors = Lagoon.colors
-                    Column(Modifier.fillMaxSize().background(colors.page).windowInsetsPadding(WindowInsets.safeDrawing)) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SettingIconTile(LucideIcons.ShieldCheck, highlight = true)
-                            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                                Text(stringResource(R.string.integrity_title), style = Lagoon.type.headline, color = colors.textPrimary, modifier = Modifier.semantics { heading() })
-                                Text(stringResource(R.string.integrity_summary), style = Lagoon.type.label, color = colors.textSecondary)
-                            }
-                            LagoonIconButton(LucideIcons.X, stringResource(R.string.st_back), onClick = { dismiss() }, filled = false)
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.page)
+                            .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout))
+                            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingIconTile(LucideIcons.ShieldCheck, highlight = true)
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(stringResource(R.string.integrity_title), style = Lagoon.type.headline, color = colors.textPrimary, modifier = Modifier.semantics { heading() })
+                            Text(stringResource(R.string.integrity_summary), style = Lagoon.type.label, color = colors.textSecondary)
                         }
-                        AndroidView(
-                            factory = { view },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = 8.dp)
-                                .padding(bottom = 8.dp)
-                                .clip(LagoonShapes.card),
-                        )
+                        LagoonIconButton(LucideIcons.X, stringResource(R.string.st_back), onClick = { dismiss() }, filled = false)
                     }
                 }
+            }
+        }
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(DarkLagoonColors.page.toArgb())
+            addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.ime())
+                v.updatePadding(bottom = bars.bottom)
+                insets
             }
         }
     }

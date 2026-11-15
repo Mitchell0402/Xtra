@@ -1,7 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.login
 
 import android.view.View
-import android.webkit.WebView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -53,7 +51,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.design.components.ButtonStyle
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonBottomSheet
@@ -106,11 +103,27 @@ class LoginUiState {
     var afterIntro = LoginStep.Web
 }
 
+/**
+ * Visibility of the two web views for a step (v0.1 rules): the first keeps loading behind the intro and the device
+ * code, and is gone while a token is checked; the second shows only in the TV step.
+ */
+fun primaryWebVisibility(step: LoginStep): Int = when (step) {
+    LoginStep.Web, LoginStep.Intro -> View.VISIBLE
+    LoginStep.Busy -> View.GONE
+    else -> View.INVISIBLE
+}
+
+fun secondaryWebVisibility(step: LoginStep): Int = if (step == LoginStep.TvWeb) View.VISIBLE else View.INVISIBLE
+
+/**
+ * The login screen as LoginActivity lays it out: [LoginTopHost] above the web views, [LoginOverlayHost] over them,
+ * [LoginBottomHost] below. The web views are plain views in the activity's layout, not hosted inside Compose (a
+ * WebView inside an AndroidView stayed blank on the emulator). This composable puts the three together over an
+ * empty area, for screenshots.
+ */
 @Composable
 fun LoginScreen(
     state: LoginUiState,
-    primary: WebView?,
-    secondary: WebView?,
     toast: ToastHostState,
     onClose: () -> Unit,
     onTrouble: () -> Unit,
@@ -120,42 +133,56 @@ fun LoginScreen(
     onOpenActivate: () -> Unit,
     onCodeNext: () -> Unit,
 ) {
-    val colors = Lagoon.colors
-    val step = state.step
-    Box(Modifier.fillMaxSize().background(colors.page)) {
-        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)))) {
-            LoginTopBar(step, onClose, onTextZoom)
-            Box(Modifier.weight(1f).fillMaxWidth().imePadding()) {
-                // the web views stay in the composition so the pages keep loading while the intro shows
-                if (primary != null) {
-                    WebHost(primary, visible = step == LoginStep.Web || step == LoginStep.Intro, invisibleWhenHidden = step != LoginStep.Busy)
-                }
-                if (secondary != null) {
-                    WebHost(secondary, visible = step == LoginStep.TvWeb, invisibleWhenHidden = true)
-                }
-                when (step) {
-                    LoginStep.Intro -> Intro(onStart = { state.step = state.afterIntro })
-                    LoginStep.Busy -> Busy()
-                    LoginStep.Code -> CodePanel(state.deviceCode, onCopyCode, onOpenActivate, onCodeNext)
-                    else -> Unit
-                }
-            }
-            AnimatedVisibility(step == LoginStep.Web || step == LoginStep.TvWeb) {
-                LoginBottomBar(step, onTrouble, onTvNext)
-            }
+    Column(Modifier.fillMaxSize().background(Lagoon.colors.page)) {
+        LoginTopHost(state, onClose, onTextZoom)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            LoginOverlayHost(state, toast, onCopyCode, onOpenActivate, onCodeNext)
         }
-        ToastHost(toast, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 96.dp))
+        LoginBottomHost(state, onTrouble, onTvNext)
+    }
+}
+
+@Composable
+fun LoginTopHost(state: LoginUiState, onClose: () -> Unit, onTextZoom: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Lagoon.colors.page)
+            .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal)))
+    ) {
+        LoginTopBar(state.step, onClose, onTextZoom)
     }
     state.prompt?.let { prompt -> LoginPromptSheet(prompt, onDismiss = { state.prompt = null }) }
 }
 
+/** Drawn over the web views: the intro, the device code and the busy state cover them; otherwise it is empty and lets touches through. */
 @Composable
-private fun WebHost(view: WebView, visible: Boolean, invisibleWhenHidden: Boolean) {
-    AndroidView(
-        factory = { view.also { (it.parent as? android.view.ViewGroup)?.removeView(it) } },
-        modifier = Modifier.fillMaxSize(),
-        update = { it.visibility = if (visible) View.VISIBLE else if (invisibleWhenHidden) View.INVISIBLE else View.GONE },
-    )
+fun LoginOverlayHost(
+    state: LoginUiState,
+    toast: ToastHostState,
+    onCopyCode: () -> Unit,
+    onOpenActivate: () -> Unit,
+    onCodeNext: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        when (state.step) {
+            LoginStep.Intro -> Intro(onStart = { state.step = state.afterIntro })
+            LoginStep.Busy -> Busy()
+            LoginStep.Code -> CodePanel(state.deviceCode, onCopyCode, onOpenActivate, onCodeNext)
+            else -> Unit
+        }
+        ToastHost(toast, Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp))
+    }
+}
+
+@Composable
+fun LoginBottomHost(state: LoginUiState, onTrouble: () -> Unit, onTvNext: () -> Unit) {
+    val step = state.step
+    Box(Modifier.fillMaxWidth().background(Lagoon.colors.page).windowInsetsPadding(WindowInsets.navigationBars)) {
+        AnimatedVisibility(step == LoginStep.Web || step == LoginStep.TvWeb) {
+            LoginBottomBar(step, onTrouble, onTvNext)
+        }
+    }
 }
 
 @Composable
@@ -276,9 +303,7 @@ private fun CodePanel(code: String?, onCopy: () -> Unit, onOpenActivate: () -> U
 
 @Composable
 private fun LoginBottomBar(step: LoginStep, onTrouble: () -> Unit, onTvNext: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().background(Lagoon.colors.page).windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         if (step == LoginStep.TvWeb) {
             Text(stringResource(R.string.login_tv_hint), style = Lagoon.type.label, color = Lagoon.colors.textSecondary, modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
             LagoonButton(stringResource(R.string.next), onTvNext, Modifier.fillMaxWidth())

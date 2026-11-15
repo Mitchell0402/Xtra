@@ -11,7 +11,18 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import androidx.activity.compose.setContent
+import android.view.View
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.ComposeView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import com.github.andreyasadchy.xtra.ui.design.theme.DarkLagoonColors
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
@@ -296,42 +307,7 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
         }
-        setContent {
-            LagoonTheme {
-                LoginScreen(
-                    state = ui,
-                    primary = webView,
-                    secondary = secondaryWebView,
-                    toast = toast,
-                    onClose = { onBackPressedDispatcher.onBackPressed() },
-                    onTrouble = { showTrouble(networkLibrary, helixClientId, helixAuthUrl) },
-                    onTextZoom = {
-                        val target = if (ui.step == LoginStep.TvWeb) secondaryWebView else webView
-                        ui.prompt = LoginPrompt.TextZoom(target.settings.textZoom) { target.settings.textZoom = it }
-                    },
-                    onTvNext = { onTvNext() },
-                    onCopyCode = {
-                        deviceUserCode?.let { userCode ->
-                            val clipboardManager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboardManager.setPrimaryClip(ClipData.newPlainText("code", userCode))
-                            showMessage(getString(R.string.login_code_copied))
-                        }
-                    },
-                    onOpenActivate = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, "https://www.twitch.tv/activate".toUri()).apply {
-                                addCategory(Intent.CATEGORY_BROWSABLE)
-                            }
-                            startActivity(intent)
-                            webView.reload()
-                        } catch (e: ActivityNotFoundException) {
-                            showMessage(getString(R.string.no_browser_found))
-                        }
-                    },
-                    onCodeNext = { onCodeNext() },
-                )
-            }
-        }
+        setContentView(buildLayout(networkLibrary, helixClientId, helixAuthUrl))
         ui.afterIntro = LoginStep.Web
         if (apiSetting == 1) {
             readHeaders = true
@@ -340,6 +316,84 @@ class LoginActivity : AppCompatActivity() {
             checkUrl = true
             webView.loadUrl(helixAuthUrl)
         }
+    }
+
+    /**
+     * Top bar, web views with the overlay on top, bottom bar: a plain vertical layout with three ComposeViews. The web
+     * views are ordinary views here; hosted inside Compose they stayed blank (U3, emulator).
+     */
+    private fun buildLayout(networkLibrary: String?, helixClientId: String?, helixAuthUrl: String): View {
+        fun compose(content: @androidx.compose.runtime.Composable () -> Unit) = ComposeView(this).apply {
+            setContent { LagoonTheme { content() } }
+        }
+        val top = compose {
+            LoginTopHost(
+                state = ui,
+                onClose = { onBackPressedDispatcher.onBackPressed() },
+                onTextZoom = {
+                    val target = if (ui.step == LoginStep.TvWeb) secondaryWebView else webView
+                    ui.prompt = LoginPrompt.TextZoom(target.settings.textZoom) { target.settings.textZoom = it }
+                },
+            )
+        }
+        val overlay = compose {
+            LoginOverlayHost(
+                state = ui,
+                toast = toast,
+                onCopyCode = {
+                    deviceUserCode?.let { userCode ->
+                        val clipboardManager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboardManager.setPrimaryClip(ClipData.newPlainText("code", userCode))
+                        showMessage(getString(R.string.login_code_copied))
+                    }
+                },
+                onOpenActivate = {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, "https://www.twitch.tv/activate".toUri()).apply {
+                            addCategory(Intent.CATEGORY_BROWSABLE)
+                        }
+                        startActivity(intent)
+                        webView.reload()
+                    } catch (e: ActivityNotFoundException) {
+                        showMessage(getString(R.string.no_browser_found))
+                    }
+                },
+                onCodeNext = { onCodeNext() },
+            )
+        }
+        val bottom = compose {
+            LoginBottomHost(
+                state = ui,
+                onTrouble = { showTrouble(networkLibrary, helixClientId, helixAuthUrl) },
+                onTvNext = { onTvNext() },
+            )
+        }
+        val middle = FrameLayout(this).apply {
+            addView(webView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(secondaryWebView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(overlay, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(DarkLagoonColors.page.toArgb())
+            addView(top, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(middle, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+            addView(bottom, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        }
+        // edge to edge: the keyboard does not resize the window, so the layout makes room for it itself
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            view.updatePadding(bottom = (ime - nav).coerceAtLeast(0))
+            insets
+        }
+        lifecycleScope.launch {
+            snapshotFlow { ui.step }.collect { step ->
+                webView.visibility = primaryWebVisibility(step)
+                secondaryWebView.visibility = secondaryWebVisibility(step)
+            }
+        }
+        return root
     }
 
     private fun showMessage(message: String) {

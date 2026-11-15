@@ -83,7 +83,7 @@ class SettingsScreenshotTest(private val case: Case, private val variant: Varian
                                     deviceCode = "QXWHPJRT"
                                 }
                             }
-                            LoginScreen(state, null, null, rememberToastHostState(), {}, {}, {}, {}, {}, {}, {})
+                            LoginScreen(state, rememberToastHostState(), {}, {}, {}, {}, {}, {}, {})
                         }
                         else -> {
                             val page = when (case) {

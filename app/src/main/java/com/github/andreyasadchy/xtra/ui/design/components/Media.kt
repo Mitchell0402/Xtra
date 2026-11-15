@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -217,5 +218,49 @@ fun OverlayChip(
         if (live) LiveDot()
         val style = Lagoon.type.caption
         if (rolling) RollingNumber(text, style, color = Color.White) else Text(text, style = style, color = Color.White)
+    }
+}
+
+/**
+ * A small progress ring (plan 7.6, downloads): the teal arc for [progress] 0..1, the grey track under it; null
+ * spins slowly while the amount is not known yet (queued, waiting).
+ */
+@Composable
+fun ProgressRing(progress: Float?, modifier: Modifier = Modifier, size: Dp = 36.dp, label: String? = null) {
+    val colors = Lagoon.colors
+    val motion = Lagoon.motion
+    val animated by androidx.compose.animation.core.animateFloatAsState(progress ?: 0.25f, motion.steady(), label = "ring")
+    val spin = if (progress == null && !motion.reduced) {
+        val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "ringSpin")
+        transition.animateFloat(
+            0f, 360f,
+            androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.LinearEasing)),
+            label = "ringAngle",
+        ).value
+    } else 0f
+    Box(
+        modifier
+            .size(size)
+            .semantics { if (label != null) contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+            val stroke = 3.dp.toPx()
+            val inset = stroke / 2
+            val arcSize = androidx.compose.ui.geometry.Size(this.size.width - stroke, this.size.height - stroke)
+            val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(colors.control, 0f, 360f, false, topLeft, arcSize, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            drawArc(
+                colors.accent, -90f + spin, 360f * animated.coerceIn(0f, 1f), false, topLeft, arcSize,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
+        }
+        if (progress != null) {
+            Text(
+                "${(progress.coerceIn(0f, 1f) * 100).toInt()}",
+                style = Lagoon.type.caption.copy(fontSize = (size.value * 0.3f).sp),
+                color = colors.textPrimary,
+            )
+        }
     }
 }

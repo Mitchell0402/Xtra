@@ -13,4 +13,6 @@ class DownloadProgress(
     var liveCommentsArrayStarted: Boolean = false,
     var isLive: Boolean = false,
     var lastSaved: Long = 0,
+    /** When the service started writing this recording (U5: the Me page shows how long it has run). */
+    var startedAt: Long = 0,
 )

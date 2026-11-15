@@ -2,51 +2,59 @@ package com.github.andreyasadchy.xtra.ui.download
 
 import android.Manifest
 import android.app.Activity
-import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.StatFs
 import android.provider.DocumentsContract
-import android.text.Editable
-import android.text.TextWatcher
-import android.text.format.DateUtils
-import android.view.View
-import android.widget.RadioButton
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
-import androidx.core.view.children
-import androidx.core.view.isVisible
-import androidx.core.widget.doOnTextChanged
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.github.andreyasadchy.xtra.R
-import com.github.andreyasadchy.xtra.databinding.DialogVideoDownloadBinding
 import com.github.andreyasadchy.xtra.model.VideoQuality
+import com.github.andreyasadchy.xtra.ui.common.ComposeSheetDialog
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.download.DownloadViewModel.Companion.DownloadViewModelFactory
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
-import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
 
-class DownloadDialog : DialogFragment(), IntegrityDialog.Listener {
+/**
+ * The download and record sheet (plan 7.6, U5) in place of the v0.1 download dialog. The factory methods and their
+ * arguments are unchanged, so the player and every page open it as before; the qualities, checks, MainActivity calls
+ * and stored choices are v0.1's. The look is [DownloadSheetContent].
+ */
+class DownloadDialog : ComposeSheetDialog(), IntegrityDialog.Listener {
 
     companion object {
+        private const val STATE_QUALITY = "state_quality"
+        private const val STATE_LOCATION = "state_location"
+        private const val STATE_SHARED_PATH = "state_shared_path"
+        private const val STATE_STORAGE = "state_storage"
+        private const val STATE_CHAT = "state_chat"
+        private const val STATE_CHAT_EMOTES = "state_chat_emotes"
+        private const val STATE_FROM = "state_from"
+        private const val STATE_TO = "state_to"
+
         private const val STREAM = "stream"
         private const val VIDEO = "video"
         private const val CLIP = "clip"
@@ -164,23 +172,20 @@ class DownloadDialog : DialogFragment(), IntegrityDialog.Listener {
         }
     }
 
-    private var _binding: DialogVideoDownloadBinding? = null
-    private val binding get() = _binding!!
     private val viewModel: DownloadViewModel by viewModels { DownloadViewModelFactory }
-    private var sharedPath: String? = null
     private var directoryResultLauncher: ActivityResultLauncher<Intent>? = null
+    private val form = mutableStateOf(DownloadForm())
+    private val page = mutableStateOf(Page.Form)
+    private val rangeError = mutableStateOf<String?>(null)
+    private var formRestored = false
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        _binding = DialogVideoDownloadBinding.inflate(layoutInflater)
-        val builder = requireContext().getAlertDialogBuilder()
-            .setView(binding.root)
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.integrity.collect {
-                    (requireActivity() as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager)
-                }
-            }
-        }
+    private enum class Page { Form, Permission }
+
+    private val type get() = requireArguments().getString(KEY_TYPE)
+    private val args get() = requireArguments()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         directoryResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let {
@@ -188,605 +193,329 @@ class DownloadDialog : DialogFragment(), IntegrityDialog.Listener {
                         it.authority?.startsWith("com.android.providers") == true -> Toast.makeText(requireActivity(), R.string.invalid_directory, Toast.LENGTH_LONG).show()
                         else -> {
                             requireContext().contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                            sharedPath = it.toString()
-                            binding.download.isEnabled = true
-                            binding.storageSelectionContainer.directory.visibility = View.VISIBLE
-                            binding.storageSelectionContainer.directory.text = it.path?.substringAfter("/tree/")?.removeSuffix(":")
+                            form.value = form.value.copy(sharedPath = it.toString())
                         }
                     }
                 }
             }
         }
-        when (requireArguments().getString(KEY_TYPE)) {
-            STREAM -> {
-                lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.qualities.collectLatest {
-                            if (!it.isNullOrEmpty()) {
-                                init(it)
-                            }
-                        }
-                    }
+        savedInstanceState?.let { state ->
+            form.value = DownloadForm(
+                quality = state.getString(STATE_QUALITY),
+                location = state.getInt(STATE_LOCATION),
+                sharedPath = state.getString(STATE_SHARED_PATH),
+                storageIndex = state.getInt(STATE_STORAGE),
+                downloadChat = state.getBoolean(STATE_CHAT),
+                downloadChatEmotes = state.getBoolean(STATE_CHAT_EMOTES),
+                fromText = state.getString(STATE_FROM).orEmpty(),
+                toText = state.getString(STATE_TO).orEmpty(),
+            )
+            formRestored = true
+        }
+        if (!formRestored) {
+            val prefs = requireContext().prefs()
+            form.value = DownloadForm(
+                location = prefs.getInt(C.DOWNLOAD_LOCATION, 0),
+                sharedPath = prefs.getString(C.DOWNLOAD_SHARED_PATH, null),
+                storageIndex = prefs.getInt(C.DOWNLOAD_STORAGE, 0),
+                downloadChat = prefs.getBoolean(C.DOWNLOAD_CHAT, false),
+                downloadChatEmotes = prefs.getBoolean(C.DOWNLOAD_CHAT_EMOTES, false),
+            )
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.integrity.collect {
+                    (requireActivity() as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager)
                 }
-                viewModel.setStream(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), requireContext().prefs().getBoolean(C.TOKEN_INCLUDE_TOKEN_STREAM, true)),
-                    channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    platform = requireContext().prefs().getString(C.TOKEN_PLATFORM, "web"),
-                    playerType = requireContext().prefs().getString(C.TOKEN_PLAYER_TYPE, "site"),
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            VIDEO -> {
-                lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.qualities.collectLatest {
-                            if (!it.isNullOrEmpty()) {
-                                init(
-                                    it,
-                                    requireArguments().getLong(KEY_VIDEO_TOTAL_DURATION, -1).takeIf { it != -1L }
-                                        ?: requireArguments().getInt(KEY_DURATION_SECONDS, -1).takeIf { it != -1 }?.times(1000L)
-                                        ?: 0,
-                                    requireArguments().getLong(KEY_VIDEO_CURRENT_POSITION)
-                                )
-                            }
-                        }
-                    }
-                }
-                lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.dismiss.collectLatest {
-                            if (it) {
-                                Toast.makeText(requireActivity(), R.string.video_subscribers_only, Toast.LENGTH_LONG).show()
-                                dismiss()
-                            }
-                        }
-                    }
-                }
-                viewModel.setVideo(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), requireContext().prefs().getBoolean(C.TOKEN_INCLUDE_TOKEN_VIDEO, true)),
-                    videoId = requireArguments().getString(KEY_VIDEO_ID),
-                    animatedPreviewUrl = requireArguments().getString(KEY_VIDEO_ANIMATED_PREVIEW),
-                    videoType = requireArguments().getString(KEY_VIDEO_TYPE),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            CLIP -> {
-                lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.qualities.collectLatest {
-                            if (!it.isNullOrEmpty()) {
-                                init(it)
-                            }
-                        }
-                    }
-                }
-                viewModel.setClip(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext()),
-                    clipId = requireArguments().getString(KEY_CLIP_ID),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
             }
         }
-        return builder.create()
+        if (type == VIDEO) {
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.dismiss.collectLatest {
+                        if (it) {
+                            Toast.makeText(requireActivity(), R.string.video_subscribers_only, Toast.LENGTH_LONG).show()
+                            dismissAllowingStateLoss()
+                        }
+                    }
+                }
+            }
+            viewModel.loadStoryboard(args.getString(KEY_VIDEO_ANIMATED_PREVIEW))
+        }
+        load()
     }
 
-    private fun init(qualities: List<VideoQuality>, totalDuration: Long = 0, currentPosition: Long = 0) {
-        val type = requireArguments().getString(KEY_TYPE)
-        binding.layout.children.forEach {
-            it.isVisible = it.id != R.id.progressBar && it.id != R.id.timeLayout && it.id != R.id.sharedStorageLayout && it.id != R.id.appStorageLayout
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val value = form.value
+        outState.putString(STATE_QUALITY, value.quality)
+        outState.putInt(STATE_LOCATION, value.location)
+        outState.putString(STATE_SHARED_PATH, value.sharedPath)
+        outState.putInt(STATE_STORAGE, value.storageIndex)
+        outState.putBoolean(STATE_CHAT, value.downloadChat)
+        outState.putBoolean(STATE_CHAT_EMOTES, value.downloadChatEmotes)
+        outState.putString(STATE_FROM, value.fromText)
+        outState.putString(STATE_TO, value.toText)
+    }
+
+    /** The qualities the caller passed (the player), as v0.1 read them from the arguments. */
+    private fun passedQualities(): List<VideoQuality>? =
+        args.getStringArray(KEY_QUALITY_NAMES)?.let { names ->
+            args.getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
+                args.getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
+                    args.getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
+                        args.getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
+                            args.getStringArray(KEY_QUALITY_URLS)?.let { urls ->
+                                names.mapIndexed { index, name ->
+                                    VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        val storageLocations = resources.getStringArray(R.array.spinnerStorage)
-        val storage = requireContext().getExternalFilesDirs(".downloads").mapIndexedNotNull { index, file ->
+
+    /** v0.1's setStream / setVideo / setClip calls, unchanged. */
+    private fun load() {
+        val context = requireContext()
+        val prefs = context.prefs()
+        when (type) {
+            STREAM -> viewModel.setStream(
+                networkLibrary = prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                gqlHeaders = TwitchApiHelper.getGQLHeaders(context, prefs.getBoolean(C.TOKEN_INCLUDE_TOKEN_STREAM, true)),
+                channelLogin = args.getString(KEY_CHANNEL_LOGIN),
+                qualities = passedQualities(),
+                platform = prefs.getString(C.TOKEN_PLATFORM, "web"),
+                playerType = prefs.getString(C.TOKEN_PLAYER_TYPE, "site"),
+                supportedCodecs = prefs.getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
+                enableIntegrity = prefs.getBoolean(C.ENABLE_INTEGRITY, false),
+            )
+            VIDEO -> viewModel.setVideo(
+                networkLibrary = prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                gqlHeaders = TwitchApiHelper.getGQLHeaders(context, prefs.getBoolean(C.TOKEN_INCLUDE_TOKEN_VIDEO, true)),
+                videoId = args.getString(KEY_VIDEO_ID),
+                animatedPreviewUrl = args.getString(KEY_VIDEO_ANIMATED_PREVIEW),
+                videoType = args.getString(KEY_VIDEO_TYPE),
+                qualities = passedQualities(),
+                supportedCodecs = prefs.getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
+                enableIntegrity = prefs.getBoolean(C.ENABLE_INTEGRITY, false),
+            )
+            CLIP -> viewModel.setClip(
+                networkLibrary = prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP),
+                gqlHeaders = TwitchApiHelper.getGQLHeaders(context),
+                clipId = args.getString(KEY_CLIP_ID),
+                qualities = passedQualities(),
+                supportedCodecs = prefs.getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
+                enableIntegrity = prefs.getBoolean(C.ENABLE_INTEGRITY, false),
+            )
+        }
+    }
+
+    private val totalDuration: Long
+        get() = args.getLong(KEY_VIDEO_TOTAL_DURATION, -1).takeIf { it != -1L }
+            ?: args.getInt(KEY_DURATION_SECONDS, -1).takeIf { it != -1 }?.times(1000L)
+            ?: 0
+
+    private val currentPosition: Long get() = args.getLong(KEY_VIDEO_CURRENT_POSITION).coerceAtLeast(0)
+
+    /** The app's storage places: internal first, then removable cards (v0.1's list). */
+    private fun storages(): List<StorageOption> =
+        requireContext().getExternalFilesDirs(".downloads").mapIndexedNotNull { index, file ->
             file?.absolutePath?.let { path ->
+                val free = try { StatFs(path).availableBytes } catch (e: Exception) { null }
                 if (index == 0) {
-                    getString(R.string.internal_storage) to path
+                    StorageOption(getString(R.string.internal_storage), path, free)
                 } else {
                     path.substringBefore("/Android/data", "").takeIf { it.isNotBlank() }?.let {
-                        it.substringAfterLast(File.separatorChar) to path
+                        StorageOption(it.substringAfterLast(File.separatorChar), path, free)
                     }
                 }
             }
         }
-        with(binding) {
-            val hideCodecs = qualities.all {
-                val codec = it.codecs?.substringBefore('.')
-                codec == "avc1" || codec == "mp4a" || codec.isNullOrBlank()
+
+    @Composable
+    override fun ColumnScope.SheetContent() {
+        val qualities by viewModel.qualities.collectAsState()
+        val storyboard by viewModel.storyboard.collectAsState()
+        val labels = remember(qualities) {
+            qualities?.takeIf { it.isNotEmpty() }?.let { DownloadSheetLogic.qualityLabels(it, getString(R.string.source), getString(R.string.audio_only)) }
+        }
+        val storages = remember { storages() }
+        val mounted = remember { Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED }
+        val kind = when (type) {
+            STREAM -> DownloadKind.Stream
+            CLIP -> DownloadKind.Clip
+            else -> DownloadKind.Video
+        }
+        val item = remember {
+            DownloadItem(
+                kind = kind,
+                title = args.getString(KEY_TITLE),
+                subtitle = args.getString(KEY_CHANNEL_NAME) ?: args.getString(KEY_CHANNEL_LOGIN),
+                thumbnail = args.getString(KEY_THUMBNAIL),
+            )
+        }
+        when (page.value) {
+            Page.Form -> DownloadSheetContent(
+                item = item,
+                qualities = labels?.map { it.first },
+                form = form.value,
+                onForm = { form.value = it; rangeError.value = null; viewModel.selectedQuality = it.quality },
+                storages = storages,
+                storageMounted = mounted,
+                onPickFolder = ::pickFolder,
+                onDownload = { labels?.let { download(it, storages) } },
+                onCancel = ::close,
+                totalMillis = totalDuration,
+                defaultFromMillis = currentPosition,
+                rangeError = rangeError.value,
+                storyboard = storyboard,
+                folderLabel = form.value.sharedPath?.let { Uri.decode(it.substringAfter("/tree/")) },
+            )
+            Page.Permission -> NotificationPermissionContent(
+                onOk = {
+                    ActivityCompat.requestPermissions(requireActivity(), arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+                    close()
+                },
+                onCancel = ::close,
+            )
+        }
+    }
+
+    /** v0.1 saved the choices before opening the folder picker, so they come back with the dialog. */
+    private fun pickFolder() {
+        saveChoices(form.value, storages())
+        directoryResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, form.value.sharedPath)
+        })
+    }
+
+    private fun saveChoices(value: DownloadForm, storages: List<StorageOption>) {
+        requireContext().prefs().edit {
+            putInt(C.DOWNLOAD_LOCATION, value.location)
+            when (value.location) {
+                0 -> putString(C.DOWNLOAD_SHARED_PATH, value.sharedPath)
+                1 -> putInt(C.DOWNLOAD_STORAGE, if (storages.size > 1) value.storageIndex else 0)
             }
-            val qualityMap = mutableListOf<Pair<String?, VideoQuality>>()
-            qualities.forEach { quality ->
-                val name = when (quality.name) {
-                    VideoQuality.SOURCE_QUALITY -> getString(R.string.source)
-                    VideoQuality.AUDIO_ONLY_QUALITY -> getString(R.string.audio_only)
-                    else -> {
-                        val frameRate = quality.name?.substringAfter("p", "")?.takeWhile { it.isDigit() }?.toIntOrNull()
-                        val qualityName = if (frameRate != null && frameRate <= 30) {
-                            quality.name.substring(0, quality.name.indexOf('p') + 1)
-                        } else {
-                            quality.name.toString()
+            putBoolean(C.DOWNLOAD_CHAT, value.downloadChat)
+            putBoolean(C.DOWNLOAD_CHAT_EMOTES, value.downloadChatEmotes)
+        }
+    }
+
+    /** v0.1's download button: the same checks, the same MainActivity calls, the same settings written. */
+    private fun download(labels: List<Pair<String, VideoQuality>>, storages: List<StorageOption>) {
+        val value = form.value
+        val quality = labels.find { it.first == (value.quality ?: labels.first().first) }?.second
+        val path = when (value.location) {
+            0 -> value.sharedPath
+            1 -> storages.getOrNull(if (storages.size > 1) value.storageIndex else 0)?.path
+            else -> null
+        }
+        if (quality?.name != null && quality.url != null && !path.isNullOrBlank()) {
+            val activity = requireActivity() as? MainActivity
+            val prefs = requireContext().prefs()
+            val downloadChat = value.downloadChat
+            val downloadChatEmotes = value.downloadChatEmotes && downloadChat
+            when (type) {
+                STREAM -> activity?.downloadStream(
+                    filesDir = requireContext().filesDir.path,
+                    id = args.getString(KEY_STREAM_ID),
+                    title = args.getString(KEY_TITLE),
+                    createdAt = args.getString(KEY_CREATED_AT),
+                    channelId = args.getString(KEY_CHANNEL_ID),
+                    channelLogin = args.getString(KEY_CHANNEL_LOGIN),
+                    channelName = args.getString(KEY_CHANNEL_NAME),
+                    channelImage = args.getString(KEY_CHANNEL_IMAGE),
+                    thumbnail = args.getString(KEY_THUMBNAIL),
+                    gameId = args.getString(KEY_GAME_ID),
+                    gameSlug = args.getString(KEY_GAME_SLUG),
+                    gameName = args.getString(KEY_GAME_NAME),
+                    downloadPath = path,
+                    quality = quality.name,
+                    downloadChat = downloadChat,
+                    downloadChatEmotes = downloadChatEmotes,
+                    wifiOnly = prefs.getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
+                )
+                VIDEO -> {
+                    val range = DownloadSheetLogic.checkRange(value.fromText, value.toText, currentPosition, totalDuration)
+                    when (range.error) {
+                        DownloadSheetLogic.RangeError.FromInvalid, DownloadSheetLogic.RangeError.ToInvalid -> {
+                            rangeError.value = getString(R.string.invalid_time); return
                         }
-                        if (hideCodecs) {
-                            qualityName
-                        } else {
-                            val codec = quality.codecs?.substringBefore('.')
-                            val codecName = when {
-                                codec == "av01" -> "AV1"
-                                codec == "hev1" || codec == "hvc1" -> "H.265"
-                                codec == "avc1" || codec.isNullOrBlank() -> "H.264"
-                                else -> codec
-                            }
-                            "$qualityName $codecName"
+                        DownloadSheetLogic.RangeError.ToTooLong -> {
+                            rangeError.value = getString(R.string.to_is_longer); return
                         }
+                        DownloadSheetLogic.RangeError.FromNotBeforeTo -> {
+                            rangeError.value = getString(R.string.from_is_greater); return
+                        }
+                        null -> activity?.downloadVideo(
+                            filesDir = requireContext().filesDir.path,
+                            id = args.getString(KEY_VIDEO_ID),
+                            title = args.getString(KEY_TITLE),
+                            createdAt = args.getString(KEY_CREATED_AT),
+                            type = args.getString(KEY_VIDEO_TYPE),
+                            channelId = args.getString(KEY_CHANNEL_ID),
+                            channelLogin = args.getString(KEY_CHANNEL_LOGIN),
+                            channelName = args.getString(KEY_CHANNEL_NAME),
+                            channelImage = args.getString(KEY_CHANNEL_IMAGE),
+                            thumbnail = args.getString(KEY_THUMBNAIL),
+                            gameId = args.getString(KEY_GAME_ID),
+                            gameSlug = args.getString(KEY_GAME_SLUG),
+                            gameName = args.getString(KEY_GAME_NAME),
+                            url = quality.url,
+                            downloadPath = path,
+                            quality = quality.name,
+                            from = range.from,
+                            to = range.to,
+                            downloadChat = downloadChat,
+                            downloadChatEmotes = downloadChatEmotes,
+                            playlistToFile = prefs.getBoolean(C.DOWNLOAD_PLAYLIST_TO_FILE, false),
+                            wifiOnly = prefs.getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
+                        )
                     }
                 }
-                qualityMap.add(
-                    if (qualityMap.find { it.first == name } != null) {
-                        "$name ${quality.bitrate?.div(1000)} Kbps"
-                    } else {
-                        name
-                    } to quality
+                CLIP -> activity?.downloadClip(
+                    filesDir = requireContext().filesDir.path,
+                    clipId = args.getString(KEY_CLIP_ID),
+                    title = args.getString(KEY_TITLE),
+                    createdAt = args.getString(KEY_CREATED_AT),
+                    durationSeconds = args.getInt(KEY_DURATION_SECONDS),
+                    videoId = args.getString(KEY_VIDEO_ID),
+                    videoOffsetSeconds = args.getInt(KEY_VIDEO_OFFSET_SECONDS),
+                    videoCreatedAt = args.getString(KEY_VIDEO_CREATED_AT),
+                    channelId = args.getString(KEY_CHANNEL_ID),
+                    channelLogin = args.getString(KEY_CHANNEL_LOGIN),
+                    channelName = args.getString(KEY_CHANNEL_NAME),
+                    channelImage = args.getString(KEY_CHANNEL_IMAGE),
+                    thumbnail = args.getString(KEY_THUMBNAIL),
+                    gameId = args.getString(KEY_GAME_ID),
+                    gameSlug = args.getString(KEY_GAME_SLUG),
+                    gameName = args.getString(KEY_GAME_NAME),
+                    url = quality.url,
+                    downloadPath = path,
+                    quality = quality.name,
+                    downloadChat = downloadChat,
+                    downloadChatEmotes = downloadChatEmotes,
+                    wifiOnly = prefs.getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
                 )
             }
-            (spinner.editText as? MaterialAutoCompleteTextView)?.apply {
-                val array = qualityMap.map { it.first }.toTypedArray()
-                val selectedQuality = viewModel.selectedQuality ?: array.first()
-                setSimpleItems(array)
-                setText(selectedQuality, false)
-            }
-            if (type == VIDEO) {
-                timeLayout.visibility = View.VISIBLE
-                val defaultFrom = DateUtils.formatElapsedTime(currentPosition / 1000L).let { if (it.length == 5) "00:$it" else it }
-                val totalTime = DateUtils.formatElapsedTime(totalDuration / 1000L)
-                val defaultTo = totalTime.let { if (it.length != 5) it else "00:$it" }
-                duration.text = getString(R.string.duration, totalTime)
-                timeTo.editText?.hint = defaultTo
-                timeFrom.editText?.hint = defaultFrom
-                timeFrom.editText?.doOnTextChanged { text, _, _, _ -> if (text?.length == 8) timeTo.requestFocus() }
-                addTextChangeListener(timeFrom.editText)
-                addTextChangeListener(timeTo.editText)
-            }
-            with(storageSelectionContainer) {
-                if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
-                    val location = requireContext().prefs().getInt(C.DOWNLOAD_LOCATION, 0)
-                    (storageSpinner.editText as? MaterialAutoCompleteTextView)?.apply {
-                        setSimpleItems(storageLocations)
-                        setOnItemClickListener { _, _, position, _ ->
-                            when (position) {
-                                0 -> {
-                                    sharedStorageLayout.visibility = View.VISIBLE
-                                    appStorageLayout.visibility = View.GONE
-                                    binding.download.isEnabled = sharedPath != null
-                                }
-                                1 -> {
-                                    appStorageLayout.visibility = View.VISIBLE
-                                    sharedStorageLayout.visibility = View.GONE
-                                    binding.download.isEnabled = true
-                                }
-                            }
-                        }
-                        setText(adapter.getItem(location).toString(), false)
-                    }
-                    if (sharedPath == null) {
-                        sharedPath = requireContext().prefs().getString(C.DOWNLOAD_SHARED_PATH, null)
-                    }
-                    when (location) {
-                        0 -> {
-                            sharedStorageLayout.visibility = View.VISIBLE
-                            appStorageLayout.visibility = View.GONE
-                            binding.download.isEnabled = sharedPath != null
-                        }
-                        1 -> {
-                            appStorageLayout.visibility = View.VISIBLE
-                            sharedStorageLayout.visibility = View.GONE
-                        }
-                    }
-                    sharedPath?.let {
-                        directory.visibility = View.VISIBLE
-                        directory.text = Uri.decode(it.substringAfter("/tree/"))
-                    }
-                    selectDirectory.setOnClickListener {
-                        viewModel.selectedQuality = binding.spinner.editText?.text.toString()
-                        val location = resources.getStringArray(R.array.spinnerStorage).indexOf(storageSpinner.editText?.text.toString())
-                        val downloadChat = binding.downloadChat.isChecked
-                        val downloadChatEmotes = binding.downloadChatEmotes.isChecked
-                        requireContext().prefs().edit {
-                            putInt(C.DOWNLOAD_LOCATION, location)
-                            when (location) {
-                                0 -> putString(C.DOWNLOAD_SHARED_PATH, sharedPath)
-                                1 -> putInt(C.DOWNLOAD_STORAGE,
-                                    if (storage.size > 1) {
-                                        storageSelectionContainer.radioGroup.checkedRadioButtonId
-                                    } else {
-                                        0
-                                    }
-                                )
-                            }
-                            putBoolean(C.DOWNLOAD_CHAT, downloadChat)
-                            putBoolean(C.DOWNLOAD_CHAT_EMOTES, downloadChatEmotes)
-                        }
-                        directoryResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                putExtra(DocumentsContract.EXTRA_INITIAL_URI, sharedPath)
-                            }
-                        })
-                    }
-                    radioGroup.removeAllViews()
-                    radioGroup.clearCheck()
-                    if (storage.size > 1) {
-                        storage.forEachIndexed { index, pair ->
-                            radioGroup.addView(
-                                RadioButton(requireContext()).apply {
-                                    id = index
-                                    text = pair.first
-                                }
-                            )
-                        }
-                        radioGroup.check(requireContext().prefs().getInt(C.DOWNLOAD_STORAGE, 0))
-                    }
-                } else {
-                    noStorageDetected.visibility = View.VISIBLE
-                    storageSpinner.visibility = View.GONE
-                    sharedStorageLayout.visibility = View.GONE
-                    appStorageLayout.visibility = View.GONE
-                    binding.download.visibility = View.GONE
-                }
-            }
-            downloadChat.apply {
-                isChecked = requireContext().prefs().getBoolean(C.DOWNLOAD_CHAT, false)
-                setOnCheckedChangeListener { _, isChecked ->
-                    downloadChatEmotes.isEnabled = isChecked
-                }
-            }
-            downloadChatEmotes.apply {
-                isChecked = requireContext().prefs().getBoolean(C.DOWNLOAD_CHAT_EMOTES, false)
-                isEnabled = downloadChat.isChecked
-            }
-            cancel.setOnClickListener { dismiss() }
-            download.setOnClickListener {
-                val quality = qualityMap.find { it.first == spinner.editText?.text.toString() }?.second
-                val location = storageLocations.indexOf(storageSelectionContainer.storageSpinner.editText?.text.toString())
-                val path = when (location) {
-                    0 -> sharedPath
-                    1 -> storage.getOrNull(
-                        if (storage.size > 1) {
-                            storageSelectionContainer.radioGroup.checkedRadioButtonId
-                        } else {
-                            0
-                        }
-                    )?.second
-                    else -> null
-                }
-                if (quality?.name != null && quality.url != null && !path.isNullOrBlank()) {
-                    val downloadChat = downloadChat.isChecked
-                    val downloadChatEmotes = downloadChatEmotes.isChecked
-                    when (type) {
-                        STREAM -> {
-                            (requireActivity() as? MainActivity)?.downloadStream(
-                                filesDir = requireContext().filesDir.path,
-                                id = requireArguments().getString(KEY_STREAM_ID),
-                                title = requireArguments().getString(KEY_TITLE),
-                                createdAt = requireArguments().getString(KEY_CREATED_AT),
-                                channelId = requireArguments().getString(KEY_CHANNEL_ID),
-                                channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
-                                channelName = requireArguments().getString(KEY_CHANNEL_NAME),
-                                channelImage = requireArguments().getString(KEY_CHANNEL_IMAGE),
-                                thumbnail = requireArguments().getString(KEY_THUMBNAIL),
-                                gameId = requireArguments().getString(KEY_GAME_ID),
-                                gameSlug = requireArguments().getString(KEY_GAME_SLUG),
-                                gameName = requireArguments().getString(KEY_GAME_NAME),
-                                downloadPath = path,
-                                quality = quality.name,
-                                downloadChat = downloadChat,
-                                downloadChatEmotes = downloadChatEmotes,
-                                wifiOnly = requireContext().prefs().getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
-                            )
-                        }
-                        VIDEO -> {
-                            val from = timeFrom.editText?.takeIf { !it.text.isEmpty() }?.let { editText ->
-                                parseTime(editText.text).also {
-                                    if (it == null) {
-                                        editText.requestFocus()
-                                        editText.error = getString(R.string.invalid_time)
-                                        return@setOnClickListener
-                                    }
-                                }
-                            } ?: currentPosition
-                            val to = timeTo.editText?.takeIf { !it.text.isEmpty() }?.let { editText ->
-                                parseTime(editText.text).also {
-                                    if (it == null) {
-                                        editText.requestFocus()
-                                        editText.error = getString(R.string.invalid_time)
-                                        return@setOnClickListener
-                                    }
-                                }
-                            } ?: totalDuration
-                            when {
-                                to > totalDuration -> {
-                                    timeTo.requestFocus()
-                                    timeTo.editText?.error = getString(R.string.to_is_longer)
-                                    return@setOnClickListener
-                                }
-                                from < to -> {
-                                    (requireActivity() as? MainActivity)?.downloadVideo(
-                                        filesDir = requireContext().filesDir.path,
-                                        id = requireArguments().getString(KEY_VIDEO_ID),
-                                        title = requireArguments().getString(KEY_TITLE),
-                                        createdAt = requireArguments().getString(KEY_CREATED_AT),
-                                        type = requireArguments().getString(KEY_VIDEO_TYPE),
-                                        channelId = requireArguments().getString(KEY_CHANNEL_ID),
-                                        channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
-                                        channelName = requireArguments().getString(KEY_CHANNEL_NAME),
-                                        channelImage = requireArguments().getString(KEY_CHANNEL_IMAGE),
-                                        thumbnail = requireArguments().getString(KEY_THUMBNAIL),
-                                        gameId = requireArguments().getString(KEY_GAME_ID),
-                                        gameSlug = requireArguments().getString(KEY_GAME_SLUG),
-                                        gameName = requireArguments().getString(KEY_GAME_NAME),
-                                        url = quality.url,
-                                        downloadPath = path,
-                                        quality = quality.name,
-                                        from = from,
-                                        to = to,
-                                        downloadChat = downloadChat,
-                                        downloadChatEmotes = downloadChatEmotes,
-                                        playlistToFile = requireContext().prefs().getBoolean(C.DOWNLOAD_PLAYLIST_TO_FILE, false),
-                                        wifiOnly = requireContext().prefs().getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
-                                    )
-                                }
-                                from >= to -> {
-                                    timeFrom.requestFocus()
-                                    timeFrom.editText?.error = getString(R.string.from_is_greater)
-                                    return@setOnClickListener
-                                }
-                                else -> {
-                                    timeTo.requestFocus()
-                                    timeTo.editText?.error = getString(R.string.to_is_lesser)
-                                    return@setOnClickListener
-                                }
-                            }
-                        }
-                        CLIP -> {
-                            (requireActivity() as? MainActivity)?.downloadClip(
-                                filesDir = requireContext().filesDir.path,
-                                clipId = requireArguments().getString(KEY_CLIP_ID),
-                                title = requireArguments().getString(KEY_TITLE),
-                                createdAt = requireArguments().getString(KEY_CREATED_AT),
-                                durationSeconds = requireArguments().getInt(KEY_DURATION_SECONDS),
-                                videoId = requireArguments().getString(KEY_VIDEO_ID),
-                                videoOffsetSeconds = requireArguments().getInt(KEY_VIDEO_OFFSET_SECONDS),
-                                videoCreatedAt = requireArguments().getString(KEY_VIDEO_CREATED_AT),
-                                channelId = requireArguments().getString(KEY_CHANNEL_ID),
-                                channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
-                                channelName = requireArguments().getString(KEY_CHANNEL_NAME),
-                                channelImage = requireArguments().getString(KEY_CHANNEL_IMAGE),
-                                thumbnail = requireArguments().getString(KEY_THUMBNAIL),
-                                gameId = requireArguments().getString(KEY_GAME_ID),
-                                gameSlug = requireArguments().getString(KEY_GAME_SLUG),
-                                gameName = requireArguments().getString(KEY_GAME_NAME),
-                                url = quality.url,
-                                downloadPath = path,
-                                quality = quality.name,
-                                downloadChat = downloadChat,
-                                downloadChatEmotes = downloadChatEmotes,
-                                wifiOnly = requireContext().prefs().getBoolean(C.DOWNLOAD_WIFI_ONLY, false)
-                            )
-                        }
-                    }
-                    requireContext().prefs().edit {
-                        putInt(C.DOWNLOAD_LOCATION, location)
-                        when (location) {
-                            0 -> putString(C.DOWNLOAD_SHARED_PATH, sharedPath)
-                            1 -> putInt(C.DOWNLOAD_STORAGE,
-                                if (storage.size > 1) {
-                                    storageSelectionContainer.radioGroup.checkedRadioButtonId
-                                } else {
-                                    0
-                                }
-                            )
-                        }
-                        putBoolean(C.DOWNLOAD_CHAT, downloadChat)
-                        putBoolean(C.DOWNLOAD_CHAT_EMOTES, downloadChatEmotes)
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                        ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
-                        !requireActivity().prefs().getBoolean(C.DOWNLOAD_NOTIFICATION_REQUESTED, false)) {
-                        requireActivity().prefs().edit { putBoolean(C.DOWNLOAD_NOTIFICATION_REQUESTED, true) }
-                        val activity = requireActivity()
-                        requireActivity().getAlertDialogBuilder()
-                            .setMessage(R.string.notification_permission_message)
-                            .setTitle(R.string.notification_permission_title)
-                            .setPositiveButton(android.R.string.ok) { _, _ ->
-                                ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-                            }
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .show()
-                    }
-                }
-                dismiss()
+            saveChoices(value, storages)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                !prefs.getBoolean(C.DOWNLOAD_NOTIFICATION_REQUESTED, false)
+            ) {
+                prefs.edit { putBoolean(C.DOWNLOAD_NOTIFICATION_REQUESTED, true) }
+                page.value = Page.Permission
+                return
             }
         }
-    }
-
-    private fun parseTime(text: CharSequence): Long? {
-        val list = text.split(':', limit = 3).reversed()
-        val seconds = list.getOrNull(0)?.let { string ->
-            string.toLongOrNull()?.takeIf { it in 0..59 } ?: return null
-        } ?: 0
-        val minutes = list.getOrNull(1)?.let { string ->
-            string.toLongOrNull()?.takeIf { it in 0..59 } ?: return null
-        } ?: 0
-        val hours = list.getOrNull(2)?.let { string ->
-            string.toLongOrNull() ?: return null
-        } ?: 0
-        return ((hours * 3600) + (minutes * 60) + seconds) * 1000
-    }
-
-    private fun addTextChangeListener(textView: TextView?) {
-        textView?.addTextChangedListener(object : TextWatcher {
-            private var deleteNext = false
-
-            override fun afterTextChanged(s: Editable) {}
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                textView.error = null
-                val length = s.length
-                val delete = deleteNext
-                deleteNext = s.lastOrNull() == ':'
-                s.reversed().let { text ->
-                    if (text.getOrNull(0)?.isDigit() == true
-                        && text.getOrNull(1)?.isDigit() == true
-                        && text.getOrNull(2).let { it == null || it == ':' }
-                    ) {
-                        if (delete) {
-                            if (!deleteNext) {
-                                textView.editableText.delete(length - 1, length)
-                            }
-                        } else {
-                            if (text.count { it == ':' } < 2) {
-                                textView.append(":")
-                            }
-                        }
-                    }
-                }
-                if (s.lastOrNull() == '.') {
-                    textView.editableText.replace(length - 1, length, ":")
-                }
-            }
-        })
+        close()
     }
 
     override fun onIntegrityTokenLoaded(callback: String?) {
         when (callback) {
-            "stream" -> {
-                viewModel.setStream(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), requireContext().prefs().getBoolean(C.TOKEN_INCLUDE_TOKEN_STREAM, true)),
-                    channelLogin = requireArguments().getString(KEY_CHANNEL_LOGIN),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    platform = requireContext().prefs().getString(C.TOKEN_PLATFORM, "web"),
-                    playerType = requireContext().prefs().getString(C.TOKEN_PLAYER_TYPE, "site"),
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            "video" -> {
-                viewModel.setVideo(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext(), requireContext().prefs().getBoolean(C.TOKEN_INCLUDE_TOKEN_VIDEO, true)),
-                    videoId = requireArguments().getString(KEY_VIDEO_ID),
-                    animatedPreviewUrl = requireArguments().getString(KEY_VIDEO_ANIMATED_PREVIEW),
-                    videoType = requireArguments().getString(KEY_VIDEO_TYPE),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            "clip" -> {
-                viewModel.setClip(
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext()),
-                    clipId = requireArguments().getString(KEY_CLIP_ID),
-                    qualities = requireArguments().getStringArray(KEY_QUALITY_NAMES)?.let { names ->
-                        requireArguments().getStringArray(KEY_QUALITY_RESOLUTIONS)?.let { resolutions ->
-                            requireArguments().getStringArray(KEY_QUALITY_FRAME_RATES)?.let { frameRates ->
-                                requireArguments().getStringArray(KEY_QUALITY_BITRATES)?.let { bitrates ->
-                                    requireArguments().getStringArray(KEY_QUALITY_CODECS)?.let { codecs ->
-                                        requireArguments().getStringArray(KEY_QUALITY_URLS)?.let { urls ->
-                                            names.mapIndexed { index, name ->
-                                                VideoQuality(name, resolutions.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), frameRates.getOrNull(index).takeIf { it != "null" }?.toFloatOrNull(), bitrates.getOrNull(index).takeIf { it != "null" }?.toIntOrNull(), codecs.getOrNull(index).takeIf { it != "null" }, urls.getOrNull(index))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    supportedCodecs = requireContext().prefs().getString(C.TOKEN_SUPPORTED_CODECS, "av1,h265,h264"),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
+            "stream", "video", "clip" -> load()
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

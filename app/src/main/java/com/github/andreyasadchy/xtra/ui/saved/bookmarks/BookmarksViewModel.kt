@@ -59,9 +59,9 @@ class BookmarksViewModel(
     val sortText = MutableStateFlow<CharSequence?>(null)
 
     val sort: String
-        get() = filter.value?.sort ?: BookmarksSortDialog.SORT_SAVED_AT
+        get() = filter.value?.sort ?: BookmarkSorts.SORT_SAVED_AT
     val order: String
-        get() = filter.value?.order ?: BookmarksSortDialog.ORDER_DESC
+        get() = filter.value?.order ?: BookmarkSorts.ORDER_DESC
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val flow = filter.flatMapLatest {

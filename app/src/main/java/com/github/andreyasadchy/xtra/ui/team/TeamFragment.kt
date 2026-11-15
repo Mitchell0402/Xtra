@@ -1,329 +1,153 @@
 package com.github.andreyasadchy.xtra.ui.team
 
-import android.content.Intent
-import android.content.res.Configuration
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupWithNavController
-import androidx.paging.PagingDataAdapter
-import androidx.recyclerview.widget.RecyclerView
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.request.target
-import coil3.request.transformations
-import coil3.transform.CircleCropTransformation
-import com.github.andreyasadchy.xtra.R
-import com.github.andreyasadchy.xtra.databinding.FragmentTeamBinding
-import com.github.andreyasadchy.xtra.model.ui.Stream
-import com.github.andreyasadchy.xtra.model.ui.Team
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.github.andreyasadchy.xtra.model.ui.Video
+import com.github.andreyasadchy.xtra.ui.browse.FragmentBrowseActions
+import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
-import com.github.andreyasadchy.xtra.ui.common.PagedListFragment
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
-import com.github.andreyasadchy.xtra.ui.login.LoginActivity
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
-import com.github.andreyasadchy.xtra.ui.team.TeamViewModel.Companion.TeamViewModelFactory
-import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
+import com.github.andreyasadchy.xtra.ui.main.MainViewModel
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.util.C
-import com.github.andreyasadchy.xtra.util.HeadingFixPlugin
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
-import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.android.material.color.MaterialColors
-import io.noties.markwon.Markwon
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
-import io.noties.markwon.linkify.LinkifyPlugin
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
-class TeamFragment : PagedListFragment(), Scrollable, IntegrityDialog.Listener {
+/**
+ * A team's page in Compose (U5, plan 7.8), in place of the v0.1 TeamFragment and TeamMembersAdapter. It stays a
+ * Fragment destination of the old navigation graph until U8.
+ */
+class TeamFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
 
-    private var _binding: FragmentTeamBinding? = null
-    private val binding get() = _binding!!
     private val args: TeamFragmentArgs by navArgs()
-    private val viewModel: TeamViewModel by viewModels { TeamViewModelFactory }
-    private lateinit var pagingAdapter: PagingDataAdapter<Stream, out RecyclerView.ViewHolder>
+    private val viewModel: TeamViewModel by viewModels { TeamViewModel.Companion.TeamViewModelFactory }
+    private val mainViewModel: MainViewModel by activityViewModels { MainViewModel.Companion.MainViewModelFactory }
+    private val scrollToTopRequests = mutableIntStateOf(0)
+    private var refreshMembers: () -> Unit = {}
+
+    private val actions by lazy {
+        object : FragmentBrowseActions(this@TeamFragment), TeamActions {
+            override fun shareTeam() = share("https://twitch.tv/team/${args.teamName}", args.teamName)
+            override fun toggleBookmark(video: Video) = Unit
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        loadTeam()
+    }
+
+    private fun loadTeam() {
+        val context = requireContext()
+        viewModel.loadTeamInfo(
+            teamName = args.teamName,
+            networkLibrary = context.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+            gqlHeaders = TwitchApiHelper.getGQLHeaders(context),
+            enableIntegrity = context.prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+        )
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentTeamBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        with(binding) {
-            val activity = requireActivity() as MainActivity
-            if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                appBar.setExpanded(false, false)
-            }
-            val isLoggedIn = !TwitchApiHelper.getGQLHeaders(requireContext(), true)[C.HEADER_TOKEN].isNullOrBlank() ||
-                    !TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()
-            val navController = findNavController()
-            val appBarConfiguration = AppBarConfiguration(setOf(R.id.rootGamesFragment, R.id.rootTopFragment, R.id.followPagerFragment, R.id.followMediaFragment, R.id.savedPagerFragment, R.id.savedMediaFragment))
-            toolbar.setupWithNavController(navController, appBarConfiguration)
-            toolbar.menu.findItem(R.id.login).title = if (isLoggedIn) getString(R.string.log_out) else getString(R.string.log_in)
-            toolbar.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.search -> {
-                        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
-                        true
-                    }
-                    R.id.settings -> {
-                        activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
-                        true
-                    }
-                    R.id.login -> {
-                        if (isLoggedIn) {
-                            activity.getAlertDialogBuilder().apply {
-                                setTitle(getString(R.string.logout_title))
-                                requireContext().tokenPrefs().getString(C.USERNAME, null)?.let { setMessage(getString(R.string.logout_msg, it)) }
-                                setNegativeButton(getString(R.string.no), null)
-                                setPositiveButton(getString(R.string.yes)) { _, _ -> activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java)) }
-                            }.show()
-                        } else {
-                            activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
-                        }
-                        true
-                    }
-                    R.id.share -> {
-                        startActivity(Intent.createChooser(Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "https://twitch.tv/team/${args.teamName}")
-                            args.teamName?.let {
-                                putExtra(Intent.EXTRA_TITLE, it)
-                            }
-                            type = "text/plain"
-                        }, null))
-                        true
-                    }
-                    else -> false
-                }
-            }
-            if (!requireContext().prefs().getBoolean(C.UI_THEME_APPBAR_LIFT, true)) {
-                appBar.setLiftable(false)
-                appBar.background = null
-                collapsingToolbar.setContentScrimColor(MaterialColors.getColor(collapsingToolbar, com.google.android.material.R.attr.colorSurface))
-            }
-            ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                collapsingToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    topMargin = insets.top
-                }
-                if (activity.findViewById<LinearLayout>(R.id.navBarContainer)?.isVisible == false) {
-                    val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    recyclerViewLayout.recyclerView.updatePadding(bottom = systemBars.bottom)
-                }
-                WindowInsetsCompat.CONSUMED
-            }
-        }
-        pagingAdapter = TeamMembersAdapter(this) {
-            findNavController().navigate(
-                TopStreamsFragmentDirections.actionGlobalTopFragment(
-                    tags = arrayOf(it)
-                )
-            )
-        }
-        setAdapter(binding.recyclerViewLayout.recyclerView, pagingAdapter)
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.integrity.collect {
-                    (requireActivity() as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager)
-                }
-            }
-        }
-    }
-
-    override fun initialize() {
-        viewModel.loadTeamInfo(
-            teamName = args.teamName,
-            networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-            gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext()),
-            enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+        val context = requireContext()
+        val prefs = context.prefs()
+        val shell = (activity as? ShellHost)?.shell
+        val options = FollowingListOptions(
+            nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
+            showUptime = prefs.getBoolean(C.UI_UPTIME, true),
+            showTags = prefs.getBoolean(C.UI_TAGS, true),
+            truncateCounts = prefs.getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
         )
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.team.collectLatest { team ->
-                    if (team != null) {
-                        updateTeamLayout(team)
+        val compact = prefs.getString(C.COMPACT_STREAMS, "disabled") == "all"
+        return ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LagoonTheme {
+                    val team by viewModel.team.collectAsState()
+                    val members = viewModel.flow.collectAsLazyPagingItems()
+                    val online by mainViewModel.isNetworkAvailable.collectAsState()
+                    val toast = rememberToastHostState()
+                    refreshMembers = { members.refresh() }
+                    LaunchedEffect(Unit) {
+                        viewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
                     }
-                }
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.flow.collectLatest { pagingData ->
-                    pagingAdapter.submitData(pagingData)
-                }
-            }
-        }
-        initializeAdapter(binding.recyclerViewLayout, pagingAdapter)
-        if (requireContext().prefs().getBoolean(C.UI_SCROLL_TOP, true)) {
-            binding.recyclerViewLayout.scrollTop.setOnClickListener {
-                scrollToTop()
-                it.visibility = View.GONE
-            }
-        }
-    }
-
-    private fun updateTeamLayout(team: Team) {
-        with(binding) {
-            if (!team.displayName.isNullOrBlank()) {
-                teamName.visibility = View.VISIBLE
-                teamName.text = team.displayName
-                if (team.bannerUrl != null) {
-                    teamName.setTextColor(Color.LTGRAY)
-                    teamName.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                teamName.visibility = View.GONE
-            }
-            if (team.memberCount != null) {
-                teamMembers.visibility = View.VISIBLE
-                val count = team.memberCount
-                teamMembers.text = resources.getQuantityString(
-                    R.plurals.members,
-                    count,
-                    TwitchApiHelper.formatCount(count, requireContext().prefs().getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true))
-                )
-                if (team.bannerUrl != null) {
-                    teamMembers.setTextColor(Color.LTGRAY)
-                    teamMembers.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                teamMembers.visibility = View.GONE
-            }
-            if (!team.ownerName.isNullOrBlank() || !team.ownerLogin.isNullOrBlank()) {
-                teamOwner.visibility = View.VISIBLE
-                teamOwner.text = getString(
-                    R.string.owner,
-                    if (team.ownerLogin != null && !team.ownerLogin.equals(team.ownerName, true)) {
-                        when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                            "0" -> "${team.ownerName}(${team.ownerLogin})"
-                            "1" -> team.ownerName
-                            else -> team.ownerLogin
+                    // v0.1 (onNetworkRestored): reload the team and retry the members when the connection returns
+                    LaunchedEffect(Unit) {
+                        var wasOnline = mainViewModel.isNetworkAvailable.value ?: context.hasValidatedNetwork()
+                        mainViewModel.isNetworkAvailable.collectLatest { now ->
+                            if (now == true && !wasOnline) {
+                                loadTeam()
+                                members.retry()
+                            }
+                            if (now != null) wasOnline = now
                         }
-                    } else {
-                        team.ownerName
                     }
-                )
-                if (team.bannerUrl != null) {
-                    teamOwner.setTextColor(Color.LTGRAY)
-                    teamOwner.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                teamOwner.visibility = View.GONE
-            }
-            if (team.logoUrl != null) {
-                logoImage.visibility = View.VISIBLE
-                requireContext().imageLoader.enqueue(
-                    ImageRequest.Builder(requireContext()).apply {
-                        data(team.logoUrl)
-                        if (requireContext().prefs().getBoolean(C.UI_ROUND_USER_IMAGE, true)) {
-                            transformations(CircleCropTransformation())
-                        }
-                        crossfade(true)
-                        target(logoImage)
-                    }.build()
-                )
-            } else {
-                logoImage.visibility = View.GONE
-            }
-            if (team.bannerUrl != null) {
-                bannerImage.visibility = View.VISIBLE
-                requireContext().imageLoader.enqueue(
-                    ImageRequest.Builder(requireContext()).apply {
-                        data(team.bannerUrl)
-                        crossfade(true)
-                        target(bannerImage)
-                    }.build()
-                )
-            } else {
-                bannerImage.visibility = View.GONE
-            }
-            if (!team.description.isNullOrBlank()) {
-                teamDescription.visibility = View.VISIBLE
-                val markwon = Markwon.builder(requireContext())
-                    .usePlugin(SoftBreakAddsNewLinePlugin.create())
-                    .usePlugin(LinkifyPlugin.create())
-                    .usePlugin(HeadingFixPlugin())
-                    .build()
-                markwon.setMarkdown(teamDescription, team.description)
-                teamDescription.setOnClickListener {
-                    if (teamDescription.maxLines == 3) {
-                        teamDescription.maxLines = Int.MAX_VALUE
-                    } else {
-                        teamDescription.maxLines = 3
+                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+                    val loaded = team
+                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+                        TeamScreen(
+                            header = remember(loaded) {
+                                TeamHeader(
+                                    name = args.teamName,
+                                    displayName = loaded?.displayName,
+                                    description = loaded?.description,
+                                    logo = loaded?.logoUrl,
+                                    banner = loaded?.bannerUrl,
+                                    members = loaded?.memberCount,
+                                    ownerLogin = loaded?.ownerLogin,
+                                    ownerName = loaded?.ownerName,
+                                )
+                            },
+                            members = members,
+                            options = options,
+                            actions = actions,
+                            compactStreams = compact,
+                            bottomPadding = bottom,
+                            navScroll = shell?.hideOnScroll?.nestedScrollConnection,
+                            scrollToTopRequests = scrollToTopRequests.intValue,
+                            toast = toast,
+                            offline = online == false || (online == null && !context.hasValidatedNetwork()),
+                        )
                     }
                 }
-            } else {
-                teamDescription.visibility = View.GONE
             }
         }
     }
 
     override fun scrollToTop() {
-        with(binding) {
-            appBar.setExpanded(true, true)
-            recyclerViewLayout.recyclerView.scrollToPosition(0)
-        }
-    }
-
-    override fun onNetworkRestored() {
-        viewModel.loadTeamInfo(
-            teamName = args.teamName,
-            networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-            gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext()),
-            enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-        )
-        pagingAdapter.retry()
+        scrollToTopRequests.intValue++
     }
 
     override fun onIntegrityTokenLoaded(callback: String?) {
-        when (callback) {
-            "refresh" -> {
-                viewModel.loadTeamInfo(
-                    teamName = args.teamName,
-                    networkLibrary = requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    gqlHeaders = TwitchApiHelper.getGQLHeaders(requireContext()),
-                    enableIntegrity = requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-                pagingAdapter.refresh()
-            }
+        if (callback == FragmentBrowseActions.CALLBACK_REFRESH) {
+            loadTeam()
+            refreshMembers()
         }
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            binding.appBar.setExpanded(false, false)
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

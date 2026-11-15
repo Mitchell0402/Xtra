@@ -30,8 +30,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/navRail"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:layout="@layout/fragment_media_pager" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:id="@+id/navBarContainer"

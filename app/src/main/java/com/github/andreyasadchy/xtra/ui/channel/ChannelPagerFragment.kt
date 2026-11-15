@@ -1,880 +1,304 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.res.Configuration
-import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
-import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.content.edit
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.doOnLayout
+import android.widget.FrameLayout
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.isVisible
-import androidx.core.view.marginBottom
-import androidx.core.view.marginTop
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupWithNavController
-import androidx.viewpager2.widget.ViewPager2
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.request.target
-import coil3.request.transformations
-import coil3.transform.CircleCropTransformation
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.R
-import com.github.andreyasadchy.xtra.databinding.FragmentChannelBinding
-import com.github.andreyasadchy.xtra.model.ui.Stream
-import com.github.andreyasadchy.xtra.model.ui.User
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerViewModel.Companion.ChannelPagerViewModelFactory
-import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
-import com.github.andreyasadchy.xtra.ui.common.FragmentHost
+import com.github.andreyasadchy.xtra.ui.browse.FilterKind
+import com.github.andreyasadchy.xtra.ui.browse.FilterSheetConfig
+import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
+import com.github.andreyasadchy.xtra.ui.channel.about.ChannelAboutViewModel
+import com.github.andreyasadchy.xtra.ui.channel.clips.ChannelClipsViewModel
+import com.github.andreyasadchy.xtra.ui.channel.suggestions.ChannelSuggestionsViewModel
+import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosViewModel
+import com.github.andreyasadchy.xtra.ui.chat.ChatFragment
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
-import com.github.andreyasadchy.xtra.ui.common.Sortable
-import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
-import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.login.LoginActivity
-import com.github.andreyasadchy.xtra.ui.main.LiveNotificationWorker
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
+import com.github.andreyasadchy.xtra.ui.following.displayName
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
+import com.github.andreyasadchy.xtra.ui.main.MainViewModel
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
-import com.github.andreyasadchy.xtra.util.reduceDragSensitivity
 import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.android.material.appbar.AppBarLayout
-import com.google.android.material.appbar.CollapsingToolbarLayout
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
-import kotlin.time.Clock
+import kotlinx.coroutines.flow.emptyFlow
 import kotlin.time.Instant
 
-class ChannelPagerFragment : BaseNetworkFragment(), Scrollable, FragmentHost, IntegrityDialog.Listener {
+/**
+ * A channel's page in Compose (U5), in place of the v0.1 ChannelPagerFragment, its view pager and its four list
+ * fragments. It stays a Fragment destination of the old navigation graph until U8 (plan 8), so links, deep links and
+ * the back stack work as before. The chat segment is still the old ChatFragment (U7), placed in a container over
+ * the page under the pinned tabs.
+ */
+class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
 
-    private var _binding: FragmentChannelBinding? = null
-    private val binding get() = _binding!!
     private val args: ChannelPagerFragmentArgs by navArgs()
-    private val viewModel: ChannelPagerViewModel by viewModels { ChannelPagerViewModelFactory }
-    private var firstLaunch = true
-
-    override val currentFragment: Fragment?
-        get() = childFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}")
+    private val pagerViewModel: ChannelPagerViewModel by viewModels { ChannelPagerViewModel.Companion.ChannelPagerViewModelFactory }
+    private val videosViewModel: ChannelVideosViewModel by viewModels { ChannelVideosViewModel.Companion.ChannelVideosViewModelFactory }
+    private val clipsViewModel: ChannelClipsViewModel by viewModels { ChannelClipsViewModel.Companion.ChannelClipsViewModelFactory }
+    private val aboutViewModel: ChannelAboutViewModel by viewModels { ChannelAboutViewModel.Companion.ChannelAboutViewModelFactory }
+    private val suggestionsViewModel: ChannelSuggestionsViewModel by viewModels { ChannelSuggestionsViewModel.Companion.ChannelSuggestionsViewModelFactory }
+    private val mainViewModel: MainViewModel by activityViewModels { MainViewModel.Companion.MainViewModelFactory }
+    private val scrollToTopRequests = mutableIntStateOf(0)
+    private val page by lazy { ChannelPage(this, args, pagerViewModel, videosViewModel, clipsViewModel, aboutViewModel) }
+    private var chatContainer: FragmentContainerView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        firstLaunch = savedInstanceState == null
+        page.start()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentChannelBinding.inflate(inflater, container, false)
-        return binding.root
+        val context = requireContext()
+        val prefs = context.prefs()
+        val shell = (activity as? ShellHost)?.shell
+        val root = FrameLayout(context)
+        val compose = ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LagoonTheme {
+                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+                        Content(prefs, bottom, shell?.hideOnScroll?.nestedScrollConnection)
+                    }
+                }
+            }
+        }
+        root.addView(compose, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val chat = FragmentContainerView(context).apply {
+            id = R.id.channelChat
+            isVisible = false
+        }
+        root.addView(chat, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        chatContainer = chat
+        return root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.integrity.collect {
-                    (requireActivity() as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager)
-                }
-            }
+    @androidx.compose.runtime.Composable
+    private fun Content(prefs: android.content.SharedPreferences, bottomPadding: androidx.compose.ui.unit.Dp, navScroll: androidx.compose.ui.input.nestedscroll.NestedScrollConnection?) {
+        val context = requireContext()
+        val segmentsPref = remember { prefs.getString(C.UI_CHANNEL_TABS, null) }
+        val segments = remember { ChannelSegment.list(segmentsPref) }
+        var selectedKey by rememberSaveable { mutableStateOf(ChannelSegment.default(segmentsPref, segments).key) }
+        val selected = ChannelSegment.of(selectedKey)?.takeIf { it in segments } ?: segments.first()
+        val options = remember {
+            FollowingListOptions(
+                nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
+                showUptime = prefs.getBoolean(C.UI_UPTIME, true),
+                showTags = prefs.getBoolean(C.UI_TAGS, true),
+                truncateCounts = prefs.getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
+                showBroadcasters = prefs.getBoolean(C.UI_BROADCASTERS_COUNT, true),
+                usePositions = prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true),
+            )
         }
-        with(binding) {
-            val activity = requireActivity() as MainActivity
-            if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                appBar.setExpanded(false, false)
-            }
-            if (viewModel.stream.value == null) {
-                watchLive.setOnClickListener {
-                    activity.startStream(
-                        Stream(
-                            id = args.streamId,
-                            channelId = args.channelId,
-                            channelLogin = args.channelLogin,
-                            channelName = args.channelName,
-                            channelImageURL = args.channelImage,
-                        )
-                    )
-                }
-            }
-            args.channelName.let {
-                if (it != null) {
-                    userLayout.visibility = View.VISIBLE
-                    userName.visibility = View.VISIBLE
-                    userName.text = if (args.channelLogin != null && !args.channelLogin.equals(it, true)) {
-                        when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                            "0" -> "${it}(${args.channelLogin})"
-                            "1" -> it
-                            else -> args.channelLogin
-                        }
-                    } else {
-                        it
-                    }
-                } else {
-                    userName.visibility = View.GONE
-                }
-            }
-            args.channelImage.let {
-                if (it != null) {
-                    userLayout.visibility = View.VISIBLE
-                    userImage.visibility = View.VISIBLE
-                    requireContext().imageLoader.enqueue(
-                        ImageRequest.Builder(requireContext()).apply {
-                            data(it)
-                            if (requireContext().prefs().getBoolean(C.UI_ROUND_USER_IMAGE, true)) {
-                                transformations(CircleCropTransformation())
-                            }
-                            crossfade(true)
-                            target(userImage)
-                        }.build()
-                    )
-                } else {
-                    userImage.visibility = View.GONE
-                }
-            }
-            val isLoggedIn = !TwitchApiHelper.getGQLHeaders(requireContext(), true)[C.HEADER_TOKEN].isNullOrBlank() ||
-                    !TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()
-            val setting = requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0
-            val navController = findNavController()
-            val appBarConfiguration = AppBarConfiguration(setOf(R.id.rootGamesFragment, R.id.rootTopFragment, R.id.followPagerFragment, R.id.followMediaFragment, R.id.savedPagerFragment, R.id.savedMediaFragment))
-            toolbar.setupWithNavController(navController, appBarConfiguration)
-            toolbar.menu.findItem(R.id.login).title = if (isLoggedIn) getString(R.string.log_out) else getString(R.string.log_in)
-            toolbar.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.toggleNotifications -> {
-                        viewModel.notificationsEnabled.value?.let {
-                            if (it) {
-                                viewModel.disableNotifications(
-                                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                                    args.channelId,
-                                    setting,
-                                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false)
-                                )
-                            } else {
-                                val notificationsEnabled = requireContext().prefs().getBoolean(C.LIVE_NOTIFICATIONS_ENABLED, false)
-                                viewModel.enableNotifications(
-                                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                                    args.channelId,
-                                    setting,
-                                    notificationsEnabled,
-                                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false)
-                                )
-                                if (!args.channelId.isNullOrBlank() && !notificationsEnabled) {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-                                    }
-                                    viewModel.updateNotifications(
-                                        requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                        TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                                        TwitchApiHelper.getHelixHeaders(requireContext())
-                                    )
-                                    WorkManager.getInstance(requireContext()).enqueueUniquePeriodicWork(
-                                        "live_notifications",
-                                        ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
-                                        PeriodicWorkRequestBuilder<LiveNotificationWorker>(15, TimeUnit.MINUTES)
-                                            .setInitialDelay(1, TimeUnit.MINUTES)
-                                            .setConstraints(
-                                                Constraints.Builder()
-                                                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                                                    .build()
-                                            )
-                                            .build()
-                                    )
-                                    requireContext().prefs().edit { putBoolean(C.LIVE_NOTIFICATIONS_ENABLED, true) }
-                                }
-                            }
-                        }
-                        true
-                    }
-                    R.id.followButton -> {
-                        viewModel.isFollowing.value?.let {
-                            if (it) {
-                                requireContext().getAlertDialogBuilder()
-                                    .setMessage(getString(R.string.unfollow_channel,
-                                        if (args.channelLogin != null && !args.channelLogin.equals(args.channelName, true)) {
-                                            when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                                                "0" -> "${args.channelName}(${args.channelLogin})"
-                                                "1" -> args.channelName
-                                                else -> args.channelLogin
-                                            }
-                                        } else {
-                                            args.channelName
-                                        }
-                                    ))
-                                    .setNegativeButton(getString(R.string.no), null)
-                                    .setPositiveButton(getString(R.string.yes)) { _, _ ->
-                                        viewModel.deleteFollowChannel(
-                                            requireContext().tokenPrefs().getString(C.USER_ID, null),
-                                            args.channelId,
-                                            setting,
-                                            requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                            TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                                            requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                                        )
-                                    }
-                                    .show()
-                            } else {
-                                viewModel.saveFollowChannel(
-                                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                                    args.channelId,
-                                    args.channelLogin,
-                                    args.channelName,
-                                    setting,
-                                    requireContext().prefs().getBoolean(C.LIVE_NOTIFICATIONS_ENABLED, false),
-                                    !requireContext().prefs().getBoolean(C.UI_ACTIVATE_NOTIFICATIONS_WHEN_FOLLOWING, true),
-                                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                                )
-                            }
-                        }
-                        true
-                    }
-                    R.id.search -> {
-                        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
-                        true
-                    }
-                    R.id.settings -> {
-                        activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
-                        true
-                    }
-                    R.id.login -> {
-                        if (isLoggedIn) {
-                            activity.getAlertDialogBuilder().apply {
-                                setTitle(getString(R.string.logout_title))
-                                requireContext().tokenPrefs().getString(C.USERNAME, null)?.let { setMessage(getString(R.string.logout_msg, it)) }
-                                setNegativeButton(getString(R.string.no), null)
-                                setPositiveButton(getString(R.string.yes)) { _, _ -> activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java)) }
-                            }.show()
-                        } else {
-                            activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
-                        }
-                        true
-                    }
-                    R.id.share -> {
-                        startActivity(Intent.createChooser(Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "https://twitch.tv/${args.channelLogin}")
-                            args.channelName?.let {
-                                putExtra(Intent.EXTRA_TITLE, it)
-                            }
-                            type = "text/plain"
-                        }, null))
-                        true
-                    }
-                    R.id.download -> {
-                        viewModel.stream.value?.let {
-                            DownloadDialog.newStreamInstance(
-                                id = it.id,
-                                channelId = it.channelId,
-                                channelLogin = it.channelLogin,
-                                channelName = it.channelName,
-                                channelImage = it.channelImage,
-                                gameId = it.gameId,
-                                gameSlug = it.gameSlug,
-                                gameName = it.gameName,
-                                title = it.title,
-                                thumbnail = it.thumbnail,
-                                createdAt = it.createdAt,
-                            ).show(childFragmentManager, null)
-                        }
-                        true
-                    }
-                    else -> false
-                }
-            }
-            viewLifecycleOwner.lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    viewModel.notificationsEnabled.collectLatest {
-                        if (it != null) {
-                            toolbar.menu.findItem(R.id.toggleNotifications)?.apply {
-                                if (it) {
-                                    icon = ContextCompat.getDrawable(requireContext(), R.drawable.baseline_notifications_black_24)
-                                    title = getString(R.string.disable_notifications)
-                                } else {
-                                    icon = ContextCompat.getDrawable(requireContext(), R.drawable.baseline_notifications_none_black_24)
-                                    title = getString(R.string.enable_notifications)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            viewLifecycleOwner.lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    viewModel.notifications.collectLatest { pair ->
-                        if (pair != null) {
-                            val enabled = pair.first
-                            val errorMessage = pair.second
-                            if (!errorMessage.isNullOrBlank()) {
-                                Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show()
-                            } else {
-                                if (enabled) {
-                                    Toast.makeText(requireContext(), R.string.enabled_notifications, Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(requireContext(), R.string.disabled_notifications, Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            viewModel.notifications.value = null
-                        }
-                    }
-                }
-            }
-            if (setting == 0 || setting == 1) {
-                val followButton = toolbar.menu.findItem(R.id.followButton)
-                followButton?.isVisible = true
-                viewLifecycleOwner.lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.isFollowing.collectLatest {
-                            if (it != null) {
-                                followButton?.apply {
-                                    if (it) {
-                                        icon = ContextCompat.getDrawable(requireContext(), R.drawable.baseline_favorite_black_24)
-                                        title = getString(R.string.unfollow)
-                                    } else {
-                                        icon = ContextCompat.getDrawable(requireContext(), R.drawable.baseline_favorite_border_black_24)
-                                        title = getString(R.string.follow)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        viewModel.follow.collectLatest { pair ->
-                            if (pair != null) {
-                                val following = pair.first
-                                val errorMessage = pair.second
-                                if (!errorMessage.isNullOrBlank()) {
-                                    Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show()
-                                } else {
-                                    if (following) {
-                                        Toast.makeText(requireContext(),
-                                            getString(
-                                                R.string.now_following,
-                                                if (args.channelLogin != null && !args.channelLogin.equals(args.channelName, true)) {
-                                                    when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                                                        "0" -> "${args.channelName}(${args.channelLogin})"
-                                                        "1" -> args.channelName
-                                                        else -> args.channelLogin
-                                                    }
-                                                } else {
-                                                    args.channelName
-                                                }
-                                            ),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    } else {
-                                        Toast.makeText(requireContext(),
-                                            getString(
-                                                R.string.unfollowed,
-                                                if (args.channelLogin != null && !args.channelLogin.equals(args.channelName, true)) {
-                                                    when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                                                        "0" -> "${args.channelName}(${args.channelLogin})"
-                                                        "1" -> args.channelName
-                                                        else -> args.channelLogin
-                                                    }
-                                                } else {
-                                                    args.channelName
-                                                }
-                                            ),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                                viewModel.follow.value = null
-                            }
-                        }
-                    }
-                }
-            }
-            val tabList = requireContext().prefs().getString(C.UI_CHANNEL_TABS, null).let { tabPref ->
-                val defaultTabs = C.DEFAULT_CHANNEL_TABS.split(',')
-                if (tabPref != null) {
-                    val list = tabPref.split(',').filter { item ->
-                        defaultTabs.find { it.first() == item.first() } != null
-                    }.toMutableList()
-                    defaultTabs.forEachIndexed { index, item ->
-                        if (list.find { it.first() == item.first() } == null) {
-                            list.add(index, item)
-                        }
-                    }
-                    list
-                } else defaultTabs
-            }
-            val tabs = tabList.mapNotNull {
-                val split = it.split(':')
-                val key = split[0]
-                val enabled = split[2] != "0"
-                if (enabled) {
-                    key
-                } else {
-                    null
-                }
-            }
-            if (tabs.size <= 1) {
-                tabLayout.visibility = View.GONE
-            } else {
-                if (tabs.size >= 5) {
-                    tabLayout.tabGravity = TabLayout.GRAVITY_CENTER
-                    tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
-                }
-            }
-            val adapter = ChannelPagerAdapter(this@ChannelPagerFragment, args, tabs)
-            viewPager.adapter = adapter
-            if (!requireContext().prefs().getBoolean(C.UI_THEME_APPBAR_LIFT, true)) {
-                appBar.setLiftable(false)
-                appBar.background = null
-                collapsingToolbar.setContentScrimColor(MaterialColors.getColor(collapsingToolbar, com.google.android.material.R.attr.colorSurface))
-            }
-            viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                private val layoutParams = collapsingToolbar.layoutParams as AppBarLayout.LayoutParams
-                private val originalScrollFlags = layoutParams.scrollFlags
+        val followSetting = remember { prefs.getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0 }
+        val loggedIn = remember {
+            !TwitchApiHelper.getGQLHeaders(context, true)[C.HEADER_TOKEN].isNullOrBlank() ||
+                    !TwitchApiHelper.getHelixHeaders(context)[C.HEADER_TOKEN].isNullOrBlank()
+        }
+        val videosFilterValue by videosViewModel.filter.collectAsState()
+        val clipsFilterValue by clipsViewModel.filter.collectAsState()
+        val suggestions = (if (ChannelSegment.Suggestions in segments) suggestionsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val videos = (if (ChannelSegment.Videos in segments && videosFilterValue != null) videosViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val clips = (if (ChannelSegment.Clips in segments && clipsFilterValue != null) clipsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val stream by pagerViewModel.stream.collectAsState()
+        val user by pagerViewModel.user.collectAsState()
+        val following by pagerViewModel.isFollowing.collectAsState()
+        val notifications by pagerViewModel.notificationsEnabled.collectAsState()
+        val description by aboutViewModel.description.collectAsState()
+        val socialMedias by aboutViewModel.socialMedias.collectAsState()
+        val team by aboutViewModel.team.collectAsState()
+        val originalName by aboutViewModel.originalName.collectAsState()
+        val panels by aboutViewModel.panels.collectAsState()
+        val isRemembered by page.remembered.collectAsState()
+        val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
+        val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
+        val online by mainViewModel.isNetworkAvailable.collectAsState()
+        val toast = rememberToastHostState()
+        page.refreshLists = { suggestions.refresh(); videos.refresh(); clips.refresh() }
 
-                override fun onPageSelected(position: Int) {
-                    layoutParams.scrollFlags = if (tabs.getOrNull(position) != "3") {
-                        originalScrollFlags
-                    } else {
-                        appBar.setExpanded(false, isResumed)
-                        appBar.background = null
-                        AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL
-                    }
-                    viewPager.doOnLayout {
-                        childFragmentManager.findFragmentByTag("f${position}").let { fragment ->
-                            if (fragment is Sortable) {
-                                fragment.setupSortBar(sortBar)
-                                sortBar.root.doOnLayout {
-                                    toolbarContainer.layoutParams = (toolbarContainer.layoutParams as CollapsingToolbarLayout.LayoutParams).apply { bottomMargin = toolbarContainer2.height }
-                                    val toolbarHeight = toolbarContainer.marginTop + toolbarContainer.marginBottom
-                                    toolbar.layoutParams = toolbar.layoutParams.apply { height = toolbarHeight }
-                                    collapsingToolbar.scrimVisibleHeightTrigger = toolbarHeight + 1
-                                }
-                            } else {
-                                sortBar.root.visibility = View.GONE
-                                toolbarContainer2.doOnLayout {
-                                    toolbarContainer.layoutParams = (toolbarContainer.layoutParams as CollapsingToolbarLayout.LayoutParams).apply { bottomMargin = toolbarContainer2.height }
-                                    val toolbarHeight = toolbarContainer.marginTop + toolbarContainer.marginBottom
-                                    toolbar.layoutParams = toolbar.layoutParams.apply { height = toolbarHeight }
-                                    collapsingToolbar.scrimVisibleHeightTrigger = toolbarHeight + 1
-                                }
-                            }
-                        }
-                    }
-                }
-            })
-            if (firstLaunch) {
-                val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
-                viewPager.setCurrentItem(
-                    tabs.indexOf(defaultItem).takeIf { it != -1 } ?: tabs.indexOf("1").takeIf { it != -1 } ?: 0,
-                    false
-                )
-                firstLaunch = false
-            }
-            viewPager.offscreenPageLimit = adapter.itemCount
-            viewPager.reduceDragSensitivity()
-            TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-                tab.text = when (tabs.getOrNull(position)) {
-                    "0" -> getString(R.string.suggestions)
-                    "1" -> getString(R.string.videos)
-                    "2" -> getString(R.string.clips)
-                    "3" -> getString(R.string.chat)
-                    "4" -> getString(R.string.about)
-                    else -> getString(R.string.videos)
-                }
-            }.attach()
-            ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                collapsingToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    topMargin = insets.top
-                }
-                windowInsets
-            }
+        LaunchedEffect(Unit) {
+            pagerViewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
         }
-    }
-
-    override fun initialize() {
-        viewModel.loadStream(
-            requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-            TwitchApiHelper.getGQLHeaders(requireContext()),
-            TwitchApiHelper.getHelixHeaders(requireContext()),
-            requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-        )
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.stream.collectLatest { stream ->
-                    if (stream != null) {
-                        updateStreamLayout(stream)
-                    }
-                }
-            }
+        LaunchedEffect(Unit) {
+            aboutViewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
         }
-        viewLifecycleOwner.lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.user.collectLatest { user ->
-                    if (user != null) {
-                        updateUserLayout(user)
-                    }
-                }
-            }
-        }
-        viewModel.isFollowingChannel(
-            requireContext().tokenPrefs().getString(C.USER_ID, null),
-            args.channelId,
-            args.channelLogin,
-            requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-            requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-            TwitchApiHelper.getGQLHeaders(requireContext(), true),
-            TwitchApiHelper.getHelixHeaders(requireContext()),
-        )
-    }
-
-    private fun updateStreamLayout(stream: Stream?) {
-        with(binding) {
-            val activity = requireActivity() as MainActivity
-            if (stream?.viewerCount != null) {
-                watchLive.text = getString(R.string.watch_live)
-                watchLive.setOnClickListener { activity.startStream(stream) }
-            }
-            stream?.channelImage.let {
-                if (it != null) {
-                    userLayout.visibility = View.VISIBLE
-                    userImage.visibility = View.VISIBLE
-                    requireContext().imageLoader.enqueue(
-                        ImageRequest.Builder(requireContext()).apply {
-                            data(it)
-                            if (requireContext().prefs().getBoolean(C.UI_ROUND_USER_IMAGE, true)) {
-                                transformations(CircleCropTransformation())
-                            }
-                            crossfade(true)
-                            target(userImage)
-                        }.build()
-                    )
-                    requireArguments().putString(C.CHANNEL_IMAGE, it)
-                } else {
-                    userImage.visibility = View.GONE
-                }
-            }
-            stream?.channelName.let {
-                if (it != null && it != args.channelName) {
-                    userLayout.visibility = View.VISIBLE
-                    userName.visibility = View.VISIBLE
-                    userName.text = if (stream?.channelLogin != null && !stream.channelLogin.equals(it, true)) {
-                        when (requireContext().prefs().getString(C.UI_NAME_DISPLAY, "0")) {
-                            "0" -> "${it}(${stream.channelLogin})"
-                            "1" -> it
-                            else -> stream.channelLogin
-                        }
-                    } else {
-                        it
-                    }
-                    requireArguments().putString(C.CHANNEL_NAME, it)
-                }
-            }
-            stream?.channelLogin.let {
-                if (it != null && it != args.channelLogin) {
-                    requireArguments().putString(C.CHANNEL_LOGIN, it)
-                }
-            }
-            stream?.id.let {
-                if (it != null && it != args.streamId) {
-                    requireArguments().putString(C.STREAM_ID, it)
-                }
-            }
-            if (!stream?.title.isNullOrBlank()) {
-                streamLayout.visibility = View.VISIBLE
-                title.visibility = View.VISIBLE
-                title.text = stream.title?.trim()
-            } else {
-                title.visibility = View.GONE
-            }
-            if (!stream?.gameName.isNullOrBlank()) {
-                streamLayout.visibility = View.VISIBLE
-                gameName.visibility = View.VISIBLE
-                gameName.text = stream.gameName
-                gameName.setOnClickListener {
-                    findNavController().navigate(
-                        if (requireContext().prefs().getBoolean(C.UI_GAME_PAGER, true)) {
-                            GamePagerFragmentDirections.actionGlobalGamePagerFragment(
-                                gameId = stream.gameId,
-                                gameSlug = stream.gameSlug,
-                                gameName = stream.gameName
-                            )
-                        } else {
-                            GameMediaFragmentDirections.actionGlobalGameMediaFragment(
-                                gameId = stream.gameId,
-                                gameSlug = stream.gameSlug,
-                                gameName = stream.gameName
-                            )
+        LaunchedEffect(user) { if (user != null) page.onUserLoaded() }
+        LaunchedEffect(Unit) {
+            pagerViewModel.follow.collect { pair ->
+                if (pair != null) {
+                    val (followed, error) = pair
+                    val name = displayName(page.channelName, page.channelLogin, options.nameDisplay)
+                    toast.show(
+                        when {
+                            !error.isNullOrBlank() -> error
+                            followed -> getString(R.string.now_following, name)
+                            else -> getString(R.string.unfollowed, name)
                         }
                     )
-                }
-            } else {
-                gameName.visibility = View.GONE
-            }
-            if (stream?.viewerCount != null) {
-                streamLayout.visibility = View.VISIBLE
-                viewers.visibility = View.VISIBLE
-                val count = stream.viewerCount ?: 0
-                viewers.text = resources.getQuantityString(
-                    R.plurals.viewers,
-                    count,
-                    TwitchApiHelper.formatCount(count, requireContext().prefs().getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true))
-                )
-            } else {
-                viewers.visibility = View.GONE
-            }
-            if (requireContext().prefs().getBoolean(C.UI_UPTIME, true)) {
-                if (stream?.createdAt != null) {
-                    val text = stream.createdAt?.let {
-                        Instant.parseOrNull(it)?.takeIf { time -> time.toEpochMilliseconds() > 0 }?.let { createdAt ->
-                            val uptime = Clock.System.now() - createdAt
-                            if (uptime.isPositive()) {
-                                DateUtils.formatElapsedTime(uptime.inWholeSeconds)
-                            } else null
-                        }
-                    }
-                    if (text != null) {
-                        streamLayout.visibility = View.VISIBLE
-                        uptime.visibility = View.VISIBLE
-                        uptime.text = getString(R.string.uptime, text)
-                    } else {
-                        uptime.visibility = View.GONE
-                    }
+                    pagerViewModel.follow.value = null
                 }
             }
         }
-    }
-
-    private fun updateUserLayout(user: User) {
-        with(binding) {
-            if (viewModel.stream.value?.viewerCount == null && user.lastBroadcast != null) {
-                val text = user.lastBroadcast?.let {
-                    Instant.parseOrNull(it)?.toEpochMilliseconds()?.takeIf { ms -> ms > 0 }?.let { time ->
-                        TwitchApiHelper.formatDate(requireContext(), time)
-                    }
-                }
-                if (text != null)  {
-                    lastBroadcast.visibility = View.VISIBLE
-                    lastBroadcast.text = getString(R.string.last_broadcast_date, text)
-                } else {
-                    lastBroadcast.visibility = View.GONE
-                }
-            }
-            if (!userImage.isVisible && user.profileImage != null) {
-                userLayout.visibility = View.VISIBLE
-                userImage.visibility = View.VISIBLE
-                requireContext().imageLoader.enqueue(
-                    ImageRequest.Builder(requireContext()).apply {
-                        data(user.profileImage)
-                        if (requireContext().prefs().getBoolean(C.UI_ROUND_USER_IMAGE, true)) {
-                            transformations(CircleCropTransformation())
+        LaunchedEffect(Unit) {
+            pagerViewModel.notifications.collect { pair ->
+                if (pair != null) {
+                    val (enabled, error) = pair
+                    toast.show(
+                        when {
+                            !error.isNullOrBlank() -> error
+                            enabled -> getString(R.string.enabled_notifications)
+                            else -> getString(R.string.disabled_notifications)
                         }
-                        crossfade(true)
-                        target(userImage)
-                    }.build()
-                )
-                requireArguments().putString(C.CHANNEL_IMAGE, user.profileImage)
-            }
-            if (user.bannerImageURL != null) {
-                bannerImage.visibility = View.VISIBLE
-                requireContext().imageLoader.enqueue(
-                    ImageRequest.Builder(requireContext()).apply {
-                        data(user.bannerImageURL)
-                        crossfade(true)
-                        target(bannerImage)
-                    }.build()
-                )
-                if (userName.isVisible) {
-                    userName.setTextColor(Color.WHITE)
-                    userName.setShadowLayer(4f, 0f, 0f, Color.BLACK)
+                    )
+                    pagerViewModel.notifications.value = null
                 }
-            } else {
-                bannerImage.visibility = View.GONE
             }
-            if (user.createdAt != null) {
-                val text = Instant.parseOrNull(user.createdAt)?.toEpochMilliseconds()?.takeIf { ms -> ms > 0 }?.let {
-                    TwitchApiHelper.formatDate(requireContext(), it)
+        }
+        // v0.1 (BaseNetworkFragment.onNetworkRestored): reload the channel and retry the lists when the connection returns
+        LaunchedEffect(Unit) {
+            var wasOnline = mainViewModel.isNetworkAvailable.value ?: context.hasValidatedNetwork()
+            mainViewModel.isNetworkAvailable.collectLatest { now ->
+                if (now == true && !wasOnline) {
+                    page.loadChannel()
+                    suggestions.retry(); videos.retry(); clips.retry()
                 }
-                userCreated.visibility = View.VISIBLE
-                userCreated.text = getString(R.string.created_at, text)
-                if (user.bannerImageURL != null) {
-                    userCreated.setTextColor(Color.LTGRAY)
-                    userCreated.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                userCreated.visibility = View.GONE
+                if (now != null) wasOnline = now
             }
-            if (user.followerCount != null) {
-                val count = user.followerCount
-                userFollowers.visibility = View.VISIBLE
-                userFollowers.text = resources.getQuantityString(
-                    R.plurals.followers,
-                    count,
-                    TwitchApiHelper.formatCount(count, requireContext().prefs().getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true))
-                )
-                if (user.bannerImageURL != null) {
-                    userFollowers.setTextColor(Color.LTGRAY)
-                    userFollowers.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                userFollowers.visibility = View.GONE
-            }
-            val broadcasterType = when (user.broadcasterType?.lowercase()) {
+        }
+
+        val live = stream?.takeIf { it.viewerCount != null }
+        val roles = listOfNotNull(
+            when (user?.broadcasterType?.lowercase()) {
                 "partner" -> getString(R.string.user_partner)
                 "affiliate" -> getString(R.string.user_affiliate)
                 else -> null
-            }
-            val type = when (user.type?.lowercase()) {
-                "staff" -> getString(R.string.user_staff)
-                else -> null
-            }
-            val typeString = if (broadcasterType != null && type != null) "$broadcasterType, $type" else broadcasterType ?: type
-            if (typeString != null) {
-                userType.visibility = View.VISIBLE
-                userType.text = typeString
-                if (user.bannerImageURL != null) {
-                    userType.setTextColor(Color.LTGRAY)
-                    userType.setShadowLayer(4f, 0f, 0f, Color.BLACK)
-                }
-            } else {
-                userType.visibility = View.GONE
-            }
-            if (args.updateLocal) {
-                viewModel.updateLocalUser(requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP), requireContext().filesDir.path, user)
-            }
-        }
-    }
-
-    override fun onNetworkRestored() {
-        viewModel.loadStream(
-            requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-            TwitchApiHelper.getGQLHeaders(requireContext()),
-            TwitchApiHelper.getHelixHeaders(requireContext()),
-            requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+            },
+            if (user?.type?.lowercase() == "staff") getString(R.string.user_staff) else null,
+        ).joinToString(", ").ifEmpty { null }
+        val header = ChannelHeader(
+            id = page.channelId,
+            login = page.channelLogin,
+            name = page.channelName,
+            avatar = stream?.channelImage ?: user?.profileImage ?: args.channelImage,
+            banner = user?.bannerImageURL,
+            followers = user?.followerCount,
+            roles = roles,
+            createdAt = user?.createdAt?.let { Instant.parseOrNull(it)?.toEpochMilliseconds()?.takeIf { ms -> ms > 0 } },
+            lastBroadcast = user?.lastBroadcast?.let { Instant.parseOrNull(it)?.toEpochMilliseconds()?.takeIf { ms -> ms > 0 } },
+            description = description,
+            stream = live,
+        )
+        val canRemember = !args.channelId.isNullOrBlank()
+        ChannelScreen(
+            header = header,
+            segments = segments,
+            selected = selected,
+            onSelect = { selectedKey = it.key },
+            lists = ChannelLists(
+                suggestions = suggestions.takeIf { ChannelSegment.Suggestions in segments },
+                videos = videos.takeIf { videosFilterValue != null },
+                clips = clips.takeIf { clipsFilterValue != null },
+            ),
+            filters = ChannelFilters(
+                videos = page.videosFilter(),
+                clips = page.clipsFilter(),
+                videosConfig = FilterSheetConfig(FilterKind.Videos, showPeriod = false, canRemember = canRemember, remembered = isRemembered, showLanguages = false, rememberForChannel = true),
+                clipsConfig = FilterSheetConfig(FilterKind.Clips, canRemember = canRemember, remembered = isRemembered, showLanguages = false, rememberForChannel = true),
+            ),
+            about = ChannelAbout(
+                description = description,
+                socialMedias = socialMedias.orEmpty().mapNotNull { (title, url) -> title?.takeIf { it.isNotBlank() }?.let { it to url } },
+                team = team?.let { (teamName, display) -> display?.takeIf { it.isNotBlank() }?.let { teamName to it } },
+                originalName = originalName,
+                panels = panels.orEmpty(),
+                loaded = panels != null || socialMedias != null,
+            ),
+            options = options,
+            actions = page,
+            loggedIn = loggedIn,
+            accountName = remember { context.tokenPrefs().getString(C.USERNAME, null) },
+            showFollow = followSetting < 2,
+            following = following,
+            notifications = notifications,
+            videoPositions = positions.associate { it.id to it.position },
+            bookmarkedVideoIds = bookmarks.mapNotNull { it.videoId }.toSet(),
+            bottomPadding = bottomPadding,
+            navScroll = navScroll,
+            scrollToTopRequests = scrollToTopRequests.intValue,
+            toast = toast,
+            offline = online == false || (online == null && !context.hasValidatedNetwork()),
+            onChatArea = ::placeChat,
         )
     }
 
-    override fun onIntegrityTokenLoaded(callback: String?) {
-        when (callback) {
-            "refresh" -> {
-                viewModel.loadStream(
-                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    TwitchApiHelper.getGQLHeaders(requireContext()),
-                    TwitchApiHelper.getHelixHeaders(requireContext()),
-                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-                viewModel.isFollowingChannel(
-                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                    args.channelId,
-                    args.channelLogin,
-                    requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                    TwitchApiHelper.getHelixHeaders(requireContext()),
-                )
-            }
-            "follow" -> {
-                viewModel.saveFollowChannel(
-                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                    args.channelId,
-                    args.channelLogin,
-                    args.channelName,
-                    requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-                    requireContext().prefs().getBoolean(C.LIVE_NOTIFICATIONS_ENABLED, false),
-                    !requireContext().prefs().getBoolean(C.UI_ACTIVATE_NOTIFICATIONS_WHEN_FOLLOWING, true),
-                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            "unfollow" -> {
-                viewModel.deleteFollowChannel(
-                    requireContext().tokenPrefs().getString(C.USER_ID, null),
-                    args.channelId,
-                    requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-                    requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                    TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                    requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                )
-            }
-            "enableNotifications" -> {
-                args.channelId?.let {
-                    viewModel.enableNotifications(
-                        requireContext().tokenPrefs().getString(C.USER_ID, null),
-                        it,
-                        requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-                        requireContext().prefs().getBoolean(C.LIVE_NOTIFICATIONS_ENABLED, false),
-                        requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                        TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                        requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                    )
-                }
-            }
-            "disableNotifications" -> {
-                args.channelId?.let {
-                    viewModel.disableNotifications(
-                        requireContext().tokenPrefs().getString(C.USER_ID, null),
-                        it,
-                        requireContext().prefs().getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0,
-                        requireContext().prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                        TwitchApiHelper.getGQLHeaders(requireContext(), true),
-                        requireContext().prefs().getBoolean(C.ENABLE_INTEGRITY, false),
-                    )
-                }
-            }
+    /** Shows the old chat in the area the Compose page left for it, creating it the first time. */
+    private fun placeChat(area: ChatArea) {
+        val container = chatContainer ?: return
+        container.updateLayoutParams<FrameLayout.LayoutParams> {
+            leftMargin = area.left
+            topMargin = area.top
+            bottomMargin = area.bottom
         }
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            binding.appBar.setExpanded(false, false)
+        container.isVisible = area.visible
+        if (area.visible && childFragmentManager.findFragmentById(R.id.channelChat) == null && !childFragmentManager.isStateSaved) {
+            childFragmentManager.beginTransaction()
+                .replace(
+                    R.id.channelChat,
+                    ChatFragment.newInstance(
+                        channelId = page.channelId,
+                        channelLogin = page.channelLogin,
+                        channelName = page.channelName,
+                        streamId = pagerViewModel.stream.value?.id ?: args.streamId,
+                    )
+                )
+                .commitNow()
         }
     }
 
     override fun scrollToTop() {
-        binding.appBar.setExpanded(true, true)
-        (currentFragment as? Scrollable)?.scrollToTop()
+        scrollToTopRequests.intValue++
+    }
+
+    override fun onIntegrityTokenLoaded(callback: String?) {
+        page.onIntegrityTokenLoaded(callback)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
+        chatContainer = null
     }
 }

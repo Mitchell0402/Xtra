@@ -1,59 +1,114 @@
 package com.github.andreyasadchy.xtra.ui.saved
 
 import android.app.Activity
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.os.Environment
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.StatFs
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.doOnLayout
-import androidx.core.view.updateLayoutParams
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupWithNavController
-import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.R
-import com.github.andreyasadchy.xtra.databinding.FragmentMediaPagerBinding
-import com.github.andreyasadchy.xtra.ui.common.FragmentHost
+import com.github.andreyasadchy.xtra.model.ui.Bookmark
+import com.github.andreyasadchy.xtra.model.ui.ChannelSort
+import com.github.andreyasadchy.xtra.model.ui.DownloadProgress
+import com.github.andreyasadchy.xtra.model.ui.OfflineVideo
+import com.github.andreyasadchy.xtra.model.ui.SavedFilter
+import com.github.andreyasadchy.xtra.model.ui.Video
+import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
+import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.common.Scrollable
-import com.github.andreyasadchy.xtra.ui.common.Sortable
+import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
+import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
+import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
+import com.github.andreyasadchy.xtra.ui.download.StorageOption
+import com.github.andreyasadchy.xtra.ui.download.StreamDownloadService
+import com.github.andreyasadchy.xtra.ui.download.VideoDownloadService
+import com.github.andreyasadchy.xtra.ui.following.FollowingAccount
+import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
+import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.login.LoginActivity
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.saved.SavedPagerViewModel.Companion.SavedPagerViewModelFactory
-import com.github.andreyasadchy.xtra.ui.saved.downloads.DownloadsFragment
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
+import com.github.andreyasadchy.xtra.ui.saved.bookmarks.BookmarksViewModel
+import com.github.andreyasadchy.xtra.ui.saved.downloads.DownloadsViewModel
+import com.github.andreyasadchy.xtra.ui.saved.filters.FiltersViewModel
 import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
+import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
-import com.github.andreyasadchy.xtra.util.reduceDragSensitivity
 import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
 
-class SavedPagerFragment : Fragment(), Scrollable, FragmentHost {
+/**
+ * The Me page in Compose (U5, plan 7.6), in place of the v0.1 SavedPagerFragment / SavedMediaFragment and their
+ * bookmarks, downloads and filters fragments. It stays a Fragment destination of the old navigation graph until U8.
+ * It binds to the download services while it is started, as v0.1's downloads list did, to show live progress.
+ */
+open class SavedPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener, SavedActions {
 
-    private var _binding: FragmentMediaPagerBinding? = null
-    private val binding get() = _binding!!
-    private val viewModel: SavedPagerViewModel by viewModels { SavedPagerViewModelFactory }
-    private var firstLaunch = true
+    private val viewModel: SavedPagerViewModel by viewModels { SavedPagerViewModel.Companion.SavedPagerViewModelFactory }
+    private val downloadsViewModel: DownloadsViewModel by viewModels { DownloadsViewModel.Companion.DownloadsViewModelFactory }
+    private val bookmarksViewModel: BookmarksViewModel by viewModels { BookmarksViewModel.Companion.BookmarksViewModelFactory }
+    private val filtersViewModel: FiltersViewModel by viewModels { FiltersViewModel.Companion.FiltersViewModelFactory }
+    private val scrollToTopRequests = mutableIntStateOf(0)
+    private val segmentKey = mutableStateOf<String?>(null)
+
     private var folderResultLauncher: ActivityResultLauncher<Intent>? = null
     private var fileResultLauncher: ActivityResultLauncher<Intent>? = null
+    private var moveResultLauncher: ActivityResultLauncher<Intent>? = null
+    private var chatFileResultLauncher: ActivityResultLauncher<Intent>? = null
 
-    override val currentFragment: Fragment?
-        get() = childFragmentManager.findFragmentByTag("f${binding.viewPager.currentItem}")
+    private var videoDownloadService: VideoDownloadService? = null
+    private var videoDownloadServiceConnection: ServiceConnection? = null
+    private var streamDownloadService: StreamDownloadService? = null
+    private var streamDownloadServiceConnection: ServiceConnection? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** The services' progress as the rows read it; the pace of each download is worked out here. */
+    private val downloadStates = mutableStateMapOf<Int, DownloadState>()
+    private val paces = mutableMapOf<Int, DownloadLogic.Pace>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        firstLaunch = savedInstanceState == null
+        segmentKey.value = savedInstanceState?.getString(STATE_SEGMENT)
         folderResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let {
@@ -67,8 +122,7 @@ class SavedPagerFragment : Fragment(), Scrollable, FragmentHost {
                 val list = mutableListOf<String>()
                 result.data?.clipData?.let { clipData ->
                     for (i in 0 until clipData.itemCount) {
-                        val item = clipData.getItemAt(i)
-                        item.uri?.let {
+                        clipData.getItemAt(i).uri?.let {
                             requireContext().contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                             list.add(it.toString())
                         }
@@ -80,162 +134,547 @@ class SavedPagerFragment : Fragment(), Scrollable, FragmentHost {
                 viewModel.saveVideos(list)
             }
         }
+        moveResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let {
+                    downloadsViewModel.selectedVideo?.let { video ->
+                        requireContext().contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                        downloadsViewModel.moveToSharedStorage(it, video)
+                    }
+                }
+            }
+        }
+        chatFileResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let {
+                    downloadsViewModel.selectedVideo?.let { video ->
+                        requireContext().contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                        downloadsViewModel.updateChatUrl(it, video)
+                    }
+                }
+            }
+        }
+        // the bookmarks' saved sort and v0.1's refreshes of their users and videos
+        val context = requireContext()
+        lifecycleScope.launch {
+            if (bookmarksViewModel.filter.value == null) {
+                val saved = bookmarksViewModel.getChannelSort(BookmarkLogic.SORT_ID)
+                bookmarksViewModel.setFilter(sort = saved?.videoSort, order = saved?.videoType)
+            }
+        }
+        if (context.prefs().getBoolean(C.UI_BOOKMARK_TIME_LEFT, true)) updateBookmarkUsers()
+        val helixHeaders = TwitchApiHelper.getHelixHeaders(context)
+        if (!helixHeaders[C.HEADER_TOKEN].isNullOrBlank()) {
+            bookmarksViewModel.updateVideos(context.filesDir.path, context.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP), helixHeaders)
+        }
+    }
+
+    private fun updateBookmarkUsers() {
+        val context = requireContext()
+        bookmarksViewModel.updateUsers(
+            context.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+            TwitchApiHelper.getGQLHeaders(context),
+            TwitchApiHelper.getHelixHeaders(context),
+            context.prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+        )
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_SEGMENT, segmentKey.value)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentMediaPagerBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        with(binding) {
-            val activity = requireActivity() as MainActivity
-            val isLoggedIn = !TwitchApiHelper.getGQLHeaders(requireContext(), true)[C.HEADER_TOKEN].isNullOrBlank() ||
-                    !TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()
-            val navController = findNavController()
-            val appBarConfiguration = AppBarConfiguration(setOf(R.id.rootGamesFragment, R.id.rootTopFragment, R.id.followPagerFragment, R.id.followMediaFragment, R.id.savedPagerFragment, R.id.savedMediaFragment))
-            toolbar.setupWithNavController(navController, appBarConfiguration)
-            toolbar.menu.findItem(R.id.login).title = if (isLoggedIn) getString(R.string.log_out) else getString(R.string.log_in)
-            toolbar.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.search -> {
-                        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
-                        true
+        val context = requireContext()
+        val prefs = context.prefs()
+        val shell = (activity as? ShellHost)?.shell
+        val loggedIn = !TwitchApiHelper.getGQLHeaders(context, true)[C.HEADER_TOKEN].isNullOrBlank() ||
+                !TwitchApiHelper.getHelixHeaders(context)[C.HEADER_TOKEN].isNullOrBlank()
+        val account = FollowingAccount(loggedIn, context.tokenPrefs().getString(C.USERNAME, null))
+        val segmentsPref = prefs.getString(C.UI_SAVED_TABS, null)
+        val segments = SavedSegment.list(segmentsPref)
+        val defaultSegment = SavedSegment.default(segmentsPref, segments)
+        val options = FollowingListOptions(
+            nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
+            truncateCounts = prefs.getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
+            usePositions = prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true),
+        )
+        val savedOptions = SavedOptions(bookmarkTimeLeft = prefs.getBoolean(C.UI_BOOKMARK_TIME_LEFT, true))
+        return ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LagoonTheme {
+                    val selected = segmentKey.value?.let { SavedSegment.of(it) }?.takeIf { it in segments } ?: defaultSegment
+                    val downloads = downloadsViewModel.flow.collectAsLazyPagingItems()
+                    val filters = filtersViewModel.flow.collectAsLazyPagingItems()
+                    val bookmarkFilter by bookmarksViewModel.filter.collectAsState()
+                    val bookmarkList by remember { bookmarksViewModel.flow }.collectAsState(null)
+                    val positions by remember { bookmarksViewModel.positions }.collectAsState(emptyList())
+                    val ignored by remember { bookmarksViewModel.ignoredUsers }.collectAsState(emptyList())
+                    val toast = rememberToastHostState()
+                    LaunchedEffect(Unit) {
+                        bookmarksViewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
                     }
-                    R.id.settings -> {
-                        activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
-                        true
-                    }
-                    R.id.login -> {
-                        if (isLoggedIn) {
-                            activity.getAlertDialogBuilder().apply {
-                                setTitle(getString(R.string.logout_title))
-                                requireContext().tokenPrefs().getString(C.USERNAME, null)?.let { setMessage(getString(R.string.logout_msg, it)) }
-                                setNegativeButton(getString(R.string.no), null)
-                                setPositiveButton(getString(R.string.yes)) { _, _ -> activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java)) }
-                            }.show()
-                        } else {
-                            activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
-                        }
-                        true
-                    }
-                    R.id.importFolders -> {
-                        folderResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
-                        true
-                    }
-                    R.id.importFiles -> {
-                        fileResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "*/*"
-                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                        })
-                        true
-                    }
-                    else -> false
-                }
-            }
-            val tabList = requireContext().prefs().getString(C.UI_SAVED_TABS, null).let { tabPref ->
-                val defaultTabs = C.DEFAULT_SAVED_TABS.split(',')
-                if (tabPref != null) {
-                    val list = tabPref.split(',').filter { item ->
-                        defaultTabs.find { it.first() == item.first() } != null
-                    }.toMutableList()
-                    defaultTabs.forEachIndexed { index, item ->
-                        if (list.find { it.first() == item.first() } == null) {
-                            list.add(index, item)
+                    // recordings: no progress callbacks, so their time and size are read once a second
+                    LaunchedEffect(Unit) {
+                        while (true) {
+                            refreshRecordings()
+                            delay(1000)
                         }
                     }
-                    list
-                } else defaultTabs
-            }
-            val tabs = tabList.mapNotNull {
-                val split = it.split(':')
-                val key = split[0]
-                val enabled = split[2] != "0"
-                if (enabled) {
-                    key
-                } else {
-                    null
-                }
-            }
-            if (tabs.size <= 1) {
-                tabLayout.visibility = View.GONE
-            } else {
-                if (tabs.size >= 5) {
-                    tabLayout.tabGravity = TabLayout.GRAVITY_CENTER
-                    tabLayout.tabMode = TabLayout.MODE_SCROLLABLE
-                }
-            }
-            val adapter = SavedPagerAdapter(this@SavedPagerFragment, tabs)
-            viewPager.adapter = adapter
-            viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    viewPager.doOnLayout {
-                        childFragmentManager.findFragmentByTag("f${position}")?.let { fragment ->
-                            if (requireContext().prefs().getBoolean(C.UI_THEME_APPBAR_LIFT, true)) {
-                                fragment.view?.findViewById<RecyclerView>(R.id.recyclerView)?.let {
-                                    appBar.setLiftOnScrollTargetView(it)
-                                    it.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                                        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                                            super.onScrolled(recyclerView, dx, dy)
-                                            appBar.isLifted = recyclerView.canScrollVertically(-1)
-                                        }
-                                    })
-                                    it.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                                        appBar.isLifted = it.canScrollVertically(-1)
-                                    }
-                                }
-                            } else {
-                                appBar.setLiftable(false)
-                                appBar.background = null
-                            }
-                            if (fragment is Sortable) {
-                                fragment.setupSortBar(sortBar)
-                            } else {
-                                sortBar.root.visibility = View.GONE
-                            }
-                            toolbar.menu.findItem(R.id.importFolders).isVisible = fragment is DownloadsFragment
-                            toolbar.menu.findItem(R.id.importFiles).isVisible = fragment is DownloadsFragment
-                        }
+                    val sort = bookmarksViewModel.sort
+                    val order = bookmarksViewModel.order
+                    val sortedBookmarks = remember(bookmarkList, bookmarkFilter) {
+                        bookmarkList?.let { BookmarkLogic.sorted(it, sort, order, System.currentTimeMillis()) }
+                    }
+                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+                        SavedScreen(
+                            segments = segments,
+                            selected = selected,
+                            onSelect = { segmentKey.value = it.key },
+                            account = account,
+                            bookmarks = sortedBookmarks,
+                            bookmarkSort = BookmarkSortChoice(sort, order),
+                            downloads = downloads.takeIf { SavedSegment.Downloads in segments },
+                            downloadStates = downloadStates,
+                            filters = filters.takeIf { SavedSegment.Filters in segments },
+                            options = options,
+                            savedOptions = savedOptions,
+                            actions = this@SavedPagerFragment,
+                            storages = remember { storages() },
+                            storageMounted = remember { Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED },
+                            videoPositions = positions.associate { it.id to it.position },
+                            ignoredUserIds = ignored.map { it.userId }.toSet(),
+                            bottomPadding = bottom,
+                            navScroll = shell?.hideOnScroll?.nestedScrollConnection,
+                            scrollToTopRequests = scrollToTopRequests.intValue,
+                            toast = toast,
+                        )
                     }
                 }
-            })
-            if (firstLaunch) {
-                val defaultItem = tabList.find { it.split(':')[1] != "0" }?.split(':')[0] ?: "1"
-                viewPager.setCurrentItem(
-                    tabs.indexOf(defaultItem).takeIf { it != -1 } ?: tabs.indexOf("1").takeIf { it != -1 } ?: 0,
-                    false
-                )
-                firstLaunch = false
-            }
-            viewPager.offscreenPageLimit = adapter.itemCount
-            viewPager.reduceDragSensitivity()
-            TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-                tab.text = when (tabs.getOrNull(position)) {
-                    "0" -> getString(R.string.bookmarks)
-                    "1" -> getString(R.string.downloads)
-                    "2" -> getString(R.string.filters)
-                    else -> getString(R.string.bookmarks)
-                }
-            }.attach()
-            ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                toolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                    topMargin = insets.top
-                }
-                windowInsets
             }
         }
     }
 
-    override fun scrollToTop() {
-        binding.appBar.setExpanded(true, true)
-        (currentFragment as? Scrollable)?.scrollToTop()
+    private fun storages(): List<StorageOption> =
+        requireContext().getExternalFilesDirs(".downloads").mapIndexedNotNull { index, file ->
+            file?.absolutePath?.let { path ->
+                val free = try { StatFs(path).availableBytes } catch (e: Exception) { null }
+                if (index == 0) {
+                    StorageOption(getString(R.string.internal_storage), path, free)
+                } else {
+                    path.substringBefore("/Android/data", "").takeIf { it.isNotBlank() }?.let {
+                        StorageOption(it.substringAfterLast(File.separatorChar), path, free)
+                    }
+                }
+            }
+        }
+
+    // -- download services (v0.1 DownloadsFragment) ------------------------------------------------------------------
+
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch {
+            val activeDownloads = downloadsViewModel.getActiveDownloads()
+            if (activeDownloads.isNotEmpty()) {
+                if (activeDownloads.any { it.live }) bindStreamDownloadService()
+                if (activeDownloads.any { !it.live }) bindVideoDownloadService()
+            }
+        }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    override fun onStop() {
+        super.onStop()
+        videoDownloadService?.listener = null
+        videoDownloadServiceConnection?.let { requireContext().unbindService(it) }
+        videoDownloadServiceConnection = null
+        videoDownloadService = null
+        streamDownloadService?.listener = null
+        streamDownloadServiceConnection?.let { requireContext().unbindService(it) }
+        streamDownloadServiceConnection = null
+        streamDownloadService = null
+        downloadStates.clear()
+        paces.clear()
+    }
+
+    /** A copy of the service's numbers, taken on the service's thread and applied on the main thread. */
+    private fun onProgress(progress: DownloadProgress) {
+        val id = progress.id
+        val now = System.currentTimeMillis()
+        val bytes = progress.bytes
+        val done = progress.progress
+        val max = progress.maxProgress
+        val chat = progress.chatProgress
+        val maxChat = progress.maxChatProgress
+        mainHandler.post {
+            val pace = paces[id]?.next(now, bytes, done) ?: DownloadLogic.Pace(now, bytes, done)
+            paces[id] = pace
+            downloadStates[id] = DownloadState(
+                active = true, progress = done, max = max, chatProgress = chat, maxChat = maxChat, bytes = bytes,
+                bytesPerSecond = pace.bytesPerSecond, secondsLeft = pace.secondsLeft(max),
+            )
+        }
+    }
+
+    /** Video downloads the service no longer reports are gone from the states (finished, stopped). */
+    private fun pruneVideoStates(active: List<DownloadProgress>) {
+        val ids = active.map { it.id }.toSet()
+        downloadStates.keys.filter { id -> id !in ids && downloadStates[id]?.recordedSeconds == null }.forEach {
+            downloadStates.remove(it)
+            paces.remove(it)
+        }
+    }
+
+    private fun refreshRecordings() {
+        val now = System.currentTimeMillis()
+        val active = streamDownloadService?.activeDownloads?.toList().orEmpty()
+        val ids = active.map { it.id }.toSet()
+        active.forEach { progress ->
+            downloadStates[progress.id] = DownloadState(
+                active = true,
+                bytes = progress.bytes,
+                recordedSeconds = progress.startedAt.takeIf { it > 0 }?.let { ((now - it) / 1000).coerceAtLeast(0) },
+            )
+        }
+        downloadStates.keys.filter { downloadStates[it]?.recordedSeconds != null && it !in ids }.forEach { downloadStates.remove(it) }
+        videoDownloadService?.activeDownloads?.toList()?.let { pruneVideoStates(it) }
+        // the service reports a recording before its first segment: still "active"
+        active.filter { it.startedAt == 0L }.forEach { downloadStates[it.id] = DownloadState(active = true) }
+    }
+
+    fun bindVideoDownloadService(started: Boolean = false) {
+        if (videoDownloadServiceConnection == null) {
+            val listener = object : VideoDownloadService.Listener {
+                override fun update(downloadProgress: DownloadProgress) = onProgress(downloadProgress)
+
+                override fun unbind() {
+                    mainHandler.post {
+                        videoDownloadService?.listener = null
+                        videoDownloadServiceConnection?.let { requireContext().unbindService(it) }
+                        videoDownloadServiceConnection = null
+                        videoDownloadService = null
+                        pruneVideoStates(emptyList())
+                    }
+                }
+            }
+            val connection = object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                    if (view != null) {
+                        val binder = service as VideoDownloadService.ServiceBinder
+                        videoDownloadService = binder.getService()
+                        if (started || !videoDownloadService?.activeDownloads.isNullOrEmpty()) {
+                            videoDownloadService?.listener = listener
+                            videoDownloadService?.activeDownloads?.toList()?.forEach { listener.update(it) }
+                        } else {
+                            videoDownloadServiceConnection?.let { requireContext().unbindService(it) }
+                            videoDownloadServiceConnection = null
+                            videoDownloadService?.stopSelf()
+                            videoDownloadService = null
+                        }
+                    }
+                }
+
+                override fun onServiceDisconnected(name: ComponentName?) {
+                    videoDownloadService = null
+                }
+            }
+            requireContext().bindService(Intent(requireContext(), VideoDownloadService::class.java), connection, Context.BIND_AUTO_CREATE)
+            videoDownloadServiceConnection = connection
+        }
+    }
+
+    fun bindStreamDownloadService(started: Boolean = false) {
+        if (streamDownloadServiceConnection == null) {
+            val listener = object : StreamDownloadService.Listener {
+                override fun unbind() {
+                    mainHandler.post {
+                        streamDownloadService?.listener = null
+                        streamDownloadServiceConnection?.let { requireContext().unbindService(it) }
+                        streamDownloadServiceConnection = null
+                        streamDownloadService?.stopSelf()
+                        streamDownloadService = null
+                    }
+                }
+            }
+            val connection = object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                    if (view != null) {
+                        val binder = service as StreamDownloadService.ServiceBinder
+                        streamDownloadService = binder.getService()
+                        if (started || !streamDownloadService?.activeDownloads.isNullOrEmpty()) {
+                            streamDownloadService?.listener = listener
+                            refreshRecordings()
+                        } else {
+                            streamDownloadServiceConnection?.let { requireContext().unbindService(it) }
+                            streamDownloadServiceConnection = null
+                            streamDownloadService = null
+                        }
+                    }
+                }
+
+                override fun onServiceDisconnected(name: ComponentName?) {
+                    streamDownloadService = null
+                }
+            }
+            requireContext().bindService(Intent(requireContext(), StreamDownloadService::class.java), connection, Context.BIND_AUTO_CREATE)
+            streamDownloadServiceConnection = connection
+        }
+    }
+
+    // -- SavedActions: what the v0.1 fragments, adapters and menus did ----------------------------------------------
+
+    private val activity get() = requireActivity() as MainActivity
+
+    override fun search() {
+        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
+    }
+
+    override fun settings() {
+        activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
+    }
+
+    override fun logIn() {
+        activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
+    }
+
+    override fun logOut() {
+        activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
+    }
+
+    override fun importFolders() {
+        folderResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
+    }
+
+    override fun importFiles() {
+        fileResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        })
+    }
+
+    /** v0.1 opened channels from the Me page with `updateLocal`, so the local copy of the channel gets refreshed. */
+    override fun openChannel(id: String?, login: String?, name: String?, image: String?) {
+        findNavController().navigate(
+            ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelId = id, channelLogin = login, channelName = name, channelImage = image, updateLocal = true)
+        )
+    }
+
+    override fun openGame(id: String?, slug: String?, name: String?) {
+        findNavController().navigate(GamePagerFragmentDirections.actionGlobalGamePagerFragment(gameId = id, gameSlug = slug, gameName = name))
+    }
+
+    override fun playOffline(video: OfflineVideo) {
+        activity.startOfflineVideo(video, DownloadLogic.startPosition(video))
+    }
+
+    override fun stopDownload(video: OfflineVideo) {
+        if (video.status == OfflineVideo.STATUS_WAITING_FOR_NETWORK || video.status == OfflineVideo.STATUS_WAITING_FOR_WIFI) {
+            downloadsViewModel.updateDownloadStatus(video, false)
+        } else if (video.live) {
+            if (video.status == OfflineVideo.STATUS_PENDING ||
+                ((video.status == OfflineVideo.STATUS_DOWNLOADING || video.status == OfflineVideo.STATUS_QUEUED || video.status == OfflineVideo.STATUS_WAITING_FOR_STREAM) &&
+                        streamDownloadService?.activeDownloads?.toList()?.find { it.id == video.id } == null)
+            ) {
+                downloadsViewModel.finishDownload(video)
+            } else {
+                requireContext().startService(Intent(requireContext(), StreamDownloadService::class.java).apply {
+                    action = StreamDownloadService.INTENT_STOP
+                    putExtra(StreamDownloadService.KEY_VIDEO_ID, video.id)
+                })
+                bindStreamDownloadService(true)
+            }
+        } else {
+            requireContext().startService(Intent(requireContext(), VideoDownloadService::class.java).apply {
+                action = VideoDownloadService.INTENT_STOP
+                putExtra(VideoDownloadService.KEY_VIDEO_ID, video.id)
+            })
+            bindVideoDownloadService(true)
+        }
+    }
+
+    override fun resumeDownload(video: OfflineVideo) {
+        val waitForWifi = if (requireContext().prefs().getBoolean(C.DOWNLOAD_WIFI_ONLY, false)) {
+            val connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val networkCapabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+            networkCapabilities != null && networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+        } else false
+        if (waitForWifi) {
+            downloadsViewModel.updateDownloadStatus(video, true)
+        } else if (video.live) {
+            requireContext().startService(Intent(requireContext(), StreamDownloadService::class.java).apply {
+                action = StreamDownloadService.INTENT_START
+                putExtra(StreamDownloadService.KEY_VIDEO_ID, video.id)
+            })
+            bindStreamDownloadService(true)
+        } else {
+            requireContext().startService(Intent(requireContext(), VideoDownloadService::class.java).apply {
+                action = VideoDownloadService.INTENT_START
+                putExtra(VideoDownloadService.KEY_VIDEO_ID, video.id)
+            })
+            bindVideoDownloadService(true)
+        }
+    }
+
+    override fun convert(video: OfflineVideo) = downloadsViewModel.convertToFile(video)
+
+    override fun moveToShared(video: OfflineVideo) {
+        downloadsViewModel.selectedVideo = video
+        moveResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
+    }
+
+    override fun moveToApp(video: OfflineVideo, index: Int) {
+        val storages = storages()
+        val checked = if (storages.size == 1) 0 else index
+        storages.getOrNull(checked)?.let { storage ->
+            requireContext().prefs().edit { putInt(C.DOWNLOAD_STORAGE, checked) }
+            downloadsViewModel.moveToAppStorage(storage.path, video)
+        }
+    }
+
+    override fun changeChatFile(video: OfflineVideo) {
+        downloadsViewModel.selectedVideo = video
+        chatFileResultLauncher?.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        })
+    }
+
+    override fun shareDownload(video: OfflineVideo) {
+        video.url?.let { videoUrl ->
+            val uri = if (videoUrl.endsWith(".m3u8")) videoUrl.substringBefore("%2F").toUri() else videoUrl.toUri()
+            startActivity(Intent.createChooser(Intent().apply {
+                action = Intent.ACTION_SEND
+                setDataAndType(uri, requireContext().contentResolver.getType(uri))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                video.name?.let { putExtra(Intent.EXTRA_TITLE, it) }
+            }, null))
+        }
+    }
+
+    /** v0.1's delete: cancel the download in its service first, then remove the row (and the files unless kept). */
+    override fun deleteDownload(video: OfflineVideo, keepFiles: Boolean) {
+        if (video.live) {
+            if (streamDownloadService?.activeDownloads?.toList()?.find { it.id == video.id } != null) {
+                requireContext().startService(Intent(requireContext(), StreamDownloadService::class.java).apply {
+                    action = StreamDownloadService.INTENT_CANCEL
+                    putExtra(StreamDownloadService.KEY_VIDEO_ID, video.id)
+                })
+                bindStreamDownloadService(true)
+            }
+        } else {
+            if (videoDownloadService?.activeDownloads?.toList()?.find { it.id == video.id } != null) {
+                requireContext().startService(Intent(requireContext(), VideoDownloadService::class.java).apply {
+                    action = VideoDownloadService.INTENT_CANCEL
+                    putExtra(VideoDownloadService.KEY_VIDEO_ID, video.id)
+                })
+                bindVideoDownloadService(true)
+            }
+        }
+        downloadsViewModel.delete(video, keepFiles)
+    }
+
+    private fun Bookmark.toVideo() = Video(
+        id = videoId,
+        channelId = userId,
+        channelLogin = userLogin,
+        channelName = userName,
+        channelImageURL = userLogo,
+        gameId = gameId,
+        gameSlug = gameSlug,
+        gameName = gameName,
+        title = title,
+        thumbnailURL = thumbnail,
+        createdAt = createdAt,
+        durationSeconds = duration?.let { it.toIntOrNull() ?: TwitchApiHelper.getDuration(it) },
+        type = type,
+        animatedPreviewURL = animatedPreviewURL,
+    )
+
+    override fun openBookmark(bookmark: Bookmark, position: Long?) {
+        activity.startVideo(bookmark.toVideo(), position, false)
+    }
+
+    override fun refreshBookmark(bookmark: Bookmark) {
+        val context = requireContext()
+        bookmarksViewModel.updateVideo(
+            context.filesDir.path,
+            bookmark.videoId,
+            context.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
+            TwitchApiHelper.getGQLHeaders(context),
+            TwitchApiHelper.getHelixHeaders(context),
+            context.prefs().getBoolean(C.ENABLE_INTEGRITY, false),
+        )
+    }
+
+    /** v0.1's bookmark download left out the game slug; it is passed now (it was only used to open the game). */
+    override fun downloadBookmark(bookmark: Bookmark) {
+        val video = bookmark.toVideo()
+        DownloadDialog.newVideoInstance(
+            id = video.id,
+            channelId = video.channelId,
+            channelLogin = video.channelLogin,
+            channelName = video.channelName,
+            channelImage = video.channelImage,
+            gameId = video.gameId,
+            gameSlug = video.gameSlug,
+            gameName = video.gameName,
+            title = video.title,
+            thumbnail = video.thumbnail,
+            createdAt = video.createdAt,
+            durationSeconds = video.durationSeconds,
+            type = video.type,
+            animatedPreviewUrl = video.animatedPreviewURL,
+        ).show(childFragmentManager, null)
+    }
+
+    override fun toggleIgnore(userId: String) = bookmarksViewModel.vodIgnoreUser(userId)
+
+    override fun deleteBookmark(bookmark: Bookmark) = bookmarksViewModel.delete(bookmark)
+
+    override fun applyBookmarkSort(sort: String, order: String, saveDefault: Boolean) {
+        lifecycleScope.launch {
+            if (sort != bookmarksViewModel.sort || order != bookmarksViewModel.order) {
+                bookmarksViewModel.setFilter(sort, order)
+            }
+            if (saveDefault) {
+                val item = bookmarksViewModel.getChannelSort(BookmarkLogic.SORT_ID)?.apply {
+                    videoSort = sort
+                    videoType = order
+                } ?: ChannelSort(id = BookmarkLogic.SORT_ID, videoSort = sort, videoType = order)
+                bookmarksViewModel.saveChannelSort(item)
+            }
+        }
+    }
+
+    override fun openFilter(filter: SavedFilter) {
+        val tags = filter.tags?.split(',')?.toTypedArray()
+        val languages = filter.languages?.split(',')?.toTypedArray()
+        findNavController().navigate(
+            if (filter.gameId != null || filter.gameSlug != null || filter.gameName != null) {
+                GamePagerFragmentDirections.actionGlobalGamePagerFragment(
+                    gameId = filter.gameId, gameSlug = filter.gameSlug, gameName = filter.gameName, tags = tags, languages = languages,
+                )
+            } else {
+                TopStreamsFragmentDirections.actionGlobalTopFragment(tags = tags, languages = languages)
+            }
+        )
+    }
+
+    override fun deleteFilter(filter: SavedFilter) = filtersViewModel.delete(filter)
+
+    override fun scrollToTop() {
+        scrollToTopRequests.intValue++
+    }
+
+    override fun onIntegrityTokenLoaded(callback: String?) {
+        if (callback == "users") updateBookmarkUsers()
+    }
+
+    private companion object {
+        const val STATE_SEGMENT = "segment"
     }
 }

@@ -34,6 +34,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -206,41 +212,84 @@ fun SegmentedControl(
 
 @Composable
 private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, selectedColor: Color) {
-    val colors = Lagoon.colors
     val motion = Lagoon.motion
-    val haptics = LocalHapticFeedback.current
+    val measurer = rememberTextMeasurer()
+    val style = Lagoon.type.labelStrong
+    val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize().padding(4.dp)) {
-        val segment = maxWidth / options.size.coerceAtLeast(1)
-        val offset by animateDpAsState(segment * selectedIndex, motion.steady(), label = "segmentOffset")
-        Box(
-            Modifier
-                .offset(x = offset)
-                .width(segment)
-                .fillMaxHeight()
-                .background(selectedColor, LagoonShapes.pill)
-        )
-        Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup()) {
-            options.forEachIndexed { index, label ->
-                val selected = index == selectedIndex
-                val textColor by animateColorAsState(
-                    if (selected) colors.textPrimary else colors.textSecondary, motion.fade(), label = "segmentText",
-                )
+        val equal = maxWidth / options.size.coerceAtLeast(1)
+        // labels that do not fit an equal share (five channel segments in English) make the track scroll, each
+        // segment as wide as its label; otherwise every segment gets the same share, as before
+        val natural = remember(options, style, density) {
+            options.map { with(density) { measurer.measure(it, style, maxLines = 1).size.width.toDp() } + SegmentLabelPadding * 2 }
+        }
+        if (natural.all { it <= equal }) {
+            val offset by animateDpAsState(equal * selectedIndex, motion.steady(), label = "segmentOffset")
+            Box(
+                Modifier
+                    .offset(x = offset)
+                    .width(equal)
+                    .fillMaxHeight()
+                    .background(selectedColor, LagoonShapes.pill)
+            )
+            Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup()) {
+                options.forEachIndexed { index, label ->
+                    SegmentLabel(label, index == selectedIndex, { onSelect(index) }, Modifier.weight(1f))
+                }
+            }
+        } else {
+            val widths = natural.map { maxOf(it, equal) }
+            val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
+            val index = selectedIndex.coerceIn(0, options.lastIndex)
+            val offset by animateDpAsState(starts[index], motion.steady(), label = "segmentOffset")
+            val width by animateDpAsState(widths[index], motion.steady(), label = "segmentWidth")
+            val scroll = rememberScrollState()
+            val viewport = maxWidth
+            LaunchedEffect(index, viewport) {
+                // keep the chosen segment in view, centred where the track allows
+                val target = with(density) { (starts[index] - (viewport - widths[index]) / 2).roundToPx() }
+                scroll.animateScrollTo(target.coerceIn(0, scroll.maxValue.coerceAtLeast(0)))
+            }
+            Box(Modifier.fillMaxHeight().horizontalScroll(scroll)) {
                 Box(
                     Modifier
-                        .weight(1f)
+                        .offset(x = offset)
+                        .width(width)
                         .fillMaxHeight()
-                        .selectable(selected = selected, role = Role.Tab, indication = null, interactionSource = null, onClick = {
-                            if (!selected) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            onSelect(index)
-                        }),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        label, style = Lagoon.type.labelStrong, color = textColor, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp),
-                    )
+                        .background(selectedColor, LagoonShapes.pill)
+                )
+                Row(Modifier.fillMaxHeight().selectableGroup()) {
+                    options.forEachIndexed { i, label ->
+                        SegmentLabel(label, i == selectedIndex, { onSelect(i) }, Modifier.width(widths[i]))
+                    }
                 }
             }
         }
+    }
+}
+
+private val SegmentLabelPadding = 12.dp
+
+@Composable
+private fun SegmentLabel(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = Lagoon.colors
+    val motion = Lagoon.motion
+    val haptics = LocalHapticFeedback.current
+    val textColor by animateColorAsState(
+        if (selected) colors.textPrimary else colors.textSecondary, motion.fade(), label = "segmentText",
+    )
+    Box(
+        modifier
+            .fillMaxHeight()
+            .selectable(selected = selected, role = Role.Tab, indication = null, interactionSource = null, onClick = {
+                if (!selected) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                onClick()
+            }),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label, style = Lagoon.type.labelStrong, color = textColor, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp),
+        )
     }
 }

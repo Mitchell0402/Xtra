@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U5: channel page, team page, Me page, download and record sheet -->
+<resources>
+    <string name="channel_more">More</string>
+    <string name="channel_suggestions">Similar</string>
+    <string name="channel_live_playing">Live · %s</string>
+    <string name="channel_empty_videos">This channel has no videos of this type.</string>
+    <string name="channel_empty_clips">No clips of this channel in this period.</string>
+    <string name="channel_empty_suggestions">No similar channels are live right now.</string>
+    <string name="channel_about_empty">This channel has not written anything about itself.</string>
+    <string name="channel_about_links">Links</string>
+    <string name="channel_filter_remember_description">This channel opens with these choices next time</string>
+    <string name="channel_filter_default_description">Every channel without its own choices opens with these</string>
+
+    <string name="team_empty">This team has no members to show.</string>
+    <string name="team_member_offline">Offline</string>
+    <string name="team_show_more">Show more</string>
+    <string name="team_show_less">Show less</string>
+
+    <string name="download_sheet_title_stream">Record live stream</string>
+    <string name="download_sheet_title_video">Download video</string>
+    <string name="download_sheet_title_clip">Download clip</string>
+    <string name="download_sheet_range">Part to download</string>
+    <string name="download_sheet_selected">%1$s of %2$s</string>
+    <string name="download_sheet_no_folder">Choose</string>
+    <string name="download_sheet_free">%s free</string>
+    <string name="download_sheet_record">Record</string>
+
+    <string name="saved_import">Import</string>
+    <string name="saved_undo">Undo</string>
+    <string name="saved_downloads_empty">Nothing downloaded yet. Long-press a video or a live stream to download or record it.</string>
+    <string name="saved_bookmarks_empty">No bookmarks yet. Long-press a video to bookmark it.</string>
+    <string name="saved_filters_empty">No saved filters. Turn on “Save filters” in the filter sheet of a stream list.</string>
+    <string name="saved_download_removed">Removed “%s” from downloads; the files are kept</string>
+    <string name="saved_bookmark_removed">Removed bookmark “%s”</string>
+    <string name="saved_filter_removed">Removed filter “%s”</string>
+    <string name="saved_filter_all_games">Live streams</string>
+    <string name="saved_filter_open">Open</string>
+    <string name="saved_keep_files_description">Only remove it from the list; the video stays in storage</string>
+    <string name="saved_speed">%s/s</string>
+    <string name="saved_time_left">%s left</string>
+    <string name="saved_recorded">Recorded %s</string>
+    <string name="saved_recording">Recording</string>
+    <string name="saved_recording_for">Recording %s</string>
+    <string name="saved_source_range">From the video at %1$s–%2$s</string>
+</resources>

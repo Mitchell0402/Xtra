@@ -20,7 +20,7 @@ import com.github.andreyasadchy.xtra.repository.GameSortRepository
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.datasource.GameClipsDataSource
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
@@ -45,7 +45,7 @@ class GameClipsViewModel(
     val filtersText = MutableStateFlow<CharSequence?>(null)
 
     val period: String
-        get() = filter.value?.period ?: VideosSortDialog.PERIOD_WEEK
+        get() = filter.value?.period ?: VideoFilters.PERIOD_WEEK
     val languages: Array<String>
         get() = filter.value?.languages ?: emptyArray()
 
@@ -55,33 +55,33 @@ class GameClipsViewModel(
             PagingConfig(pageSize = 20, prefetchDistance = 3, initialLoadSize = 20)
         ) {
             val started = when (period) {
-                VideosSortDialog.PERIOD_ALL -> null
+                VideoFilters.PERIOD_ALL -> null
                 else -> {
                     val days = when (period) {
-                        VideosSortDialog.PERIOD_DAY -> 1
-                        VideosSortDialog.PERIOD_WEEK -> 7
-                        VideosSortDialog.PERIOD_MONTH -> 30
+                        VideoFilters.PERIOD_DAY -> 1
+                        VideoFilters.PERIOD_WEEK -> 7
+                        VideoFilters.PERIOD_MONTH -> 30
                         else -> 7
                     }
                     (Clock.System.now() - days.days).toString()
                 }
             }
             val ended = when (period) {
-                VideosSortDialog.PERIOD_ALL -> null
+                VideoFilters.PERIOD_ALL -> null
                 else -> Clock.System.now().toString()
             }
             val gqlQueryPeriod = when (period) {
-                VideosSortDialog.PERIOD_DAY -> ClipsPeriod.LAST_DAY
-                VideosSortDialog.PERIOD_WEEK -> ClipsPeriod.LAST_WEEK
-                VideosSortDialog.PERIOD_MONTH -> ClipsPeriod.LAST_MONTH
-                VideosSortDialog.PERIOD_ALL -> ClipsPeriod.ALL_TIME
+                VideoFilters.PERIOD_DAY -> ClipsPeriod.LAST_DAY
+                VideoFilters.PERIOD_WEEK -> ClipsPeriod.LAST_WEEK
+                VideoFilters.PERIOD_MONTH -> ClipsPeriod.LAST_MONTH
+                VideoFilters.PERIOD_ALL -> ClipsPeriod.ALL_TIME
                 else -> ClipsPeriod.LAST_WEEK
             }
             val gqlPeriod = when (period) {
-                VideosSortDialog.PERIOD_DAY -> "LAST_DAY"
-                VideosSortDialog.PERIOD_WEEK -> "LAST_WEEK"
-                VideosSortDialog.PERIOD_MONTH -> "LAST_MONTH"
-                VideosSortDialog.PERIOD_ALL -> "ALL_TIME"
+                VideoFilters.PERIOD_DAY -> "LAST_DAY"
+                VideoFilters.PERIOD_WEEK -> "LAST_WEEK"
+                VideoFilters.PERIOD_MONTH -> "LAST_MONTH"
+                VideoFilters.PERIOD_ALL -> "ALL_TIME"
                 else -> "LAST_WEEK"
             }
             GameClipsDataSource(

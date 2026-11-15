@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U5: the old chat inside the Compose channel page keeps a fixed container id, so it restores with the page -->
+<resources>
+    <item name="channelChat" type="id" />
+</resources>

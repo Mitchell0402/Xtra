@@ -41,7 +41,7 @@ import androidx.paging.compose.LazyPagingItems
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.model.ui.Tag
 import com.github.andreyasadchy.xtra.ui.common.StreamSorts
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.ui.design.components.ButtonStyle
 import com.github.andreyasadchy.xtra.ui.design.components.ChoiceOption
 import com.github.andreyasadchy.xtra.ui.design.components.FilterChip
@@ -68,9 +68,9 @@ const val FilterApplyTag = "browseFilterApply"
 const val TagSearchFieldTag = "browseTagSearch"
 
 private val StreamSortOptions = listOf(StreamSorts.SORT_VIEWERS, StreamSorts.SORT_VIEWERS_ASC, StreamSorts.RECENT)
-private val VideoSorts = listOf(VideosSortDialog.SORT_TIME, VideosSortDialog.SORT_VIEWS)
-private val Periods = listOf(VideosSortDialog.PERIOD_DAY, VideosSortDialog.PERIOD_WEEK, VideosSortDialog.PERIOD_MONTH, VideosSortDialog.PERIOD_ALL)
-private val VideoTypes = listOf(VideosSortDialog.VIDEO_TYPE_ALL, VideosSortDialog.VIDEO_TYPE_ARCHIVE, VideosSortDialog.VIDEO_TYPE_HIGHLIGHT, VideosSortDialog.VIDEO_TYPE_UPLOAD)
+private val VideoSorts = listOf(VideoFilters.SORT_TIME, VideoFilters.SORT_VIEWS)
+private val Periods = listOf(VideoFilters.PERIOD_DAY, VideoFilters.PERIOD_WEEK, VideoFilters.PERIOD_MONTH, VideoFilters.PERIOD_ALL)
+private val VideoTypes = listOf(VideoFilters.VIDEO_TYPE_ALL, VideoFilters.VIDEO_TYPE_ARCHIVE, VideoFilters.VIDEO_TYPE_HIGHLIGHT, VideoFilters.VIDEO_TYPE_UPLOAD)
 
 fun streamSortLabel(sort: String) = when (sort) {
     StreamSorts.SORT_VIEWERS_ASC -> R.string.viewers_low
@@ -78,19 +78,19 @@ fun streamSortLabel(sort: String) = when (sort) {
     else -> R.string.viewers_high
 }
 
-fun videoSortLabel(sort: String) = if (sort == VideosSortDialog.SORT_TIME) R.string.upload_date else R.string.view_count
+fun videoSortLabel(sort: String) = if (sort == VideoFilters.SORT_TIME) R.string.upload_date else R.string.view_count
 
 fun periodLabel(period: String) = when (period) {
-    VideosSortDialog.PERIOD_DAY -> R.string.today
-    VideosSortDialog.PERIOD_MONTH -> R.string.this_month
-    VideosSortDialog.PERIOD_ALL -> R.string.all_time
+    VideoFilters.PERIOD_DAY -> R.string.today
+    VideoFilters.PERIOD_MONTH -> R.string.this_month
+    VideoFilters.PERIOD_ALL -> R.string.all_time
     else -> R.string.this_week
 }
 
 fun typeLabel(type: String) = when (type) {
-    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> R.string.video_type_archive
-    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> R.string.video_type_highlight
-    VideosSortDialog.VIDEO_TYPE_UPLOAD -> R.string.video_type_upload
+    VideoFilters.VIDEO_TYPE_ARCHIVE -> R.string.video_type_archive
+    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> R.string.video_type_highlight
+    VideoFilters.VIDEO_TYPE_UPLOAD -> R.string.video_type_upload
     else -> R.string.all
 }
 
@@ -134,11 +134,11 @@ fun filterChips(
             add(FilterChipItem(stringResource(videoSortLabel(FilterLogic.effectiveVideoSort(filter))), icon = LucideIcons.ArrowUpDown, dropdown = true, onClick = onOpen))
             if (config.showPeriod) add(FilterChipItem(stringResource(periodLabel(FilterLogic.effectivePeriod(filter))), icon = LucideIcons.Clock, dropdown = true, onClick = onOpen))
             add(FilterChipItem(stringResource(typeLabel(FilterLogic.effectiveType(filter))), icon = LucideIcons.Film, dropdown = true, onClick = onOpen))
-            add(FilterChipItem(languagesSummary(filter.languages), icon = LucideIcons.Languages, dropdown = true, onClick = onOpen))
+            if (config.showLanguages) add(FilterChipItem(languagesSummary(filter.languages), icon = LucideIcons.Languages, dropdown = true, onClick = onOpen))
         }
         FilterKind.Clips -> {
             add(FilterChipItem(stringResource(periodLabel(FilterLogic.effectivePeriod(filter))), icon = LucideIcons.Clock, dropdown = true, onClick = onOpen))
-            add(FilterChipItem(languagesSummary(filter.languages), icon = LucideIcons.Languages, dropdown = true, onClick = onOpen))
+            if (config.showLanguages) add(FilterChipItem(languagesSummary(filter.languages), icon = LucideIcons.Languages, dropdown = true, onClick = onOpen))
         }
         FilterKind.Games -> {
             add(FilterChipItem(stringResource(R.string.browse_filter_tags), icon = LucideIcons.Tag, dropdown = true, onClick = onOpen))
@@ -297,7 +297,7 @@ private fun MainPage(
                 )
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
-                if (kind != FilterKind.Games) {
+                if (kind != FilterKind.Games && config.showLanguages) {
                     SettingRow(
                         stringResource(R.string.languages),
                         icon = LucideIcons.Languages,
@@ -329,8 +329,10 @@ private fun MainPage(
                 }
                 if (config.canRemember) {
                     SettingRow(
-                        stringResource(R.string.save_sort_game),
-                        description = stringResource(R.string.browse_filter_remember_description),
+                        stringResource(if (config.rememberForChannel) R.string.save_sort_channel else R.string.save_sort_game),
+                        description = stringResource(
+                            if (config.rememberForChannel) R.string.channel_filter_remember_description else R.string.browse_filter_remember_description
+                        ),
                         icon = LucideIcons.Pin,
                         trailing = SettingTrailing.Toggle(remember, onRemember),
                     )
@@ -340,6 +342,7 @@ private fun MainPage(
                         stringResource(R.string.save_default),
                         description = stringResource(
                             if (kind == FilterKind.Streams && !config.canRemember) R.string.browse_filter_default_top_description
+                            else if (config.rememberForChannel) R.string.channel_filter_default_description
                             else R.string.browse_filter_default_description
                         ),
                         icon = LucideIcons.Star,

@@ -92,9 +92,7 @@ import com.github.andreyasadchy.xtra.ui.design.theme.WidthClass
 import com.github.andreyasadchy.xtra.ui.player.BasePlaybackService
 import com.github.andreyasadchy.xtra.ui.player.ExoPlayerFragment
 import com.github.andreyasadchy.xtra.ui.player.PlayerFragment
-import com.github.andreyasadchy.xtra.ui.saved.SavedMediaFragment
 import com.github.andreyasadchy.xtra.ui.saved.SavedPagerFragment
-import com.github.andreyasadchy.xtra.ui.saved.downloads.DownloadsFragment
 import com.github.andreyasadchy.xtra.ui.team.TeamFragmentDirections
 import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
 import com.github.andreyasadchy.xtra.util.C
@@ -128,6 +126,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
             R.id.followPagerFragment, R.id.followMediaFragment, // U2
             R.id.rootGamesFragment, R.id.gamesFragment, R.id.gamePagerFragment, R.id.gameMediaFragment, // U4
             R.id.rootTopFragment, R.id.topFragment, R.id.searchPagerFragment, // U4
+            R.id.channelPagerFragment, R.id.teamFragment, R.id.savedPagerFragment, R.id.savedMediaFragment, // U5
         )
     }
 
@@ -293,13 +292,12 @@ class MainActivity : AppCompatActivity(), ShellHost {
                                         startService(intent)
                                     }
                                     val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                                    if (currentFragment is SavedPagerFragment || currentFragment is SavedMediaFragment) {
-                                        val fragment = currentFragment.childFragmentManager.fragments.find { it is DownloadsFragment }
+                                    if (currentFragment is SavedPagerFragment) {
                                         if (downloads.any { it.live }) {
-                                            (fragment as? DownloadsFragment)?.bindStreamDownloadService(true)
+                                            currentFragment.bindStreamDownloadService(true)
                                         }
                                         if (downloads.any { !it.live }) {
-                                            (fragment as? DownloadsFragment)?.bindVideoDownloadService(true)
+                                            currentFragment.bindVideoDownloadService(true)
                                         }
                                     }
                                 }
@@ -329,12 +327,11 @@ class MainActivity : AppCompatActivity(), ShellHost {
                         startService(intent)
                     }
                     val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                    if (currentFragment is SavedPagerFragment || currentFragment is SavedMediaFragment) {
-                        val fragment = currentFragment.childFragmentManager.fragments.find { it is DownloadsFragment }
+                    if (currentFragment is SavedPagerFragment) {
                         if (live) {
-                            (fragment as? DownloadsFragment)?.bindStreamDownloadService(true)
+                            currentFragment.bindStreamDownloadService(true)
                         } else {
-                            (fragment as? DownloadsFragment)?.bindVideoDownloadService(true)
+                            currentFragment.bindVideoDownloadService(true)
                         }
                     }
                 }

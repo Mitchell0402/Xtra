@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U4：浏览、游戏页、按标签看直播、搜索 -->
+<resources>
+    <string name="browse_back">返回</string>
+    <string name="browse_filter_title">排序与筛选</string>
+    <string name="browse_filter_tags">标签</string>
+    <string name="browse_filter_any_language">所有语言</string>
+    <string name="browse_filter_more">%1$s 等 %2$d 种</string>
+    <string name="browse_filter_no_tags">无</string>
+    <string name="browse_filter_clear">清除</string>
+    <string name="browse_filter_reset">重置</string>
+    <string name="browse_filter_remember_description">下次打开这个游戏时沿用这些选择</string>
+    <string name="browse_filter_default_description">没有单独设置的游戏都用这些选择打开</string>
+    <string name="browse_filter_default_top_description">下次打开这一页时沿用这些选择</string>
+    <string name="browse_filter_save_filters_description">把标签和语言存到“我的”里的筛选器</string>
+    <string name="browse_filter_tags_hint">输入文字查找标签，选中的标签显示在上方。</string>
+    <string name="browse_filter_tags_none">没有找到标签</string>
+    <string name="browse_filter_tags_error">标签加载失败，请检查网络后重试。</string>
+    <string name="browse_games_empty">现在没有可显示的游戏。</string>
+    <string name="browse_games_empty_tags">没有同时带这些标签的游戏。</string>
+    <string name="browse_game_empty_live">现在没有符合这些条件的直播。</string>
+    <string name="browse_game_empty_videos">没有符合这些条件的视频。</string>
+    <string name="browse_game_empty_clips">这段时间里没有剪辑。</string>
+    <string name="browse_streams_empty">现在没有符合这些条件的直播。</string>
+    <string name="browse_search_placeholder">频道、直播、游戏、视频</string>
+    <string name="browse_search_recent">最近搜索</string>
+    <string name="browse_search_clear_recent">清除</string>
+    <string name="browse_search_forget">从最近搜索中删除 %s</string>
+    <string name="browse_search_hint">搜索频道、直播、游戏和视频。</string>
+    <string name="browse_search_empty">没有找到“%s”的结果。</string>
+    <string name="browse_search_see_all">查看全部</string>
+    <string name="browse_search_look_up">查找</string>
+</resources>

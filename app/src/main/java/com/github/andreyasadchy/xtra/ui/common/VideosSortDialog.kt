@@ -11,8 +11,6 @@ import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.databinding.DialogVideosSortBinding
 import com.github.andreyasadchy.xtra.ui.channel.clips.ChannelClipsFragment
 import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosFragment
-import com.github.andreyasadchy.xtra.ui.game.clips.GameClipsFragment
-import com.github.andreyasadchy.xtra.ui.game.videos.GameVideosFragment
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -87,24 +85,11 @@ class VideosSortDialog : BottomSheetDialogFragment(), SelectLanguagesDialog.OnSe
                     saveSort.text = getString(R.string.save_sort_channel)
                     saveSortLayout.isVisible = parentFragment?.arguments?.getString(C.CHANNEL_ID).isNullOrBlank() == false
                 }
-                is GameClipsFragment -> {
-                    sort.visibility = View.GONE
-                    sortType.visibility = View.GONE
-                    saveSort.text = getString(R.string.save_sort_game)
-                    saveSortLayout.isVisible = parentFragment?.arguments?.getString(C.GAME_ID).isNullOrBlank() == false
-                }
                 is ChannelVideosFragment -> {
                     period.visibility = View.GONE
                     selectLanguages.visibility = View.GONE
                     saveSort.text = getString(R.string.save_sort_channel)
                     saveSortLayout.isVisible = parentFragment?.arguments?.getString(C.CHANNEL_ID).isNullOrBlank() == false
-                }
-                is GameVideosFragment -> {
-                    if (TwitchApiHelper.getHelixHeaders(requireContext())[C.HEADER_TOKEN].isNullOrBlank()) {
-                        period.visibility = View.GONE
-                    }
-                    saveSort.text = getString(R.string.save_sort_game)
-                    saveSortLayout.isVisible = parentFragment?.arguments?.getString(C.GAME_ID).isNullOrBlank() == false
                 }
             }
             val originalSortId = when (args.getString(SORT)) {

@@ -945,13 +945,18 @@ private fun gameActions(game: Game, options: FollowingListOptions, actions: Foll
 // Sheets
 
 @Composable
-private fun AccountSheet(account: FollowingAccount, actions: FollowingActions, onDismiss: () -> Unit, onLogOut: () -> Unit) {
+private fun AccountSheet(account: FollowingAccount, actions: FollowingActions, onDismiss: () -> Unit, onLogOut: () -> Unit) =
+    AccountSheet(account, actions::settings, actions::logIn, onDismiss, onLogOut)
+
+/** The account button's sheet: who is logged in, settings, and log in or out (also used by the Browse page, U4). */
+@Composable
+fun AccountSheet(account: FollowingAccount, onSettings: () -> Unit, onLogIn: () -> Unit, onDismiss: () -> Unit, onLogOut: () -> Unit) {
     val items = buildList {
-        add(ActionItem(stringResource(R.string.settings), LucideIcons.Settings) { actions.settings() })
+        add(ActionItem(stringResource(R.string.settings), LucideIcons.Settings) { onSettings() })
         if (account.loggedIn) {
             add(ActionItem(stringResource(R.string.following_log_out), LucideIcons.LogOut, destructive = true) { onLogOut() })
         } else {
-            add(ActionItem(stringResource(R.string.log_in), LucideIcons.LogIn) { actions.logIn() })
+            add(ActionItem(stringResource(R.string.log_in), LucideIcons.LogIn) { onLogIn() })
         }
     }
     ActionSheet(

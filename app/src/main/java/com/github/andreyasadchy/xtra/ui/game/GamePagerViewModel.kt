@@ -9,6 +9,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.github.andreyasadchy.xtra.ui.game.GameArgsKey
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.model.ui.Game
 import com.github.andreyasadchy.xtra.model.ui.LocalGameFollow
@@ -366,7 +367,7 @@ class GamePagerViewModel(
     companion object {
         val GamePagerViewModelFactory = viewModelFactory {
             initializer {
-                val savedStateHandle = createSavedStateHandle()
+                val savedStateHandle = this[GameArgsKey]?.toSavedStateHandle() ?: createSavedStateHandle()
                 val application = (this[APPLICATION_KEY] as XtraApp)
                 val xtraModule = application.xtraModule
                 GamePagerViewModel(xtraModule.graphQLRepository, xtraModule.helixRepository, xtraModule.localGameFollowsRepository, xtraModule.httpEngine, xtraModule.cronetEngine, xtraModule.cronetExecutor, xtraModule.okHttpClient, savedStateHandle)

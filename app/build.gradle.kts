@@ -51,7 +51,7 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 4
+        versionCode = 5
         versionName = "0.1"
     }
 

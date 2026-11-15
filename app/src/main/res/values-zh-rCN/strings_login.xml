@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Login and integrity check (stage U3). Keep values and values-zh-rCN in step (TranslationsTest). -->
+<resources>
+    <string name="login_title">登录 Twitch</string>
+    <string name="login_step_web">第 1 步，共 2 步 · Twitch 账号</string>
+    <string name="login_step_tv">第 2 步，共 2 步 · 安卓电视设备</string>
+    <string name="login_intro_title">登录 Twitch</string>
+    <string name="login_intro_body">关注、聊天和频道点数需要你的 Twitch 账号。Lagoon 只和 Twitch 通信。</string>
+    <string name="login_intro_step1">在 Twitch 网页上登录</string>
+    <string name="login_intro_step2">再以安卓电视设备的身份授权一次，这样所有功能都能用</string>
+    <string name="login_start">开始登录</string>
+    <string name="login_checking">正在验证登录</string>
+    <string name="login_code_title">输入这个验证码</string>
+    <string name="login_code_body">在已登录的浏览器里打开 twitch.tv/activate，输入验证码，点“激活”（Activate）再点“授权”（Authorize），然后回到这里。</string>
+    <string name="login_copy_code">复制</string>
+    <string name="login_code_copied">验证码已复制</string>
+    <string name="login_open_activate">打开网页</string>
+    <string name="login_code_done">我已激活</string>
+    <string name="login_tv_hint">复制上方网页里的代码，点“下一步”，在打开的网页里输入，然后点“激活”和“授权”。</string>
+    <string name="login_tv_title">还差一步</string>
+    <string name="login_tv_skip">跳过</string>
+    <string name="login_tv_continue">继续</string>
+    <string name="login_paste_hint">把报错页面的网址粘贴到这里</string>
+    <string name="login_paste_continue">继续</string>
+    <string name="login_zoom_summary">放大或缩小登录网页上的文字</string>
+    <string name="integrity_title">验证身份</string>
+    <string name="integrity_summary">Twitch 要求做一次快速验证，完成后会自动关闭。</string>
+</resources>

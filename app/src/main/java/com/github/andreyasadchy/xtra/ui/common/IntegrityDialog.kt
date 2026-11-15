@@ -4,51 +4,96 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
+import android.graphics.Color
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import android.widget.LinearLayout
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import com.github.andreyasadchy.xtra.ui.design.theme.DarkLagoonColors
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
 import androidx.webkit.WebViewClientCompat
-import com.github.andreyasadchy.xtra.databinding.DialogIntegrityBinding
+import com.github.andreyasadchy.xtra.R
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonIconButton
+import com.github.andreyasadchy.xtra.ui.design.components.SettingIconTile
+import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
+import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
 import org.json.JSONObject
 
+/**
+ * The integrity check (plan 7.8: U3): Twitch's login page in a web view, which sends the Client-Integrity header the
+ * app then stores. The header capture is the v0.1 code; the frame around the web view is new (full screen, Compose,
+ * with a title, one line of explanation and a close button instead of a bare dialog).
+ */
 class IntegrityDialog : DialogFragment() {
 
     interface Listener {
         fun onIntegrityTokenLoaded(callback: String?)
     }
 
-    private var _binding: DialogIntegrityBinding? = null
-    private val binding get() = _binding!!
     private var listener: Listener? = null
+    private var webView: WebView? = null
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
         listener = parentFragment as? Listener
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        _binding = DialogIntegrityBinding.inflate(layoutInflater)
+        return Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar).apply {
+            window?.let {
+                WindowCompat.setDecorFitsSystemWindows(it, false)
+                it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            }
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val context = requireContext()
-        val builder = context.getAlertDialogBuilder()
-            .setView(binding.root)
         CookieManager.getInstance().removeAllCookies(null)
         val token = TwitchApiHelper.getGQLHeaders(context, true)[C.HEADER_TOKEN]?.removePrefix("OAuth ")
         if (!token.isNullOrBlank()) {
             CookieManager.getInstance().setCookie("https://www.twitch.tv", "auth-token=$token")
         }
-        with(binding.webView) {
+        val view = WebView(context).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadWithOverviewMode = true
@@ -76,6 +121,8 @@ class IntegrityDialog : DialogFragment() {
                             ).toString())
                         }
                         listener?.onIntegrityTokenLoaded(requireArguments().getString(KEY_CALLBACK))
+                        // settings shows a confirmation: with a fresh login the token often arrives before the page draws
+                        view.post { if (isAdded) parentFragmentManager.setFragmentResult(RESULT_LOADED, Bundle.EMPTY) }
                         dismiss()
                     }
                     return super.shouldInterceptRequest(view, webViewRequest)
@@ -83,22 +130,59 @@ class IntegrityDialog : DialogFragment() {
             }
             loadUrl("https://www.twitch.tv/login")
         }
-        return builder.create()
+        webView = view
+        // the web view is a plain view under a Compose header: hosted inside Compose it stayed blank (U3, emulator)
+        val header = ComposeView(context).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LagoonTheme {
+                    val colors = Lagoon.colors
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.page)
+                            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingIconTile(LucideIcons.ShieldCheck, highlight = true)
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(stringResource(R.string.integrity_title), style = Lagoon.type.headline, color = colors.textPrimary, modifier = Modifier.semantics { heading() })
+                            Text(stringResource(R.string.integrity_summary), style = Lagoon.type.label, color = colors.textSecondary)
+                        }
+                        LagoonIconButton(LucideIcons.X, stringResource(R.string.st_back), onClick = { dismiss() }, filled = false)
+                    }
+                }
+            }
+        }
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(DarkLagoonColors.page.toArgb())
+            addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.ime())
+                val sides = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                v.updatePadding(left = sides.left, right = sides.right, bottom = bars.bottom)
+                insets
+            }
+        }
     }
 
     override fun onDismiss(dialog: DialogInterface) {
         (activity as? MainActivity)?.integrityTokenLoaded()
-        binding.webView.loadUrl("about:blank")
+        webView?.loadUrl("about:blank")
         super.onDismiss(dialog)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
+        webView = null
     }
 
     companion object {
         private const val KEY_CALLBACK = "callback"
+        const val RESULT_LOADED = "integrity_loaded"
 
         fun newInstance(callback: String?): IntegrityDialog {
             return IntegrityDialog().apply {

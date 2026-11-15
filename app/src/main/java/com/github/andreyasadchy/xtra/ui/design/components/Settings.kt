@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -72,6 +73,8 @@ fun SettingRow(
     trailing: SettingTrailing = SettingTrailing.Chevron,
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
+    /** Soft red for destructive actions ("delete", "reset"); the theme's text colour otherwise. */
+    titleColor: Color? = null,
 ) {
     val colors = Lagoon.colors
     val type = Lagoon.type
@@ -105,7 +108,7 @@ fun SettingRow(
     ) {
         if (icon != null) SettingIconTile(icon, highlight = highlight)
         Column(Modifier.weight(1f)) {
-            Text(title, style = type.body.copy(fontWeight = FontWeight.Medium), color = colors.textPrimary)
+            Text(title, style = type.body.copy(fontWeight = FontWeight.Medium), color = titleColor ?: colors.textPrimary)
             if (description != null) {
                 Text(description, style = type.label, color = colors.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }

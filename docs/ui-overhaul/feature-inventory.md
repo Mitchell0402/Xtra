@@ -26,12 +26,14 @@ Outside the navigation graph:
 |---|---|---|---|
 | [ ] | Player (live, video, clip, offline; mini player; picture-in-picture) | `MainActivity` playerContainer, `ui/player/` | U6 |
 | [ ] | Chat (live and replay) | `ui/chat/ChatFragment` inside the player | U7 |
-| [ ] | Settings activity | `ui/settings/SettingsActivity` | U3 |
-| [ ] | Login (web login, TV device code login, integrity check) | `ui/login/LoginActivity` | U3 |
+| [x] | Settings activity | `ui/settings/SettingsActivity` | U3 |
+| [x] | Login (web login, TV device code login, integrity check) | `ui/login/LoginActivity` | U3 |
 | [x] | Deep links: channel, video with timestamp, clip, game directory | `MainActivity` intent filter (twitch.tv) | U2 (checked under the new shell, see u2-report.md) |
-| [ ] | In-app update check and install | `MainActivity`, `SettingsActivity` | U3 |
+| [x] | In-app update check and install | `MainActivity`, `SettingsActivity` | U3 |
 
 ## 2. Settings (18 destinations, 225 preference entries)
+
+U3: all claimed. Where each entry went (kept, moved, removed with the reason): `u3-settings-map.md`.
 
 Restyled in U3. Chat and player-button pages are restyled in U3 and trimmed in U7 / U6 (plan 7.7). Keys read by ExoPlayerService and player/ads must keep key, type and default (plan 10.1).
 
@@ -39,28 +41,28 @@ Restyled in U3. Chat and player-button pages are restyled in U3 and trimmed in U
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `ui_language` | ListPreference | auto | Language — U1: choices cut to system, English, Simplified Chinese (plan 12) |
-| [ ] | `ui_draw_behind_cutouts` | SwitchPreferenceCompat | false | Draw behind display cutouts |
-| [ ] | `live_notifications_enabled` | SwitchPreferenceCompat | false | Live notifications |
+| [x] | `ui_language` | ListPreference | auto | Language — U1: choices cut to system, English, Simplified Chinese (plan 12) |
+| [x] | `ui_draw_behind_cutouts` | SwitchPreferenceCompat | false | Draw behind display cutouts |
+| [x] | `live_notifications_enabled` | SwitchPreferenceCompat | false | Live notifications |
 | [x] | `theme_settings` | Preference |  | Theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
-| [ ] | `ui_settings` | Preference |  | UI |
-| [ ] | `chat_settings` | Preference |  | Chat |
-| [ ] | `player_picture_in_picture` | SwitchPreferenceCompat | true | Picture-in-Picture |
-| [ ] | `player_background_audio` | SwitchPreferenceCompat | true | Play audio in the background |
-| [ ] | `player_background_audio_locked` | SwitchPreferenceCompat | true | Play audio in the background when the screen is locked |
-| [ ] | `player_settings` | Preference |  | Player |
-| [ ] | `player_button_settings` | Preference |  | Player buttons |
-| [ ] | `buffer_settings` | Preference |  | Buffer settings |
-| [ ] | `ad_block_settings` | Preference |  | Ad blocking |
-| [ ] | `playback_settings` | Preference |  | Playback |
-| [ ] | `api_token_settings` | Preference |  | API token settings |
-| [ ] | `network_library` | ListPreference | OkHttp | Network library |
-| [ ] | `download_settings` | Preference |  | Downloads |
-| [ ] | `check_updates` | Preference |  | Check for updates |
-| [ ] | `update_settings` | Preference |  | Update settings |
-| [ ] | `backup_settings` | Preference |  | Backup settings and data |
-| [ ] | `restore_settings` | Preference |  | Restore settings and data |
-| [ ] | `debug_settings` | Preference |  | Debug |
+| [x] | `ui_settings` | Preference |  | UI |
+| [x] | `chat_settings` | Preference |  | Chat |
+| [x] | `player_picture_in_picture` | SwitchPreferenceCompat | true | Picture-in-Picture |
+| [x] | `player_background_audio` | SwitchPreferenceCompat | true | Play audio in the background |
+| [x] | `player_background_audio_locked` | SwitchPreferenceCompat | true | Play audio in the background when the screen is locked |
+| [x] | `player_settings` | Preference |  | Player |
+| [x] | `player_button_settings` | Preference |  | Player buttons |
+| [x] | `buffer_settings` | Preference |  | Buffer settings |
+| [x] | `ad_block_settings` | Preference |  | Ad blocking |
+| [x] | `playback_settings` | Preference |  | Playback |
+| [x] | `api_token_settings` | Preference |  | API token settings |
+| [x] | `network_library` | ListPreference | OkHttp | Network library |
+| [x] | `download_settings` | Preference |  | Downloads |
+| [x] | `check_updates` | Preference |  | Check for updates |
+| [x] | `update_settings` | Preference |  | Update settings |
+| [x] | `backup_settings` | Preference |  | Backup settings and data |
+| [x] | `restore_settings` | Preference |  | Restore settings and data |
+| [x] | `debug_settings` | Preference |  | Debug |
 
 ### `themeSettingsFragment` (SettingsActivity$ThemeSettingsFragment, 10 entries)
 
@@ -73,261 +75,261 @@ Restyled in U3. Chat and player-button pages are restyled in U3 and trimmed in U
 | [x] | `ui_theme_rounded_corners_v2` | ListPreference | 0 | Rounded corners — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
 | [x] | `ui_theme_reduced_padding` | SwitchPreferenceCompat | false | Reduced padding — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
 | [x] | `ui_theme_compact_text` | SwitchPreferenceCompat | false | Compact text — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
-| [ ] | `ui_theme_appbar_lift` | SwitchPreferenceCompat | true | Lift app bar on scroll — U1: hidden with the theme page, stored value still applied to the old screens. U2: Compose pages use the collapsing large title instead and ignore it; the old pages keep reading it until they are rewritten. Key kept; the entry stays hidden, removal listed for U3 |
-| [ ] | `ui_theme_bottom_nav_color` | SwitchPreferenceCompat | true | Bottom navigation color — U1: hidden with the theme page. U2: no longer read; the floating pill has one colour. Key kept, entry stays hidden, removal listed for U3 |
+| [x] | `ui_theme_appbar_lift` | SwitchPreferenceCompat | true | Lift app bar on scroll — U1: hidden with the theme page, stored value still applied to the old screens. U2: Compose pages use the collapsing large title instead and ignore it; the old pages keep reading it until they are rewritten. Key kept; the entry stays hidden, removal listed for U3 |
+| [x] | `ui_theme_bottom_nav_color` | SwitchPreferenceCompat | true | Bottom navigation color — U1: hidden with the theme page. U2: no longer read; the floating pill has one colour. Key kept, entry stays hidden, removal listed for U3 |
 | [x] | `ui_theme_material3` | SwitchPreferenceCompat | true | Material 3 theme — U1: removed on purpose, app is dark only (plan 4, 11); page hidden, stored value kept |
 ### `uiSettingsFragment` (SettingsActivity$UiSettingsFragment, 24 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `columnsPortrait` | ListPreference | @string/portraitColumns | Portrait column count |
-| [ ] | `columnsLandscape` | ListPreference | @string/landscapeColumns | Landscape column count |
-| [ ] | `ui_follow_button` | ListPreference | 0 | Follow button |
-| [ ] | `ui_activate_notifications_when_following` | SwitchPreferenceCompat | true | Activate notifications when following |
-| [ ] | `ui_navigation_tab_list_dialog` | Preference |  | Bottom navigation tabs |
-| [ ] | `ui_following_tabs_dialog` | Preference |  | Following tabs |
-| [ ] | `ui_saved_tabs_dialog` | Preference |  | Saved tabs |
-| [ ] | `ui_channel_tabs_dialog` | Preference |  | Channel tabs |
-| [ ] | `ui_game_tabs_dialog` | Preference |  | Game tabs |
-| [ ] | `ui_search_tabs_dialog` | Preference |  | Search tabs |
-| [ ] | `compactStreamsV2` | ListPreference | disabled | Hide stream previews |
-| [ ] | `ui_name_display` | ListPreference | 0 | Username display |
-| [ ] | `ui_rounduserimage` | SwitchPreferenceCompat | true | Circle profile pictures |
-| [ ] | `ui_truncateviewcount` | SwitchPreferenceCompat | true | Compact number formatting |
-| [ ] | `ui_uptime` | SwitchPreferenceCompat | true | Show stream uptime |
-| [ ] | `ui_tags` | SwitchPreferenceCompat | true | Show tags |
-| [ ] | `ui_broadcasterscount` | SwitchPreferenceCompat | true | Show broadcaster count on games |
-| [ ] | `ui_followpager` | SwitchPreferenceCompat | true | Use tabs for \"Following\" page |
-| [ ] | `ui_savedpager` | SwitchPreferenceCompat | true | Use tabs for \"Saved\" page |
-| [ ] | `ui_gamepager` | SwitchPreferenceCompat | true | Use tabs for \"Games\" page |
-| [ ] | `ui_scrolltop` | SwitchPreferenceCompat | true | Show scroll to top button |
-| [ ] | `ui_bookmark_time_left` | SwitchPreferenceCompat | true | Show time left on bookmarked VODs |
-| [ ] | `ui_store_recent_searches` | SwitchPreferenceCompat | true | Store recent searches |
-| [ ] | `delete_recent_searches` | Preference |  | Delete recent searches |
+| [x] | `columnsPortrait` | ListPreference | @string/portraitColumns | Portrait column count |
+| [x] | `columnsLandscape` | ListPreference | @string/landscapeColumns | Landscape column count |
+| [x] | `ui_follow_button` | ListPreference | 0 | Follow button |
+| [x] | `ui_activate_notifications_when_following` | SwitchPreferenceCompat | true | Activate notifications when following |
+| [x] | `ui_navigation_tab_list_dialog` | Preference |  | Bottom navigation tabs |
+| [x] | `ui_following_tabs_dialog` | Preference |  | Following tabs |
+| [x] | `ui_saved_tabs_dialog` | Preference |  | Saved tabs |
+| [x] | `ui_channel_tabs_dialog` | Preference |  | Channel tabs |
+| [x] | `ui_game_tabs_dialog` | Preference |  | Game tabs |
+| [x] | `ui_search_tabs_dialog` | Preference |  | Search tabs |
+| [x] | `compactStreamsV2` | ListPreference | disabled | Hide stream previews |
+| [x] | `ui_name_display` | ListPreference | 0 | Username display |
+| [x] | `ui_rounduserimage` | SwitchPreferenceCompat | true | Circle profile pictures |
+| [x] | `ui_truncateviewcount` | SwitchPreferenceCompat | true | Compact number formatting |
+| [x] | `ui_uptime` | SwitchPreferenceCompat | true | Show stream uptime |
+| [x] | `ui_tags` | SwitchPreferenceCompat | true | Show tags |
+| [x] | `ui_broadcasterscount` | SwitchPreferenceCompat | true | Show broadcaster count on games |
+| [x] | `ui_followpager` | SwitchPreferenceCompat | true | Use tabs for \"Following\" page |
+| [x] | `ui_savedpager` | SwitchPreferenceCompat | true | Use tabs for \"Saved\" page |
+| [x] | `ui_gamepager` | SwitchPreferenceCompat | true | Use tabs for \"Games\" page |
+| [x] | `ui_scrolltop` | SwitchPreferenceCompat | true | Show scroll to top button |
+| [x] | `ui_bookmark_time_left` | SwitchPreferenceCompat | true | Show time left on bookmarked VODs |
+| [x] | `ui_store_recent_searches` | SwitchPreferenceCompat | true | Store recent searches |
+| [x] | `delete_recent_searches` | Preference |  | Delete recent searches |
 
 ### `chatSettingsFragment` (SettingsActivity$ChatSettingsFragment, 47 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `chat_boldnames` | SwitchPreferenceCompat | false | Bold usernames |
-| [ ] | `chat_randomcolor` | SwitchPreferenceCompat | true | Random color for users without a color |
-| [ ] | `chat_theme_adapted_username_color` | SwitchPreferenceCompat | true | Readable colors based on the app theme |
-| [ ] | `chat_timestamps` | SwitchPreferenceCompat | false | Show timestamps |
-| [ ] | `chat_timestamp_format` | ListPreference | 0 | Timestamp format |
-| [ ] | `chat_image_library` | ListPreference | 0 | Image library |
-| [ ] | `chat_use_webp` | SwitchPreferenceCompat | true | Use WebP images |
-| [ ] | `chat_image_quality` | ListPreference | 4 | Image quality |
-| [ ] | `chat_size_modifier` | SeekBarPreference | 100 | Size modifier |
-| [ ] | `chat_text_size` | EditTextPreference | 14 | Text size |
-| [ ] | `chat_emote_size` | EditTextPreference | 29.5 | Emote size |
-| [ ] | `chat_badge_size` | EditTextPreference | 18.5 | Badge size |
-| [ ] | `chat_show_gif_messages` | SwitchPreferenceCompat | true | Show GIF messages |
-| [ ] | `chat_gif_size` | EditTextPreference | 79.5 | GIF size |
-| [ ] | `chatWidth` | SeekBarPreference | 30 | Landscape chat width |
-| [ ] | `chat_limit` | SeekBarPreference | 600 | Message limit |
-| [ ] | `chat_recent` | SwitchPreferenceCompat | true | Load recent messages |
-| [ ] | `chat_recent_messages_url` | EditTextPreference | https://recent-messages.robotty.de/api/v2/recent-messages/$channel | Recent messages API URL |
-| [ ] | `chat_recent_limit` | SeekBarPreference | 100 | Recent message limit |
-| [ ] | `chat_translate` | SwitchPreferenceCompat | false | Translate chat messages |
-| [ ] | `downloaded_languages` | Preference |  | Downloaded languages |
-| [ ] | `chat_translate_target` | ListPreference | en | Target language |
-| [ ] | `player_keep_chat_open` | SwitchPreferenceCompat | false | Keep chat connected in the background |
-| [ ] | `chat_use_websocket` | SwitchPreferenceCompat | true | Connect using WebSocket |
-| [ ] | `chat_use_ssl` | SwitchPreferenceCompat | true | Connect using SSL |
-| [ ] | `chat_pubsub_enabled` | SwitchPreferenceCompat | true | Enable PubSub |
-| [ ] | `chat_points_collect` | SwitchPreferenceCompat | true | Collect channel points automatically |
-| [ ] | `chat_points_notify` | SwitchPreferenceCompat | false | Notify when earning channel points |
-| [ ] | `chat_raids_show` | SwitchPreferenceCompat | true | Show raids |
-| [ ] | `chat_raids_auto_switch` | SwitchPreferenceCompat | true | Switch stream on raid automatically |
-| [ ] | `chat_polls_show` | SwitchPreferenceCompat | true | Show polls |
-| [ ] | `chat_predictions_show` | SwitchPreferenceCompat | true | Show predictions |
-| [ ] | `chat_show_paints` | SwitchPreferenceCompat | true | Show 7TV name paints |
-| [ ] | `chat_show_stv_badges` | SwitchPreferenceCompat | true | Show 7TV badges |
-| [ ] | `chat_show_personal_emotes` | SwitchPreferenceCompat | true | Show 7TV personal emotes |
-| [ ] | `chat_stv_live_updates` | SwitchPreferenceCompat | true | 7TV live emote updates |
-| [ ] | `chat_enable_stv` | SwitchPreferenceCompat | true | Enable 7TV emotes |
-| [ ] | `chat_enable_bttv` | SwitchPreferenceCompat | true | Enable BTTV emotes |
-| [ ] | `chat_enable_ffz` | SwitchPreferenceCompat | true | Enable FFZ emotes |
-| [ ] | `chat_show_usernotice` | SwitchPreferenceCompat | true | Show user notices (subs, raids) |
-| [ ] | `chat_show_clearmsg` | SwitchPreferenceCompat | true | Show deletions of single messages |
-| [ ] | `chat_show_clearchat` | SwitchPreferenceCompat | true | Show timeouts and bans |
-| [ ] | `chat_firstmsg_visibility` | ListPreference | 0 | First messages and redemptions with text |
-| [ ] | `animatedGifEmotes` | SwitchPreferenceCompat | true | Animated emotes |
-| [ ] | `chat_zerowidth` | SwitchPreferenceCompat | true | Overlay emotes |
-| [ ] | `chat_system_message_emotes` | SwitchPreferenceCompat | true | Show emotes on system messages |
-| [ ] | `chat_disable` | SwitchPreferenceCompat | false | Disable chat |
+| [x] | `chat_boldnames` | SwitchPreferenceCompat | false | Bold usernames |
+| [x] | `chat_randomcolor` | SwitchPreferenceCompat | true | Random color for users without a color |
+| [x] | `chat_theme_adapted_username_color` | SwitchPreferenceCompat | true | Readable colors based on the app theme |
+| [x] | `chat_timestamps` | SwitchPreferenceCompat | false | Show timestamps |
+| [x] | `chat_timestamp_format` | ListPreference | 0 | Timestamp format |
+| [x] | `chat_image_library` | ListPreference | 0 | Image library |
+| [x] | `chat_use_webp` | SwitchPreferenceCompat | true | Use WebP images |
+| [x] | `chat_image_quality` | ListPreference | 4 | Image quality |
+| [x] | `chat_size_modifier` | SeekBarPreference | 100 | Size modifier |
+| [x] | `chat_text_size` | EditTextPreference | 14 | Text size |
+| [x] | `chat_emote_size` | EditTextPreference | 29.5 | Emote size |
+| [x] | `chat_badge_size` | EditTextPreference | 18.5 | Badge size |
+| [x] | `chat_show_gif_messages` | SwitchPreferenceCompat | true | Show GIF messages |
+| [x] | `chat_gif_size` | EditTextPreference | 79.5 | GIF size |
+| [x] | `chatWidth` | SeekBarPreference | 30 | Landscape chat width |
+| [x] | `chat_limit` | SeekBarPreference | 600 | Message limit |
+| [x] | `chat_recent` | SwitchPreferenceCompat | true | Load recent messages |
+| [x] | `chat_recent_messages_url` | EditTextPreference | https://recent-messages.robotty.de/api/v2/recent-messages/$channel | Recent messages API URL |
+| [x] | `chat_recent_limit` | SeekBarPreference | 100 | Recent message limit |
+| [x] | `chat_translate` | SwitchPreferenceCompat | false | Translate chat messages |
+| [x] | `downloaded_languages` | Preference |  | Downloaded languages |
+| [x] | `chat_translate_target` | ListPreference | en | Target language |
+| [x] | `player_keep_chat_open` | SwitchPreferenceCompat | false | Keep chat connected in the background |
+| [x] | `chat_use_websocket` | SwitchPreferenceCompat | true | Connect using WebSocket |
+| [x] | `chat_use_ssl` | SwitchPreferenceCompat | true | Connect using SSL |
+| [x] | `chat_pubsub_enabled` | SwitchPreferenceCompat | true | Enable PubSub |
+| [x] | `chat_points_collect` | SwitchPreferenceCompat | true | Collect channel points automatically |
+| [x] | `chat_points_notify` | SwitchPreferenceCompat | false | Notify when earning channel points |
+| [x] | `chat_raids_show` | SwitchPreferenceCompat | true | Show raids |
+| [x] | `chat_raids_auto_switch` | SwitchPreferenceCompat | true | Switch stream on raid automatically |
+| [x] | `chat_polls_show` | SwitchPreferenceCompat | true | Show polls |
+| [x] | `chat_predictions_show` | SwitchPreferenceCompat | true | Show predictions |
+| [x] | `chat_show_paints` | SwitchPreferenceCompat | true | Show 7TV name paints |
+| [x] | `chat_show_stv_badges` | SwitchPreferenceCompat | true | Show 7TV badges |
+| [x] | `chat_show_personal_emotes` | SwitchPreferenceCompat | true | Show 7TV personal emotes |
+| [x] | `chat_stv_live_updates` | SwitchPreferenceCompat | true | 7TV live emote updates |
+| [x] | `chat_enable_stv` | SwitchPreferenceCompat | true | Enable 7TV emotes |
+| [x] | `chat_enable_bttv` | SwitchPreferenceCompat | true | Enable BTTV emotes |
+| [x] | `chat_enable_ffz` | SwitchPreferenceCompat | true | Enable FFZ emotes |
+| [x] | `chat_show_usernotice` | SwitchPreferenceCompat | true | Show user notices (subs, raids) |
+| [x] | `chat_show_clearmsg` | SwitchPreferenceCompat | true | Show deletions of single messages |
+| [x] | `chat_show_clearchat` | SwitchPreferenceCompat | true | Show timeouts and bans |
+| [x] | `chat_firstmsg_visibility` | ListPreference | 0 | First messages and redemptions with text |
+| [x] | `animatedGifEmotes` | SwitchPreferenceCompat | true | Animated emotes |
+| [x] | `chat_zerowidth` | SwitchPreferenceCompat | true | Overlay emotes |
+| [x] | `chat_system_message_emotes` | SwitchPreferenceCompat | true | Show emotes on system messages |
+| [x] | `chat_disable` | SwitchPreferenceCompat | false | Disable chat |
 
 ### `playerSettingsFragment` (SettingsActivity$PlayerSettingsFragment, 14 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `player_disable_background_video` | SwitchPreferenceCompat | true | Disable video rendering in the background |
-| [ ] | `player_use_background_audio_track` | SwitchPreferenceCompat | false | Switch to audio-only track in the background |
-| [ ] | `player_background_audio_pip_closed` | SwitchPreferenceCompat | false | Play audio in the background when closing PiP |
-| [ ] | `player_background_audio_pip_locked` | SwitchPreferenceCompat | true | Play audio in the background when the screen is locked in PiP mode |
-| [ ] | `player_keep_screen_on_when_paused` | SwitchPreferenceCompat | false | Keep screen on when video is paused |
-| [ ] | `player_audio_focus` | SwitchPreferenceCompat | false | Pause when other apps play audio |
-| [ ] | `player_handle_audio_becoming_noisy` | SwitchPreferenceCompat | true | Pause when headphones are disconnected |
-| [ ] | `player_show_stream_notification_seekbar` | SwitchPreferenceCompat | true | Show seekbar on media notification when watching streams |
-| [ ] | `player_defaultquality` | ListPreference | saved | Default player quality |
-| [ ] | `player_default_cellular_quality` | ListPreference | saved | Default player quality on cellular network |
-| [ ] | `player_rounded_corner_padding` | SwitchPreferenceCompat | false | Avoid rounded screen corners |
-| [ ] | `player_move_freely` | SwitchPreferenceCompat | false | Move minimized player freely |
-| [ ] | `player_use_videopositions` | SwitchPreferenceCompat | true | Save positions of watched videos |
-| [ ] | `delete_video_positions` | Preference |  | Delete video positions |
+| [x] | `player_disable_background_video` | SwitchPreferenceCompat | true | Disable video rendering in the background |
+| [x] | `player_use_background_audio_track` | SwitchPreferenceCompat | false | Switch to audio-only track in the background |
+| [x] | `player_background_audio_pip_closed` | SwitchPreferenceCompat | false | Play audio in the background when closing PiP |
+| [x] | `player_background_audio_pip_locked` | SwitchPreferenceCompat | true | Play audio in the background when the screen is locked in PiP mode |
+| [x] | `player_keep_screen_on_when_paused` | SwitchPreferenceCompat | false | Keep screen on when video is paused |
+| [x] | `player_audio_focus` | SwitchPreferenceCompat | false | Pause when other apps play audio |
+| [x] | `player_handle_audio_becoming_noisy` | SwitchPreferenceCompat | true | Pause when headphones are disconnected |
+| [x] | `player_show_stream_notification_seekbar` | SwitchPreferenceCompat | true | Show seekbar on media notification when watching streams |
+| [x] | `player_defaultquality` | ListPreference | saved | Default player quality |
+| [x] | `player_default_cellular_quality` | ListPreference | saved | Default player quality on cellular network |
+| [x] | `player_rounded_corner_padding` | SwitchPreferenceCompat | false | Avoid rounded screen corners |
+| [x] | `player_move_freely` | SwitchPreferenceCompat | false | Move minimized player freely |
+| [x] | `player_use_videopositions` | SwitchPreferenceCompat | true | Save positions of watched videos |
+| [x] | `delete_video_positions` | Preference |  | Delete video positions |
 
 ### `playerButtonSettingsFragment` (SettingsActivity$PlayerButtonSettingsFragment, 33 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `player_minimize` | SwitchPreferenceCompat | true | Minimize |
-| [ ] | `player_download` | SwitchPreferenceCompat | false | Download |
-| [ ] | `player_follow` | SwitchPreferenceCompat | false | Follow |
-| [ ] | `player_sleep` | SwitchPreferenceCompat | false | Sleep timer |
-| [ ] | `sleep_timer_use_time_picker` | SwitchPreferenceCompat | false | Use Material time picker for sleep timer |
-| [ ] | `sleep_timer_lock` | SwitchPreferenceCompat | false | Lock screen after sleep timer is done |
-| [ ] | `admin_settings` | Preference |  | Enable/disable as device admin app |
-| [ ] | `player_aspect` | SwitchPreferenceCompat | true | Aspect ratio |
-| [ ] | `player_speedbutton` | SwitchPreferenceCompat | true | Playback speed |
-| [ ] | `player_speed_list` | EditTextPreference | 0.25\n0.5\n0.75\n1.0\n1.25\n1.5\n1.75\n2.0\n3.0\n4.0\n8.0 | Playback speeds |
-| [ ] | `player_settings` | SwitchPreferenceCompat | true | Quality |
-| [ ] | `player_menu` | SwitchPreferenceCompat | true | Player menu |
-| [ ] | `player_menu_settings` | Preference |  | Player menu settings |
-| [ ] | `player_gamesbutton` | SwitchPreferenceCompat | true | Chapters |
-| [ ] | `player_restart` | SwitchPreferenceCompat | true | Restart player |
-| [ ] | `player_seeklive` | SwitchPreferenceCompat | false | Seek to live |
-| [ ] | `player_volumebutton` | SwitchPreferenceCompat | true | Volume |
-| [ ] | `player_audio_compressor_button` | SwitchPreferenceCompat | true | Audio compressor |
-| [ ] | `player_mode` | SwitchPreferenceCompat | false | Audio only |
-| [ ] | `player_subtitles` | SwitchPreferenceCompat | false | Subtitles |
-| [ ] | `player_chatbartoggle` | SwitchPreferenceCompat | false | Chat input toggle |
-| [ ] | `player_chattoggle` | SwitchPreferenceCompat | true | Chat toggle |
-| [ ] | `player_fullscreen` | SwitchPreferenceCompat | true | Fullscreen |
-| [ ] | `player_doubletap` | SwitchPreferenceCompat | true | Double tap to toggle chat |
-| [ ] | `playerRewindV2` | EditTextPreference | 10 | Rewind |
-| [ ] | `playerForwardV2` | EditTextPreference | 10 | Fast forward |
-| [ ] | `player_channel` | SwitchPreferenceCompat | true | Show channel name |
-| [ ] | `player_title` | SwitchPreferenceCompat | true | Show title |
-| [ ] | `player_category` | SwitchPreferenceCompat | true | Show category |
-| [ ] | `player_show_uptime` | SwitchPreferenceCompat | true | Show stream uptime |
-| [ ] | `player_viewerlist` | SwitchPreferenceCompat | false | Open viewer list from view count |
-| [ ] | `player_viewericon` | SwitchPreferenceCompat | true | Show view count and uptime icons |
-| [ ] | `player_pause` | SwitchPreferenceCompat | false | Show pause button on livestreams |
+| [x] | `player_minimize` | SwitchPreferenceCompat | true | Minimize |
+| [x] | `player_download` | SwitchPreferenceCompat | false | Download |
+| [x] | `player_follow` | SwitchPreferenceCompat | false | Follow |
+| [x] | `player_sleep` | SwitchPreferenceCompat | false | Sleep timer |
+| [x] | `sleep_timer_use_time_picker` | SwitchPreferenceCompat | false | Use Material time picker for sleep timer |
+| [x] | `sleep_timer_lock` | SwitchPreferenceCompat | false | Lock screen after sleep timer is done |
+| [x] | `admin_settings` | Preference |  | Enable/disable as device admin app |
+| [x] | `player_aspect` | SwitchPreferenceCompat | true | Aspect ratio |
+| [x] | `player_speedbutton` | SwitchPreferenceCompat | true | Playback speed |
+| [x] | `player_speed_list` | EditTextPreference | 0.25\n0.5\n0.75\n1.0\n1.25\n1.5\n1.75\n2.0\n3.0\n4.0\n8.0 | Playback speeds |
+| [x] | `player_settings` | SwitchPreferenceCompat | true | Quality |
+| [x] | `player_menu` | SwitchPreferenceCompat | true | Player menu |
+| [x] | `player_menu_settings` | Preference |  | Player menu settings |
+| [x] | `player_gamesbutton` | SwitchPreferenceCompat | true | Chapters |
+| [x] | `player_restart` | SwitchPreferenceCompat | true | Restart player |
+| [x] | `player_seeklive` | SwitchPreferenceCompat | false | Seek to live |
+| [x] | `player_volumebutton` | SwitchPreferenceCompat | true | Volume |
+| [x] | `player_audio_compressor_button` | SwitchPreferenceCompat | true | Audio compressor |
+| [x] | `player_mode` | SwitchPreferenceCompat | false | Audio only |
+| [x] | `player_subtitles` | SwitchPreferenceCompat | false | Subtitles |
+| [x] | `player_chatbartoggle` | SwitchPreferenceCompat | false | Chat input toggle |
+| [x] | `player_chattoggle` | SwitchPreferenceCompat | true | Chat toggle |
+| [x] | `player_fullscreen` | SwitchPreferenceCompat | true | Fullscreen |
+| [x] | `player_doubletap` | SwitchPreferenceCompat | true | Double tap to toggle chat |
+| [x] | `playerRewindV2` | EditTextPreference | 10 | Rewind |
+| [x] | `playerForwardV2` | EditTextPreference | 10 | Fast forward |
+| [x] | `player_channel` | SwitchPreferenceCompat | true | Show channel name |
+| [x] | `player_title` | SwitchPreferenceCompat | true | Show title |
+| [x] | `player_category` | SwitchPreferenceCompat | true | Show category |
+| [x] | `player_show_uptime` | SwitchPreferenceCompat | true | Show stream uptime |
+| [x] | `player_viewerlist` | SwitchPreferenceCompat | false | Open viewer list from view count |
+| [x] | `player_viewericon` | SwitchPreferenceCompat | true | Show view count and uptime icons |
+| [x] | `player_pause` | SwitchPreferenceCompat | false | Show pause button on livestreams |
 
 ### `playerMenuSettingsFragment` (SettingsActivity$PlayerMenuSettingsFragment, 17 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `player_menu_quality` | SwitchPreferenceCompat | false | Quality |
-| [ ] | `player_menu_speed` | SwitchPreferenceCompat | false | Playback speed |
-| [ ] | `player_menu_viewer_list` | SwitchPreferenceCompat | true | Viewer list |
-| [ ] | `player_menu_games` | SwitchPreferenceCompat | false | Chapters |
-| [ ] | `player_menu_download` | SwitchPreferenceCompat | true | Download |
-| [ ] | `player_menu_bookmark` | SwitchPreferenceCompat | true | Bookmark |
-| [ ] | `player_menu_share` | SwitchPreferenceCompat | true | Share |
-| [ ] | `player_menu_find_vod` | SwitchPreferenceCompat | true | Find unlisted video |
-| [ ] | `player_menu_sleep` | SwitchPreferenceCompat | true | Sleep timer |
-| [ ] | `player_menu_aspect` | SwitchPreferenceCompat | false | Aspect ratio |
-| [ ] | `player_menu_volume` | SwitchPreferenceCompat | false | Volume |
-| [ ] | `player_menu_subtitles` | SwitchPreferenceCompat | true | Toggle subtitles |
-| [ ] | `player_menu_restart` | SwitchPreferenceCompat | false | Restart player |
-| [ ] | `player_menu_chat_bar` | SwitchPreferenceCompat | true | Toggle chat input |
-| [ ] | `player_menu_chat_toggle` | SwitchPreferenceCompat | false | Toggle chat |
-| [ ] | `player_menu_reload_emotes` | SwitchPreferenceCompat | true | Reload emotes |
-| [ ] | `player_menu_chat_disconnect` | SwitchPreferenceCompat | true | Disconnect from chat |
+| [x] | `player_menu_quality` | SwitchPreferenceCompat | false | Quality |
+| [x] | `player_menu_speed` | SwitchPreferenceCompat | false | Playback speed |
+| [x] | `player_menu_viewer_list` | SwitchPreferenceCompat | true | Viewer list |
+| [x] | `player_menu_games` | SwitchPreferenceCompat | false | Chapters |
+| [x] | `player_menu_download` | SwitchPreferenceCompat | true | Download |
+| [x] | `player_menu_bookmark` | SwitchPreferenceCompat | true | Bookmark |
+| [x] | `player_menu_share` | SwitchPreferenceCompat | true | Share |
+| [x] | `player_menu_find_vod` | SwitchPreferenceCompat | true | Find unlisted video |
+| [x] | `player_menu_sleep` | SwitchPreferenceCompat | true | Sleep timer |
+| [x] | `player_menu_aspect` | SwitchPreferenceCompat | false | Aspect ratio |
+| [x] | `player_menu_volume` | SwitchPreferenceCompat | false | Volume |
+| [x] | `player_menu_subtitles` | SwitchPreferenceCompat | true | Toggle subtitles |
+| [x] | `player_menu_restart` | SwitchPreferenceCompat | false | Restart player |
+| [x] | `player_menu_chat_bar` | SwitchPreferenceCompat | true | Toggle chat input |
+| [x] | `player_menu_chat_toggle` | SwitchPreferenceCompat | false | Toggle chat |
+| [x] | `player_menu_reload_emotes` | SwitchPreferenceCompat | true | Reload emotes |
+| [x] | `player_menu_chat_disconnect` | SwitchPreferenceCompat | true | Disconnect from chat |
 
 ### `bufferSettingsFragment` (SettingsActivity$BufferSettingsFragment, 7 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `player_buffer_min` | EditTextPreference | 15000 | Minimum buffer |
-| [ ] | `player_buffer_max` | EditTextPreference | 50000 | Maximum buffer |
-| [ ] | `player_buffer_playback` | EditTextPreference | 2000 | Buffer for playback |
-| [ ] | `player_buffer_rebuffer` | EditTextPreference | 2000 | Rebuffer |
-| [ ] | `player_live_min_speed` | EditTextPreference |  | Live minimum speed |
-| [ ] | `player_live_max_speed` | EditTextPreference |  | Live maximum speed |
-| [ ] | `player_live_target_offset` | EditTextPreference | 2000 | Live target offset |
+| [x] | `player_buffer_min` | EditTextPreference | 15000 | Minimum buffer |
+| [x] | `player_buffer_max` | EditTextPreference | 50000 | Maximum buffer |
+| [x] | `player_buffer_playback` | EditTextPreference | 2000 | Buffer for playback |
+| [x] | `player_buffer_rebuffer` | EditTextPreference | 2000 | Rebuffer |
+| [x] | `player_live_min_speed` | EditTextPreference |  | Live minimum speed |
+| [x] | `player_live_max_speed` | EditTextPreference |  | Live maximum speed |
+| [x] | `player_live_target_offset` | EditTextPreference | 2000 | Live target offset |
 
 ### `adBlockSettingsFragment` (SettingsActivity$AdBlockSettingsFragment, 14 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `ad_block_stats` | Preference |  | Blocked ads |
-| [ ] | `ad_block_preset` | ListPreference | aggressive | Preset |
-| [ ] | `player_use_video_swap` | SwitchPreferenceCompat | true | Use video swap |
-| [ ] | `video_swap_settings` | Preference |  | Video swap settings |
-| [ ] | `player_use_custom_proxy` | SwitchPreferenceCompat | true | Use custom proxies |
-| [ ] | `custom_proxy_settings` | Preference |  | Custom proxy settings |
-| [ ] | `player_use_stream_proxy` | SwitchPreferenceCompat | false | Use HTTP proxies |
-| [ ] | `stream_proxy_settings` | Preference |  | HTTP proxy settings |
-| [ ] | `player_filter_ad_segments` | SwitchPreferenceCompat | true | Filter ad segments |
-| [ ] | `player_hide_ads` | SwitchPreferenceCompat | true | Hide player during ads |
-| [ ] | `ad_block_advanced` | PreferenceCategory |  | Advanced |
-| [ ] | `proxy_timeout` | EditTextPreference | 3000 | Proxy timeout |
-| [ ] | `ad_block_log` | Preference |  | Ad log |
-| [ ] | `ad_block_stats_reset` | Preference |  | Reset statistics |
+| [x] | `ad_block_stats` | Preference |  | Blocked ads |
+| [x] | `ad_block_preset` | ListPreference | aggressive | Preset |
+| [x] | `player_use_video_swap` | SwitchPreferenceCompat | true | Use video swap |
+| [x] | `video_swap_settings` | Preference |  | Video swap settings |
+| [x] | `player_use_custom_proxy` | SwitchPreferenceCompat | true | Use custom proxies |
+| [x] | `custom_proxy_settings` | Preference |  | Custom proxy settings |
+| [x] | `player_use_stream_proxy` | SwitchPreferenceCompat | false | Use HTTP proxies |
+| [x] | `stream_proxy_settings` | Preference |  | HTTP proxy settings |
+| [x] | `player_filter_ad_segments` | SwitchPreferenceCompat | true | Filter ad segments |
+| [x] | `player_hide_ads` | SwitchPreferenceCompat | true | Hide player during ads |
+| [x] | `ad_block_advanced` | PreferenceCategory |  | Advanced |
+| [x] | `proxy_timeout` | EditTextPreference | 3000 | Proxy timeout |
+| [x] | `ad_block_log` | Preference |  | Ad log |
+| [x] | `ad_block_stats_reset` | Preference |  | Reset statistics |
 
 ### `playbackSettingsFragment` (SettingsActivity$PlaybackSettingsFragment, 3 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `token_supported_codecs` | EditTextPreference | av1,h265,h264 | Supported codecs |
-| [ ] | `token_include_token_stream` | SwitchPreferenceCompat | true | Include GQL token in stream requests |
-| [ ] | `token_include_token_video` | SwitchPreferenceCompat | true | Include GQL token in video requests |
+| [x] | `token_supported_codecs` | EditTextPreference | av1,h265,h264 | Supported codecs |
+| [x] | `token_include_token_stream` | SwitchPreferenceCompat | true | Include GQL token in stream requests |
+| [x] | `token_include_token_video` | SwitchPreferenceCompat | true | Include GQL token in video requests |
 
 ### `apiTokenSettingsFragment` (SettingsActivity$ApiTokenSettingsFragment, 10 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `api_login` | ListPreference | 0 | Get token for selected APIs |
-| [ ] | `helix_client_id` | EditTextPreference | ilfexgv3nnljz3isbm257gzwrzr7bi | Helix client ID |
-| [ ] | `helix_redirect` | EditTextPreference | https://localhost | Helix redirect URL |
-| [ ] | `gql_client_id2` | EditTextPreference | kd1unb4b3q4t58fwlpcbzcbnm76a8fp | GQL client ID |
-| [ ] | `user_id` | EditTextPreference |  | Account ID |
-| [ ] | `username` | EditTextPreference |  | Account login |
-| [ ] | `token` | EditTextPreference |  | Helix token |
-| [ ] | `gql_token2` | EditTextPreference |  | GQL token |
-| [ ] | `gql_token_web` | EditTextPreference |  | Web GQL token |
-| [ ] | `validate_tokens` | SwitchPreferenceCompat | true | Validate tokens on startup |
+| [x] | `api_login` | ListPreference | 0 | Get token for selected APIs |
+| [x] | `helix_client_id` | EditTextPreference | ilfexgv3nnljz3isbm257gzwrzr7bi | Helix client ID |
+| [x] | `helix_redirect` | EditTextPreference | https://localhost | Helix redirect URL |
+| [x] | `gql_client_id2` | EditTextPreference | kd1unb4b3q4t58fwlpcbzcbnm76a8fp | GQL client ID |
+| [x] | `user_id` | EditTextPreference |  | Account ID |
+| [x] | `username` | EditTextPreference |  | Account login |
+| [x] | `token` | EditTextPreference |  | Helix token |
+| [x] | `gql_token2` | EditTextPreference |  | GQL token |
+| [x] | `gql_token_web` | EditTextPreference |  | Web GQL token |
+| [x] | `validate_tokens` | SwitchPreferenceCompat | true | Validate tokens on startup |
 
 ### `downloadSettingsFragment` (SettingsActivity$DownloadSettingsFragment, 9 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `download_playlist_to_file` | SwitchPreferenceCompat | false | Download videos to single files |
-| [ ] | `download_wifi_only` | SwitchPreferenceCompat | false | Download using Wi-Fi only |
-| [ ] | `download_limit` | SeekBarPreference | 2 | Concurrent downloads |
-| [ ] | `download_concurrent_limit` | SeekBarPreference | 10 | Download threads |
-| [ ] | `download_stream_live_check` | EditTextPreference | 2 | Stream playlist check frequency |
-| [ ] | `download_stream_offline_check` | EditTextPreference | 10 | Live check frequency |
-| [ ] | `download_stream_start_wait` | EditTextPreference | 120 | Wait time before stream |
-| [ ] | `download_stream_end_wait` | EditTextPreference | 15 | Wait time after stream |
-| [ ] | `import_app_downloads` | Preference |  | Import downloads from app storage |
+| [x] | `download_playlist_to_file` | SwitchPreferenceCompat | false | Download videos to single files |
+| [x] | `download_wifi_only` | SwitchPreferenceCompat | false | Download using Wi-Fi only |
+| [x] | `download_limit` | SeekBarPreference | 2 | Concurrent downloads |
+| [x] | `download_concurrent_limit` | SeekBarPreference | 10 | Download threads |
+| [x] | `download_stream_live_check` | EditTextPreference | 2 | Stream playlist check frequency |
+| [x] | `download_stream_offline_check` | EditTextPreference | 10 | Live check frequency |
+| [x] | `download_stream_start_wait` | EditTextPreference | 120 | Wait time before stream |
+| [x] | `download_stream_end_wait` | EditTextPreference | 15 | Wait time after stream |
+| [x] | `import_app_downloads` | Preference |  | Import downloads from app storage |
 
 ### `updateSettingsFragment` (SettingsActivity$UpdateSettingsFragment, 4 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `update_url` | EditTextPreference | https://api.github.com/repos/crackededed/xtra/releases/tags/latest | Update check URL |
-| [ ] | `update_check_enabled` | SwitchPreferenceCompat | false | Check for updates on startup |
-| [ ] | `update_check_frequency` | EditTextPreference | 7 | Update check frequency |
-| [ ] | `update_use_browser` | SwitchPreferenceCompat | false | Open update link in browser |
+| [x] | `update_url` | EditTextPreference | https://api.github.com/repos/crackededed/xtra/releases/tags/latest | Update check URL |
+| [x] | `update_check_enabled` | SwitchPreferenceCompat | false | Check for updates on startup |
+| [x] | `update_check_frequency` | EditTextPreference | 7 | Update check frequency |
+| [x] | `update_use_browser` | SwitchPreferenceCompat | false | Open update link in browser |
 
 ### `debugSettingsFragment` (SettingsActivity$DebugSettingsFragment, 11 entries)
 
 | Done | Key | Type | Default | Title |
 |---|---|---|---|---|
-| [ ] | `debug_chat_fullmsg` | SwitchPreferenceCompat | false | Copy full IRC messages |
-| [ ] | `debug_api_commands` | SwitchPreferenceCompat | true | Use API chat commands |
-| [ ] | `debug_api_chat_messages` | SwitchPreferenceCompat | true | Send chat messages using the API |
-| [ ] | `debug_websocket_info` | SwitchPreferenceCompat | false | Show more info about WebSockets |
-| [ ] | `debug_eventsub_chat` | SwitchPreferenceCompat | false | EventSub chat |
-| [ ] | `debug_player_menu_playlist_tags` | SwitchPreferenceCompat | false | Show playlist tags |
-| [ ] | `enable_integrity` | SwitchPreferenceCompat | false | Use integrity token |
-| [ ] | `use_webview_integrity` | SwitchPreferenceCompat | true | Get integrity token using WebView |
-| [ ] | `get_all_gql_headers` | SwitchPreferenceCompat | false | Get all headers |
-| [ ] | `gql_headers` | EditTextPreference |  | GQL headers |
-| [ ] | `get_integrity_token` | Preference |  | Get new integrity token |
+| [x] | `debug_chat_fullmsg` | SwitchPreferenceCompat | false | Copy full IRC messages |
+| [x] | `debug_api_commands` | SwitchPreferenceCompat | true | Use API chat commands |
+| [x] | `debug_api_chat_messages` | SwitchPreferenceCompat | true | Send chat messages using the API |
+| [x] | `debug_websocket_info` | SwitchPreferenceCompat | false | Show more info about WebSockets |
+| [x] | `debug_eventsub_chat` | SwitchPreferenceCompat | false | EventSub chat |
+| [x] | `debug_player_menu_playlist_tags` | SwitchPreferenceCompat | false | Show playlist tags |
+| [x] | `enable_integrity` | SwitchPreferenceCompat | false | Use integrity token |
+| [x] | `use_webview_integrity` | SwitchPreferenceCompat | true | Get integrity token using WebView |
+| [x] | `get_all_gql_headers` | SwitchPreferenceCompat | false | Get all headers |
+| [x] | `gql_headers` | EditTextPreference |  | GQL headers |
+| [x] | `get_integrity_token` | Preference |  | Get new integrity token |
 
 ### `settingsSearchFragment` (SettingsActivity$SettingsSearchFragment, 0 entries)
 
@@ -355,7 +357,7 @@ Built in code (list editor or search page); see the class.
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/MessageClickedDialog.kt` | BottomSheetDialogFragment; 1 alert dialog(s) | U7 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ReplyClickedDialog.kt` | BottomSheetDialogFragment; 1 alert dialog(s) | U7 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/ClipsAdapter.kt` | 1 popup menu(s) | U5 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt` | DialogFragment; 1 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt` | DialogFragment; 1 alert dialog(s) | U3 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/RadioButtonDialogFragment.kt` | BottomSheetDialogFragment | U8 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/SearchTagsDialog.kt` | DialogFragment; 1 alert dialog(s) | U4 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/SelectLanguagesDialog.kt` | BottomSheetDialogFragment | U4 |
@@ -370,8 +372,8 @@ Built in code (list editor or search page); see the class.
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GamePagerFragment.kt` | 2 alert dialog(s) | U4 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/games/GamesFragment.kt` | 1 alert dialog(s) | U4 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/games/GamesSortDialog.kt` | BottomSheetDialogFragment | U4 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt` | 5 alert dialog(s) | U3 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt` | 2 alert dialog(s) | U3 (moved in U2: both are the in-app update dialogs, which belong with "About and updates") |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt` | 5 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt` | 2 alert dialog(s) | U3 (moved in U2: both are the in-app update dialogs, which belong with "About and updates") |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt` | 1 alert dialog(s) | U6 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt` | 2 alert dialog(s) | U6 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerGamesDialog.kt` | BottomSheetDialogFragment | U6 |
@@ -389,10 +391,10 @@ Built in code (list editor or search page); see the class.
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/filters/FiltersAdapter.kt` | 1 popup menu(s) | U5 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/filters/FiltersFragment.kt` | 1 alert dialog(s) | U5 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/search/SearchPagerFragment.kt` | 2 alert dialog(s) | U4 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/CustomProxySettingsFragment.kt` | 2 alert dialog(s) | U3 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt` | 7 alert dialog(s) | U3 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/StreamProxySettingsFragment.kt` | 2 alert dialog(s) | U3 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/VideoSwapSettingsFragment.kt` | 2 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/CustomProxySettingsFragment.kt` | 2 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsActivity.kt` | 7 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/StreamProxySettingsFragment.kt` | 2 alert dialog(s) | U3 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/VideoSwapSettingsFragment.kt` | 2 alert dialog(s) | U3 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/team/TeamFragment.kt` | 1 alert dialog(s) | U5 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/top/TopStreamsFragment.kt` | 1 alert dialog(s) | U4 |
 | [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/util/ContextExtensions.kt` | 1 alert dialog(s) | U8 |
@@ -406,7 +408,7 @@ Built in code (list editor or search page); see the class.
 | [ ] | `media_item` | Download, Add bookmark, Share | ClipsAdapter.kt, VideosAdapter.kt | U5 |
 | [ ] | `offline_item` | Stop download, Resume download, Convert to a file, Move to shared storage, Change chat file, Share, Delete | DownloadsAdapter.kt | U5 |
 | [ ] | `search_menu` | Get user by ID/login | fragment_search.xml | U4 |
-| [ ] | `settings_menu` | Search | activity_settings.xml | U3 |
+| [x] | `settings_menu` | Search | activity_settings.xml | U3 |
 | [ ] | `team_menu` | Search, Settings, Log in, Share | fragment_team.xml | U5 |
 | [ ] | `top_menu` | Follow, Search, Settings, Log in, Import folders, Import files | fragment_game.xml, fragment_games.xml, fragment_game_pager.xml, fragment_media.xml, fragment_media_pager.xml | U2 for the Following page (search and account buttons in the top bar, settings and log in/out in the account sheet); the Games and Me pages keep it until U4 / U5 |
 
@@ -415,8 +417,8 @@ Built in code (list editor or search page); see the class.
 | Done | Kind | Component |
 |---|---|---|
 | [ ] | activity | `.ui.main.MainActivity` |
-| [ ] | activity | `.ui.settings.SettingsActivity` |
-| [ ] | activity | `.ui.login.LoginActivity` |
+| [x] | activity | `.ui.settings.SettingsActivity` |
+| [x] | activity | `.ui.login.LoginActivity` |
 | [ ] | service | `.ui.player.ExoPlayerService` |
 | [ ] | service | `.ui.download.VideoDownloadService` |
 | [ ] | service | `.ui.download.StreamDownloadService` |

@@ -221,9 +221,10 @@ private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: 
         // labels that do not fit an equal share (five channel segments in English) make the track scroll, each
         // segment as wide as its label; otherwise every segment gets the same share, as before
         val natural = remember(options, style, density) {
-            options.map { with(density) { measurer.measure(it, style, maxLines = 1).size.width.toDp() } + SegmentLabelPadding * 2 }
+            options.map { with(density) { measurer.measure(it, style, maxLines = 1).size.width.toDp() } }
         }
-        if (natural.all { it <= equal }) {
+        // a label fits when it does not need its ellipsis (the text keeps 8 dp on each side)
+        if (natural.all { it + 16.dp <= equal }) {
             val offset by animateDpAsState(equal * selectedIndex, motion.steady(), label = "segmentOffset")
             Box(
                 Modifier
@@ -238,7 +239,7 @@ private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: 
                 }
             }
         } else {
-            val widths = natural.map { maxOf(it, equal) }
+            val widths = natural.map { maxOf(it + SegmentLabelPadding * 2, equal) }
             val starts = widths.runningFold(0.dp) { acc, w -> acc + w }
             val index = selectedIndex.coerceIn(0, options.lastIndex)
             val offset by animateDpAsState(starts[index], motion.steady(), label = "segmentOffset")

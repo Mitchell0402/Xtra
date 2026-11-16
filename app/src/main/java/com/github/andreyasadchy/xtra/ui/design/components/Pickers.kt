@@ -223,8 +223,17 @@ private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: 
         val natural = remember(options, style, density) {
             options.map { with(density) { measurer.measure(it, style, maxLines = 1).size.width.toDp() } }
         }
-        // a label fits when it does not need its ellipsis (the text keeps 8 dp on each side)
-        if (natural.all { it + 16.dp <= equal }) {
+        // a label fits when an equal share shows it without its ellipsis (the text keeps 8 dp on each side)
+        val fits = remember(options, style, density, equal) {
+            val available = with(density) { (equal - 16.dp).roundToPx() }.coerceAtLeast(0)
+            options.none {
+                measurer.measure(
+                    it, style, overflow = TextOverflow.Ellipsis, maxLines = 1,
+                    constraints = androidx.compose.ui.unit.Constraints(maxWidth = available),
+                ).isLineEllipsized(0)
+            }
+        }
+        if (fits) {
             val offset by animateDpAsState(equal * selectedIndex, motion.steady(), label = "segmentOffset")
             Box(
                 Modifier

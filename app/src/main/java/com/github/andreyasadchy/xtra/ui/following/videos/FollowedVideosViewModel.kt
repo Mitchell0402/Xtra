@@ -24,7 +24,7 @@ import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.PlayerRepository
 import com.github.andreyasadchy.xtra.repository.datasource.FollowedVideosDataSource
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.NetworkUtils
 import com.github.andreyasadchy.xtra.util.NetworkUtils.executeAsync
@@ -62,11 +62,11 @@ class FollowedVideosViewModel(
     val bookmarks = bookmarksRepository.getAllFlow()
 
     val sort: String
-        get() = filter.value?.sort ?: VideosSortDialog.SORT_TIME
+        get() = filter.value?.sort ?: VideoFilters.SORT_TIME
     val period: String
-        get() = filter.value?.period ?: VideosSortDialog.PERIOD_ALL
+        get() = filter.value?.period ?: VideoFilters.PERIOD_ALL
     val type: String
-        get() = filter.value?.type ?: VideosSortDialog.VIDEO_TYPE_ALL
+        get() = filter.value?.type ?: VideoFilters.VIDEO_TYPE_ALL
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val flow = filter.flatMapLatest {
@@ -75,15 +75,15 @@ class FollowedVideosViewModel(
         ) {
             FollowedVideosDataSource(
                 gqlQueryType = when (type) {
-                    VideosSortDialog.VIDEO_TYPE_ALL -> null
-                    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> BroadcastType.ARCHIVE
-                    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> BroadcastType.HIGHLIGHT
-                    VideosSortDialog.VIDEO_TYPE_UPLOAD -> BroadcastType.UPLOAD
+                    VideoFilters.VIDEO_TYPE_ALL -> null
+                    VideoFilters.VIDEO_TYPE_ARCHIVE -> BroadcastType.ARCHIVE
+                    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> BroadcastType.HIGHLIGHT
+                    VideoFilters.VIDEO_TYPE_UPLOAD -> BroadcastType.UPLOAD
                     else -> null
                 },
                 gqlQuerySort = when (sort) {
-                    VideosSortDialog.SORT_TIME -> VideoSort.TIME
-                    VideosSortDialog.SORT_VIEWS -> VideoSort.VIEWS
+                    VideoFilters.SORT_TIME -> VideoSort.TIME
+                    VideoFilters.SORT_VIEWS -> VideoSort.VIEWS
                     else -> VideoSort.TIME
                 },
                 gqlHeaders = TwitchApiHelper.getGQLHeaders(applicationContext, true),

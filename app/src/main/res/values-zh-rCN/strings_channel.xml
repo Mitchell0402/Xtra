@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U5：频道页、团队页、我的、下载和录制弹层 -->
+<resources>
+    <string name="channel_more">更多</string>
+    <string name="channel_suggestions">相似</string>
+    <string name="channel_live_playing">正在直播 · %s</string>
+    <string name="channel_empty_videos">这个频道没有这类视频。</string>
+    <string name="channel_empty_clips">这段时间里这个频道没有剪辑。</string>
+    <string name="channel_empty_suggestions">现在没有相似的频道在直播。</string>
+    <string name="channel_about_empty">这个频道还没有写介绍。</string>
+    <string name="channel_about_links">链接</string>
+    <string name="channel_filter_remember_description">下次打开这个频道时沿用这些选择</string>
+    <string name="channel_filter_default_description">没有单独设置的频道都用这些选择打开</string>
+
+    <string name="team_empty">这个团队没有可以显示的成员。</string>
+    <string name="team_member_offline">未在直播</string>
+    <string name="team_show_more">展开</string>
+    <string name="team_show_less">收起</string>
+
+    <string name="download_sheet_title_stream">录制直播</string>
+    <string name="download_sheet_title_video">下载视频</string>
+    <string name="download_sheet_title_clip">下载剪辑</string>
+    <string name="download_sheet_range">下载哪一段</string>
+    <string name="download_sheet_selected">已选 %1$s，共 %2$s</string>
+    <string name="download_sheet_no_folder">选择</string>
+    <string name="download_sheet_free">剩余 %s</string>
+    <string name="download_sheet_record">录制</string>
+
+    <string name="saved_import">导入</string>
+    <string name="saved_undo">撤销</string>
+    <string name="saved_downloads_empty">还没有下载。长按视频或直播即可下载或录制。</string>
+    <string name="saved_bookmarks_empty">还没有书签。长按视频即可加入书签。</string>
+    <string name="saved_filters_empty">还没有保存的筛选器。在直播列表的筛选弹层里打开“保存筛选器”。</string>
+    <string name="saved_download_removed">已从下载中移除“%s”，文件保留</string>
+    <string name="saved_bookmark_removed">已删除书签“%s”</string>
+    <string name="saved_filter_removed">已删除筛选器“%s”</string>
+    <string name="saved_filter_all_games">直播</string>
+    <string name="saved_filter_open">打开</string>
+    <string name="saved_keep_files_description">只从列表中移除，视频文件留在存储里</string>
+    <string name="saved_speed">%s/秒</string>
+    <string name="saved_time_left">剩余 %s</string>
+    <string name="saved_recorded">已录 %s</string>
+    <string name="saved_recording">录制中</string>
+    <string name="saved_recording_for">录制中 %s</string>
+    <string name="saved_source_range">原视频 %1$s–%2$s</string>
+</resources>

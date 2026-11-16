@@ -27,7 +27,7 @@ import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.PlayerRepository
 import com.github.andreyasadchy.xtra.repository.datasource.GameVideosDataSource
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.NetworkUtils
@@ -69,11 +69,11 @@ class GameVideosViewModel(
     val bookmarks = bookmarksRepository.getAllFlow()
 
     val sort: String
-        get() = filter.value?.sort ?: VideosSortDialog.SORT_VIEWS
+        get() = filter.value?.sort ?: VideoFilters.SORT_VIEWS
     val period: String
-        get() = filter.value?.period ?: VideosSortDialog.PERIOD_WEEK
+        get() = filter.value?.period ?: VideoFilters.PERIOD_WEEK
     val type: String
-        get() = filter.value?.type ?: VideosSortDialog.VIDEO_TYPE_ALL
+        get() = filter.value?.type ?: VideoFilters.VIDEO_TYPE_ALL
     val languages: Array<String>
         get() = filter.value?.languages ?: emptyArray()
 
@@ -87,48 +87,48 @@ class GameVideosViewModel(
                 gameSlug = args.gameSlug,
                 gameName = args.gameName,
                 gqlQueryType = when (type) {
-                    VideosSortDialog.VIDEO_TYPE_ALL -> null
-                    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> BroadcastType.ARCHIVE
-                    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> BroadcastType.HIGHLIGHT
-                    VideosSortDialog.VIDEO_TYPE_UPLOAD -> BroadcastType.UPLOAD
+                    VideoFilters.VIDEO_TYPE_ALL -> null
+                    VideoFilters.VIDEO_TYPE_ARCHIVE -> BroadcastType.ARCHIVE
+                    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> BroadcastType.HIGHLIGHT
+                    VideoFilters.VIDEO_TYPE_UPLOAD -> BroadcastType.UPLOAD
                     else -> null
                 },
                 gqlQuerySort = when (sort) {
-                    VideosSortDialog.SORT_TIME -> VideoSort.TIME
-                    VideosSortDialog.SORT_VIEWS -> VideoSort.VIEWS
+                    VideoFilters.SORT_TIME -> VideoSort.TIME
+                    VideoFilters.SORT_VIEWS -> VideoSort.VIEWS
                     else -> VideoSort.VIEWS
                 },
                 gqlLanguages = languages.ifEmpty { null }?.toList(),
                 gqlType = when (type) {
-                    VideosSortDialog.VIDEO_TYPE_ALL -> null
-                    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> "ARCHIVE"
-                    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> "HIGHLIGHT"
-                    VideosSortDialog.VIDEO_TYPE_UPLOAD -> "UPLOAD"
+                    VideoFilters.VIDEO_TYPE_ALL -> null
+                    VideoFilters.VIDEO_TYPE_ARCHIVE -> "ARCHIVE"
+                    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> "HIGHLIGHT"
+                    VideoFilters.VIDEO_TYPE_UPLOAD -> "UPLOAD"
                     else -> null
                 },
                 gqlSort = when (sort) {
-                    VideosSortDialog.SORT_TIME -> "TIME"
-                    VideosSortDialog.SORT_VIEWS -> "VIEWS"
+                    VideoFilters.SORT_TIME -> "TIME"
+                    VideoFilters.SORT_VIEWS -> "VIEWS"
                     else -> "VIEWS"
                 },
                 helixPeriod = when (period) {
-                    VideosSortDialog.PERIOD_DAY -> "day"
-                    VideosSortDialog.PERIOD_WEEK -> "week"
-                    VideosSortDialog.PERIOD_MONTH -> "month"
-                    VideosSortDialog.PERIOD_ALL -> "all"
+                    VideoFilters.PERIOD_DAY -> "day"
+                    VideoFilters.PERIOD_WEEK -> "week"
+                    VideoFilters.PERIOD_MONTH -> "month"
+                    VideoFilters.PERIOD_ALL -> "all"
                     else -> "week"
                 },
                 helixBroadcastTypes = when (type) {
-                    VideosSortDialog.VIDEO_TYPE_ALL -> "all"
-                    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> "archive"
-                    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> "highlight"
-                    VideosSortDialog.VIDEO_TYPE_UPLOAD -> "upload"
+                    VideoFilters.VIDEO_TYPE_ALL -> "all"
+                    VideoFilters.VIDEO_TYPE_ARCHIVE -> "archive"
+                    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> "highlight"
+                    VideoFilters.VIDEO_TYPE_UPLOAD -> "upload"
                     else -> "all"
                 },
                 helixLanguage = languages.singleOrNull()?.lowercase(),
                 helixSort = when (sort) {
-                    VideosSortDialog.SORT_TIME -> "time"
-                    VideosSortDialog.SORT_VIEWS -> "views"
+                    VideoFilters.SORT_TIME -> "time"
+                    VideoFilters.SORT_VIEWS -> "views"
                     else -> "views"
                 },
                 gqlHeaders = TwitchApiHelper.getGQLHeaders(applicationContext),

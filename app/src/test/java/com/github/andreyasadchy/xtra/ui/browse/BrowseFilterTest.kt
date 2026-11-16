@@ -2,7 +2,7 @@ package com.github.andreyasadchy.xtra.ui.browse
 
 import com.github.andreyasadchy.xtra.model.ui.GameSort
 import com.github.andreyasadchy.xtra.ui.common.StreamSorts
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.ui.game.GameSegment
 import com.github.andreyasadchy.xtra.ui.search.SearchGroup
 import org.junit.Assert.assertEquals
@@ -59,9 +59,9 @@ class BrowseFilterTest {
     fun defaultsAreTheOldViewModelDefaults() {
         val none = BrowseFilter()
         assertEquals(StreamSorts.SORT_VIEWERS, FilterLogic.effectiveStreamSort(none))
-        assertEquals(VideosSortDialog.SORT_VIEWS, FilterLogic.effectiveVideoSort(none))
-        assertEquals(VideosSortDialog.PERIOD_WEEK, FilterLogic.effectivePeriod(none))
-        assertEquals(VideosSortDialog.VIDEO_TYPE_ALL, FilterLogic.effectiveType(none))
+        assertEquals(VideoFilters.SORT_VIEWS, FilterLogic.effectiveVideoSort(none))
+        assertEquals(VideoFilters.PERIOD_WEEK, FilterLogic.effectivePeriod(none))
+        assertEquals(VideoFilters.VIDEO_TYPE_ALL, FilterLogic.effectiveType(none))
     }
 
     @Test
@@ -79,18 +79,18 @@ class BrowseFilterTest {
 
     @Test
     fun gameVideosIgnoreTheRememberedPeriodWithoutHelixToken() {
-        val saved = GameSort(id = "g1", videoSort = VideosSortDialog.SORT_TIME, videoPeriod = VideosSortDialog.PERIOD_MONTH, videoType = VideosSortDialog.VIDEO_TYPE_HIGHLIGHT, videoLanguages = "EN,DE")
-        assertEquals(VideosSortDialog.PERIOD_MONTH, FilterLogic.initialGameVideos(saved, hasHelixToken = true).period)
+        val saved = GameSort(id = "g1", videoSort = VideoFilters.SORT_TIME, videoPeriod = VideoFilters.PERIOD_MONTH, videoType = VideoFilters.VIDEO_TYPE_HIGHLIGHT, videoLanguages = "EN,DE")
+        assertEquals(VideoFilters.PERIOD_MONTH, FilterLogic.initialGameVideos(saved, hasHelixToken = true).period)
         val noHelix = FilterLogic.initialGameVideos(saved, hasHelixToken = false)
         assertNull(noHelix.period)
-        assertEquals(VideosSortDialog.SORT_TIME, noHelix.sort)
-        assertEquals(VideosSortDialog.VIDEO_TYPE_HIGHLIGHT, noHelix.type)
+        assertEquals(VideoFilters.SORT_TIME, noHelix.sort)
+        assertEquals(VideoFilters.VIDEO_TYPE_HIGHLIGHT, noHelix.type)
         assertEquals(listOf("EN", "DE"), noHelix.languages)
     }
 
     @Test
     fun savingStreamsUpdatesTheRowInPlaceOrCreatesIt() {
-        val row = GameSort(id = "g1", videoSort = VideosSortDialog.SORT_TIME)
+        val row = GameSort(id = "g1", videoSort = VideoFilters.SORT_TIME)
         val filter = BrowseFilter(sort = StreamSorts.SORT_VIEWERS_ASC, tags = listOf(FilterTag(null, "A"), FilterTag(null, "B")), languages = listOf("EN"))
         val saved = FilterLogic.saveStreams(row, "g1", filter)
         assertSame(row, saved)
@@ -98,7 +98,7 @@ class BrowseFilterTest {
         assertEquals("A,B", saved.streamTags)
         assertEquals("EN", saved.streamLanguages)
         // the other lists' choices in the same row stay
-        assertEquals(VideosSortDialog.SORT_TIME, saved.videoSort)
+        assertEquals(VideoFilters.SORT_TIME, saved.videoSort)
         val created = FilterLogic.saveStreams(null, FilterLogic.DEFAULT_ID, BrowseFilter())
         assertEquals(FilterLogic.DEFAULT_ID, created.id)
         assertEquals(StreamSorts.SORT_VIEWERS, created.streamSort)
@@ -108,21 +108,21 @@ class BrowseFilterTest {
 
     @Test
     fun savingVideosWritesThePeriodOnlyWithHelixToken() {
-        val filter = BrowseFilter(sort = VideosSortDialog.SORT_TIME, period = VideosSortDialog.PERIOD_DAY, type = VideosSortDialog.VIDEO_TYPE_UPLOAD)
+        val filter = BrowseFilter(sort = VideoFilters.SORT_TIME, period = VideoFilters.PERIOD_DAY, type = VideoFilters.VIDEO_TYPE_UPLOAD)
         val withToken = FilterLogic.saveVideos(null, "g1", filter, hasHelixToken = true)
-        assertEquals(VideosSortDialog.PERIOD_DAY, withToken.videoPeriod)
-        val row = GameSort(id = "g1", videoPeriod = VideosSortDialog.PERIOD_ALL)
+        assertEquals(VideoFilters.PERIOD_DAY, withToken.videoPeriod)
+        val row = GameSort(id = "g1", videoPeriod = VideoFilters.PERIOD_ALL)
         val without = FilterLogic.saveVideos(row, "g1", filter, hasHelixToken = false)
-        assertEquals(VideosSortDialog.PERIOD_ALL, without.videoPeriod)
-        assertEquals(VideosSortDialog.SORT_TIME, without.videoSort)
-        assertEquals(VideosSortDialog.VIDEO_TYPE_UPLOAD, without.videoType)
+        assertEquals(VideoFilters.PERIOD_ALL, without.videoPeriod)
+        assertEquals(VideoFilters.SORT_TIME, without.videoSort)
+        assertEquals(VideoFilters.VIDEO_TYPE_UPLOAD, without.videoType)
         assertNull(FilterLogic.saveVideos(null, "g1", filter, hasHelixToken = false).videoPeriod)
     }
 
     @Test
     fun savingClipsKeepsPeriodAndLanguages() {
         val saved = FilterLogic.saveClips(null, "g1", BrowseFilter(languages = listOf("EN", "JA")))
-        assertEquals(VideosSortDialog.PERIOD_WEEK, saved.clipPeriod)
+        assertEquals(VideoFilters.PERIOD_WEEK, saved.clipPeriod)
         assertEquals("EN,JA", saved.clipLanguages)
     }
 

@@ -149,7 +149,8 @@ fun LiveCardCompact(
 
 /**
  * A video or clip (plan 6): thumbnail with duration and watch progress, title and a meta line (date, views).
- * [progress] is 0..1, null hides the bar. [trailing] holds an optional action such as the download button.
+ * [progress] is 0..1, null hides the bar. [trailing] holds an optional action such as the download button;
+ * [overlay] draws over the thumbnail (a download's state, U5).
  */
 @Composable
 fun VideoCard(
@@ -163,6 +164,7 @@ fun VideoCard(
     onLongClick: (() -> Unit)? = null,
     thumbnailModifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
+    overlay: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val colors = Lagoon.colors
     val type = Lagoon.type
@@ -170,6 +172,7 @@ fun VideoCard(
         Thumbnail(thumbnail, thumbnailModifier.fillMaxWidth().aspectRatio(16f / 9f)) {
             if (duration != null) OverlayChip(duration, Modifier.align(Alignment.BottomEnd).padding(start = 8.dp, end = 8.dp, bottom = 10.dp))
             if (progress != null && progress > 0f) WatchProgress(progress, Modifier.align(Alignment.BottomStart))
+            overlay?.invoke(this)
         }
         Row(
             Modifier.padding(start = 6.dp, end = 0.dp, top = 12.dp).heightIn(min = 40.dp),

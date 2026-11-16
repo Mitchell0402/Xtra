@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.github.andreyasadchy.xtra.model.ui.GameSort
 import com.github.andreyasadchy.xtra.model.ui.SavedFilter
 import com.github.andreyasadchy.xtra.ui.common.StreamSorts
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 
 /** Which list a filter belongs to; decides the sections of the filter sheet (plan 7.2). */
 enum class FilterKind { Games, Streams, Videos, Clips }
@@ -19,11 +19,11 @@ data class FilterTag(val id: String?, val name: String)
  */
 @Immutable
 data class BrowseFilter(
-    /** Streams: [StreamSorts.SORT_VIEWERS] and the others; videos: [VideosSortDialog.SORT_TIME] or views. */
+    /** Streams: [StreamSorts.SORT_VIEWERS] and the others; videos: [VideoFilters.SORT_TIME] or views. */
     val sort: String? = null,
-    /** Videos and clips: [VideosSortDialog.PERIOD_WEEK] and the others. */
+    /** Videos and clips: [VideoFilters.PERIOD_WEEK] and the others. */
     val period: String? = null,
-    /** Videos: [VideosSortDialog.VIDEO_TYPE_ALL] and the others. */
+    /** Videos: [VideoFilters.VIDEO_TYPE_ALL] and the others. */
     val type: String? = null,
     /** Language codes as in R.array.gqlUserLanguageValues, sorted as the language dialog sorted them. */
     val languages: List<String> = emptyList(),
@@ -45,6 +45,12 @@ data class FilterSheetConfig(
     val canSaveDefault: Boolean = true,
     /** Streams: keep the tags and languages in the saved filters of the Me page. */
     val canSaveFilters: Boolean = false,
+    /** Channel lists: v0.1's channel sort dialog had no languages. */
+    val showLanguages: Boolean = true,
+    /** Channel lists remember their choices for the channel, not the game (U5). */
+    val rememberForChannel: Boolean = false,
+    /** What an unset video sort means: views for game lists, newest first for channels (their view models' getters). */
+    val defaultVideoSort: String = VideoFilters.SORT_VIEWS,
 )
 
 /** The extra steps the user asked for when applying (v0.1 had one button for each). */
@@ -119,9 +125,9 @@ object FilterLogic {
     // -- what the VMs are given (their getters fall back to the same defaults as v0.1) -----------------------------
 
     fun effectiveStreamSort(filter: BrowseFilter) = filter.sort ?: StreamSorts.SORT_VIEWERS
-    fun effectiveVideoSort(filter: BrowseFilter) = filter.sort ?: VideosSortDialog.SORT_VIEWS
-    fun effectivePeriod(filter: BrowseFilter) = filter.period ?: VideosSortDialog.PERIOD_WEEK
-    fun effectiveType(filter: BrowseFilter) = filter.type ?: VideosSortDialog.VIDEO_TYPE_ALL
+    fun effectiveVideoSort(filter: BrowseFilter) = filter.sort ?: VideoFilters.SORT_VIEWS
+    fun effectivePeriod(filter: BrowseFilter) = filter.period ?: VideoFilters.PERIOD_WEEK
+    fun effectiveType(filter: BrowseFilter) = filter.type ?: VideoFilters.VIDEO_TYPE_ALL
 
     // -- what gets saved -----------------------------------------------------------------------------------------
 

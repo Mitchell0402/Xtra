@@ -47,6 +47,29 @@ class DownloadViewModel(
     var backupQualities: List<String>? = null
     var selectedQuality: String? = null
 
+    /** The video's seek previews for the range slider of the download sheet (U5); null while unknown or missing. */
+    private val _storyboard = MutableStateFlow<Storyboard?>(null)
+    val storyboard: StateFlow<Storyboard?> = _storyboard
+    private var storyboardRequested = false
+
+    /** Reads the storyboard info next to the video's animated preview (same host), once; failures leave it null. */
+    fun loadStoryboard(animatedPreviewUrl: String?) {
+        if (storyboardRequested) return
+        storyboardRequested = true
+        val infoUrl = Storyboard.infoUrl(animatedPreviewUrl) ?: return
+        viewModelScope.launch {
+            _storyboard.value = withContext(Dispatchers.IO) {
+                try {
+                    okHttpClient.value.newCall(Request.Builder().url(infoUrl).build()).execute().use { response ->
+                        if (response.isSuccessful) Storyboard.parse(infoUrl, response.body.string()) else null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+    }
+
     fun setStream(networkLibrary: String?, gqlHeaders: Map<String, String>, channelLogin: String?, qualities: List<VideoQuality>?, platform: String?, playerType: String?, supportedCodecs: String?, enableIntegrity: Boolean) {
         if (_qualities.value == null) {
             if (!qualities.isNullOrEmpty()) {

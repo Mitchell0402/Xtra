@@ -787,6 +787,7 @@ class StreamDownloadService : LifecycleService() {
         val skipAds = prefs().getBoolean(C.PLAYER_FILTER_AD_SEGMENTS, true)
         val downloadDate = System.currentTimeMillis()
         var startTime = System.currentTimeMillis()
+        downloadProgress.startedAt = downloadDate
         var lastUrl = downloadProgress.lastSegmentUrl
         var initSegmentUri: String?
         val playlist = when {

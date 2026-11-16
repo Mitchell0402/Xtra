@@ -71,7 +71,7 @@ import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Tag as GameTag
 import com.github.andreyasadchy.xtra.model.ui.User
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.common.VideosSortDialog
+import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.ui.design.components.ActionItem
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.Avatar
@@ -139,7 +139,7 @@ data class FollowingListOptions(
 data class FollowingAccount(val loggedIn: Boolean, val name: String?)
 
 @Immutable
-data class VideoSortChoice(val sort: String = VideosSortDialog.SORT_TIME, val type: String = VideosSortDialog.VIDEO_TYPE_ALL)
+data class VideoSortChoice(val sort: String = VideoFilters.SORT_TIME, val type: String = VideoFilters.VIDEO_TYPE_ALL)
 
 @Immutable
 data class ChannelSortChoice(val sort: String = FollowedChannelsSorts.SORT_LAST_BROADCAST, val order: String = FollowedChannelsSorts.ORDER_DESC)
@@ -625,7 +625,7 @@ private fun VideosSegment(
     val columns = liveColumns(WidthClass.of(configuration.screenWidthDp), configuration.screenWidthDp)
     var menuFor by remember { mutableStateOf<Video?>(null) }
     var sortSheet by rememberSaveable { mutableStateOf(false) }
-    val sortLabel = stringResource(if (sort.sort == VideosSortDialog.SORT_VIEWS) R.string.view_count else R.string.upload_date)
+    val sortLabel = stringResource(if (sort.sort == VideoFilters.SORT_VIEWS) R.string.view_count else R.string.upload_date)
     val typeLabel = stringResource(videoTypeLabel(sort.type))
     SegmentGrid(
         items = videos,
@@ -711,17 +711,17 @@ private fun videoActions(video: Video, bookmarked: Set<String>, actions: Followi
 }
 
 private fun videoTypeLabel(type: String) = when (type) {
-    VideosSortDialog.VIDEO_TYPE_ARCHIVE -> R.string.video_type_archive
-    VideosSortDialog.VIDEO_TYPE_HIGHLIGHT -> R.string.video_type_highlight
-    VideosSortDialog.VIDEO_TYPE_UPLOAD -> R.string.video_type_upload
+    VideoFilters.VIDEO_TYPE_ARCHIVE -> R.string.video_type_archive
+    VideoFilters.VIDEO_TYPE_HIGHLIGHT -> R.string.video_type_highlight
+    VideoFilters.VIDEO_TYPE_UPLOAD -> R.string.video_type_upload
     else -> R.string.all
 }
 
 /** Replaces VideosSortDialog for followed videos: sort and type (v0.1 hid period and languages here). */
 @Composable
 private fun VideoSortSheet(current: VideoSortChoice, onApply: (VideoSortChoice, Boolean) -> Unit, onDismiss: () -> Unit) {
-    val sorts = listOf(VideosSortDialog.SORT_TIME, VideosSortDialog.SORT_VIEWS)
-    val types = listOf(VideosSortDialog.VIDEO_TYPE_ALL, VideosSortDialog.VIDEO_TYPE_ARCHIVE, VideosSortDialog.VIDEO_TYPE_HIGHLIGHT, VideosSortDialog.VIDEO_TYPE_UPLOAD)
+    val sorts = listOf(VideoFilters.SORT_TIME, VideoFilters.SORT_VIEWS)
+    val types = listOf(VideoFilters.VIDEO_TYPE_ALL, VideoFilters.VIDEO_TYPE_ARCHIVE, VideoFilters.VIDEO_TYPE_HIGHLIGHT, VideoFilters.VIDEO_TYPE_UPLOAD)
     var sort by rememberSaveable { mutableStateOf(current.sort) }
     var type by rememberSaveable { mutableStateOf(current.type) }
     LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.sort), skipHalfHeight = true) {

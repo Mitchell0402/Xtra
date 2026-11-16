@@ -628,6 +628,7 @@ class VideoDownloadService : LifecycleService() {
                             FileOutputStream(initSegmentFileUri)
                         }.use {
                             it.write(response.body)
+                            downloadProgress.transferred.addAndGet(response.body.size.toLong())
                         }
                     }
                     networkLibrary == C.CRONET && xtraModule.cronetEngine.value != null -> {
@@ -656,6 +657,7 @@ class VideoDownloadService : LifecycleService() {
                             FileOutputStream(initSegmentFileUri)
                         }.use {
                             it.write(response.body)
+                            downloadProgress.transferred.addAndGet(response.body.size.toLong())
                         }
                     }
                     else -> {
@@ -671,7 +673,7 @@ class VideoDownloadService : LifecycleService() {
                                 FileOutputStream(initSegmentFileUri)
                             }.use { outputStream ->
                                 response.body.byteStream().use { inputStream ->
-                                    inputStream.copyTo(outputStream)
+                                    downloadProgress.transferred.addAndGet(inputStream.copyTo(outputStream))
                                 }
                             }
                         }
@@ -763,6 +765,7 @@ class VideoDownloadService : LifecycleService() {
                                 FileOutputStream(fileUri)
                             }.use {
                                 it.write(response.body)
+                                downloadProgress.transferred.addAndGet(response.body.size.toLong())
                             }
                         }
                         networkLibrary == C.CRONET && xtraModule.cronetEngine.value != null -> {
@@ -791,6 +794,7 @@ class VideoDownloadService : LifecycleService() {
                                 FileOutputStream(fileUri)
                             }.use {
                                 it.write(response.body)
+                                downloadProgress.transferred.addAndGet(response.body.size.toLong())
                             }
                         }
                         else -> {
@@ -806,7 +810,7 @@ class VideoDownloadService : LifecycleService() {
                                     FileOutputStream(fileUri)
                                 }.use { outputStream ->
                                     response.body.byteStream().use { inputStream ->
-                                        inputStream.copyTo(outputStream)
+                                        downloadProgress.transferred.addAndGet(inputStream.copyTo(outputStream))
                                     }
                                 }
                             }

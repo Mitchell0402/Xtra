@@ -139,6 +139,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     private var isPortrait = true
     private var confirmUnfollow by mutableStateOf(false)
     private var volumeLevel = -1f
+    private var lastVolumeChange = 0L
     private var audioOnlyApplied = false
 
     protected var isMaximized = true
@@ -218,7 +219,9 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         root.addView(chat, FrameLayout.LayoutParams(0, 0))
         // v0.1 consumed the insets at the player's root: the chat and the video never pad themselves
         ViewCompat.setOnApplyWindowInsetsListener(chat) { _, _ -> WindowInsetsCompat.CONSUMED }
-        ViewCompat.setOnApplyWindowInsetsListener(video) { _, _ -> WindowInsetsCompat.CONSUMED }
+        // the video passes them on untouched: before Android 11 a consumed result stops the dispatch to the views after
+        // it, and the Compose page (the next view) reads the status bar, navigation and keyboard from them
+        ViewCompat.setOnApplyWindowInsetsListener(video) { _, insets -> insets }
         videoView = video
         aspectFrame = aspect
         surfaceView = surface
@@ -392,6 +395,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                 }
             }
         }
+        // a page rebuilt while the activity's sleep timer runs shows it
+        ((activity as? MainActivity)?.getSleepTimerTimeLeft() ?: 0L).takeIf { it > 0L }?.let { state.sleepTimerEnd = System.currentTimeMillis() + it }
         initLayout()
         changePlayerMode()
     }
@@ -805,7 +810,10 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     override fun adjustVolume(delta: Float): Float {
         val audio = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        if (volumeLevel < 0f) volumeLevel = audio.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVolume.toFloat()
+        // a new swipe starts from the system level: the volume keys may have changed it in between
+        val now = android.os.SystemClock.uptimeMillis()
+        if (volumeLevel < 0f || now - lastVolumeChange > 1000) volumeLevel = audio.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVolume.toFloat()
+        lastVolumeChange = now
         volumeLevel = (volumeLevel + delta).coerceIn(0f, 1f)
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, (volumeLevel * maxVolume).roundToInt(), 0)
         return volumeLevel
@@ -862,6 +870,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             MenuEntry.FindVideo -> findUnlistedVideo()
             MenuEntry.SeekLive -> backend?.seekToDefaultPosition()
             MenuEntry.Restart -> backend?.restartPlayer()
+            MenuEntry.FullVideo -> watchFullVideo()
             MenuEntry.Aspect -> state.sheet = PlayerSheet.Aspect
             MenuEntry.ChatLayout -> setChatOverlay(!state.chatOverlay)
             MenuEntry.ChatToggle -> setChatOpen(!state.chatOpen)
@@ -917,6 +926,15 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         picker.show(childFragmentManager, "closeOnPip")
     }
 
+    override fun requestSleepLockPermission() {
+        val admin = ComponentName(requireContext(), DeviceAdminReceiver::class.java)
+        try {
+            startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin))
+        } catch (_: android.content.ActivityNotFoundException) {
+            // no device admin screen on this device: the switch simply stays off, as in v0.1's settings
+        }
+    }
+
     override fun setResizeMode(mode: Int) {
         state.resizeMode = mode
         requireContext().prefs().edit { putInt(C.ASPECT_RATIO_LANDSCAPE, mode) }
@@ -940,6 +958,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             subtitles = state.subtitles,
             translateAvailable = translateAll() != null,
             debugPlaylistTags = prefs.getBoolean(C.DEBUG_PLAYER_MENU_PLAYLIST_TAGS, false),
+            hasFullVideo = state.hasFullVideo,
         )
     }
 
@@ -1376,7 +1395,12 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         if (isAdded) WindowCompat.getInsetsController(requireActivity().window, requireActivity().window.decorView).hide(WindowInsetsCompat.Type.systemBars())
     }
 
-    private fun isInPipMode() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && requireActivity().isInPictureInPictureMode
+    /** v0.1: Android 11 and up ask the activity; before that the flag is unreliable and the page's own state is used. */
+    private fun isInPipMode() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        requireActivity().isInPictureInPictureMode
+    } else {
+        state.inPictureInPicture && isMaximized
+    }
 
     override fun onResume() {
         super.onResume()

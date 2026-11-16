@@ -131,6 +131,7 @@ class RecordingPlayerActions : PlayerActions {
     override fun setPlayerVolume(volume: Float, done: Boolean) { if (done) calls += "playerVolume" }
     override fun setSleepTimer(minutes: Int, lockScreen: Boolean) { calls += "sleep:$minutes:$lockScreen" }
     override fun pickSleepTime() { calls += "sleepAt" }
+    override fun requestSleepLockPermission() { calls += "lockPermission" }
     override fun seekToChapter(positionMs: Long) { calls += "chapter:$positionMs" }
     override fun setChatOverlay(overlay: Boolean) { calls += "overlay:$overlay" }
     override fun setResizeMode(mode: Int) { calls += "resize:$mode" }

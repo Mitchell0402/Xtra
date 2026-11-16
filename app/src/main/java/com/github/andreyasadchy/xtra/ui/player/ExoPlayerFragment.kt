@@ -20,6 +20,11 @@ import com.github.andreyasadchy.xtra.ui.main.MainActivity
 class ExoPlayerFragment : PlayerFragment() {
 
     private var serviceConnection: ServiceConnection? = null
+    /**
+     * v0.1 kept its service reference after onStop unbound it, so a later close (MainActivity finishing, the sleep
+     * timer ending in the background) still paused, stopped and ended the service. Cleared by close and audio only.
+     */
+    private var lastBackend: PlaybackBackend? = null
 
     override fun onStart() {
         super.onStart()
@@ -27,6 +32,7 @@ class ExoPlayerFragment : PlayerFragment() {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 if (view != null) {
                     val backend = ExoPlaybackBackend((service as ExoPlayerService.ServiceBinder).getService())
+                    lastBackend = backend
                     this@ExoPlayerFragment.connection.attach(backend)
                     val endTime = backend.setSleepTimer(-1)
                     if (endTime > 0L) {
@@ -38,6 +44,7 @@ class ExoPlayerFragment : PlayerFragment() {
                             minimize()
                             close()
                             (activity as? MainActivity)?.closePlayer()
+                            return
                         }
                     }
                     backend.setStopServiceTimer(false)
@@ -67,6 +74,7 @@ class ExoPlayerFragment : PlayerFragment() {
     }
 
     override fun startAudioOnly() {
+        lastBackend = null
         backend?.let {
             it.startAudioOnly()
             it.setSleepTimer((activity as? MainActivity)?.getSleepTimerTimeLeft() ?: 0)
@@ -76,7 +84,8 @@ class ExoPlayerFragment : PlayerFragment() {
     }
 
     override fun close(deleteStates: Boolean) {
-        val backend = backend
+        val backend = backend ?: lastBackend
+        lastBackend = null
         backend?.pause()
         backend?.stop()
         // isAdded: a deep link can close a player fragment that was restored but not attached yet

@@ -189,6 +189,7 @@ private fun MenuRow(entry: MenuEntry, state: PlayerUiState, source: PlayerSheetS
             description = state.adStatus?.toString() ?: source.adBlockSummary(),
             trailing = SettingTrailing.Value(source.adBlockPreset()), onClick = { state.sheet = PlayerSheet.AdBlock },
         )
+        MenuEntry.FullVideo -> SettingRow(stringResource(R.string.watch_video), m, icon = LucideIcons.Film, trailing = SettingTrailing.None, onClick = { run(entry) })
         MenuEntry.Subtitles -> SettingRow(
             stringResource(R.string.pl_subtitles), m, icon = LucideIcons.Captions,
             trailing = SettingTrailing.Toggle(state.subtitles == SubtitleState.On) { actions.menu(MenuEntry.Subtitles) },
@@ -323,7 +324,9 @@ private fun SleepPage(state: PlayerUiState, source: PlayerSheetSource, actions: 
             SettingRow(
                 stringResource(if (source.sleepLockAllowed()) R.string.sleep_timer_lock else R.string.sleep_timer_lock_permissions),
                 icon = LucideIcons.Lock,
-                trailing = SettingTrailing.Toggle(lock) { lock = it },
+                trailing = SettingTrailing.Toggle(lock) {
+                    if (source.sleepLockAllowed()) lock = it else { state.sheet = null; actions.requestSleepLockPermission() }
+                },
             )
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

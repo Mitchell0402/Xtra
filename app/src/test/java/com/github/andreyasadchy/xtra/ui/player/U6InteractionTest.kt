@@ -197,6 +197,15 @@ class U6InteractionTest {
     }
 
     @Test
+    fun lockingNeedsThePermissionFirst() {
+        val state = U6Fixtures.live()
+        sheet(PlayerSheet.Sleep, state)
+        compose.onNodeWithText("Lock screen after (requires device admin permissions)").performClick()
+        assertEquals(listOf("lockPermission"), actions.calls)
+        assertNull(state.sheet)
+    }
+
+    @Test
     fun chaptersSeek() {
         val state = U6Fixtures.video()
         sheet(PlayerSheet.Chapters, state)

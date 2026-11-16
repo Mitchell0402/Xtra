@@ -161,6 +161,16 @@ class PlayerContractTest {
     }
 
     @Test
+    fun chatOnlyIsKnownToThePage() {
+        val backend = FakeBackend()
+        connection.attach(backend)
+        backend.quality = VideoQuality(name = VideoQuality.CHAT_ONLY_QUALITY)
+        backend.registered!!.changePlayerMode()
+        assertTrue(state.chatOnly)
+        assertFalse(state.audioOnly)
+    }
+
+    @Test
     fun toastsReachThePage() {
         val backend = FakeBackend()
         connection.attach(backend)

@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -166,6 +167,8 @@ interface PlayerActions {
     /** Starts the sleep timer, or stops it when [minutes] is 0. */
     fun setSleepTimer(minutes: Int, lockScreen: Boolean)
     fun pickSleepTime()
+    /** Asks for the device admin permission that locking the screen after the sleep timer needs (v0.1). */
+    fun requestSleepLockPermission()
     fun seekToChapter(positionMs: Long)
     fun setChatOverlay(overlay: Boolean)
     fun setResizeMode(mode: Int)
@@ -477,7 +480,8 @@ private fun VideoLayer(
     var scrubbing by remember { mutableStateOf(false) }
     var seekHint by remember { mutableStateOf<SeekHint?>(null) }
     var level by remember { mutableStateOf<LevelHint?>(null) }
-    val pinned = state.audioOnly || (state.ended && state.kind.seekable)
+    // v0.1: no picture to watch (audio only, chat only) or a finished video keeps the controls up
+    val pinned = state.audioOnly || state.chatOnly || (state.ended && state.kind.seekable)
     val visible = interactive && progress == 0f && (state.controlsVisible || pinned)
 
     // v0.1: the controls hide 3 s after the last touch while playing; paused, ended or audio only they stay
@@ -494,6 +498,7 @@ private fun VideoLayer(
     val layout = geometry.layout
     val dragRange = with(density) { 360.dp.toPx() }
     val fullscreenSwipe = with(density) { 72.dp.toPx() }
+    val topEdge = with(density) { 36.dp.toPx() }
 
     Box(
         Modifier
@@ -540,6 +545,9 @@ private fun VideoLayer(
                                 startX = start.x
                                 total = 0f
                                 kind = when {
+                                    // v0.1 statusBarSwipe: in landscape the bars are hidden and come back with a swipe
+                                    // from the top edge, which the page still receives; leave that swipe alone
+                                    layout == PlayerLayout.Landscape && start.y < topEdge -> 0
                                     layout != PlayerLayout.Landscape -> 1
                                     start.x < size.width / 3f -> 2
                                     start.x > size.width * 2 / 3f -> 3
@@ -1086,7 +1094,8 @@ private fun PlayerInfo(
 @Composable
 private fun ChatDivider(geometry: PlayerGeometry, windowWidth: Float, actions: PlayerActions) {
     val density = LocalDensity.current
-    var dragX by remember { mutableFloatStateOf(0f) }
+    // the pointer handler outlives recompositions: read the current widths through state
+    val chatWidth by rememberUpdatedState(windowWidth - geometry.paneWidth)
     val label = stringResource(R.string.pl_chat_divider)
     val handleWidth = 20.dp
     Box(
@@ -1095,13 +1104,15 @@ private fun ChatDivider(geometry: PlayerGeometry, windowWidth: Float, actions: P
             .width(handleWidth)
             .height(with(density) { geometry.chat.height.toDp() })
             .pointerInput(Unit) {
+                var startWidth = 0f
+                var dragX = 0f
                 detectHorizontalDragGestures(
-                    onDragStart = { dragX = 0f },
-                    onDragEnd = { actions.setChatWidth((windowWidth - geometry.paneWidth - dragX).roundToInt(), true) },
+                    onDragStart = { startWidth = chatWidth; dragX = 0f },
+                    onDragEnd = { actions.setChatWidth((startWidth - dragX).roundToInt(), true) },
                     onHorizontalDrag = { change, amount ->
                         change.consume()
                         dragX += amount
-                        actions.setChatWidth((windowWidth - geometry.paneWidth - amount).roundToInt(), false)
+                        actions.setChatWidth((startWidth - dragX).roundToInt(), false)
                     },
                 )
             }
@@ -1226,6 +1237,7 @@ object NoPlayerActions : PlayerActions {
     override fun setPlayerVolume(volume: Float, done: Boolean) = Unit
     override fun setSleepTimer(minutes: Int, lockScreen: Boolean) = Unit
     override fun pickSleepTime() = Unit
+    override fun requestSleepLockPermission() = Unit
     override fun seekToChapter(positionMs: Long) = Unit
     override fun setChatOverlay(overlay: Boolean) = Unit
     override fun setResizeMode(mode: Int) = Unit

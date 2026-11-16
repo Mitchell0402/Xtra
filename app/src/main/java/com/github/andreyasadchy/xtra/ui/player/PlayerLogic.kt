@@ -80,7 +80,7 @@ enum class MenuEntry {
     // the main group: icon, name and current value
     Quality, Speed, SleepTimer, AudioOnly, Download, AdBlock,
     // the rest
-    Subtitles, Compressor, Volume, Chapters, ViewerList, Bookmark, Share, FindVideo, SeekLive, Restart,
+    FullVideo, Subtitles, Compressor, Volume, Chapters, ViewerList, Bookmark, Share, FindVideo, SeekLive, Restart,
     Aspect, ChatLayout, ChatToggle, ChatBar, ChatConnection, ReloadEmotes, TranslateAll,
     MediaPlaylistTags, MultivariantPlaylistTags;
 }
@@ -97,6 +97,8 @@ data class MenuContext(
     val subtitles: SubtitleState,
     val translateAvailable: Boolean,
     val debugPlaylistTags: Boolean,
+    /** A clip of a video that still exists: "watch full video" (v0.1's button under the chat). */
+    val hasFullVideo: Boolean = false,
 )
 
 object PlayerLogic {
@@ -114,6 +116,7 @@ object PlayerLogic {
         if (c.hasAudioOnly) add(MenuEntry.AudioOnly)
         if (kind != PlayerKind.Offline) add(MenuEntry.Download)
         if (kind == PlayerKind.Stream) add(MenuEntry.AdBlock)
+        if (kind == PlayerKind.Clip && c.hasFullVideo) add(MenuEntry.FullVideo)
         if (c.subtitles != SubtitleState.None) add(MenuEntry.Subtitles)
         add(MenuEntry.Compressor)
         add(MenuEntry.Volume)

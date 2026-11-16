@@ -268,6 +268,7 @@ class PlayerConnection(private val state: PlayerUiState, private val host: Host)
     fun updateQuality() {
         val quality = backend?.quality
         state.audioOnly = quality?.name == VideoQuality.AUDIO_ONLY_QUALITY
+        state.chatOnly = quality?.name == VideoQuality.CHAT_ONLY_QUALITY
         state.qualityLabel = host.qualityLabel(quality)
     }
 }

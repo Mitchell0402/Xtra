@@ -69,6 +69,13 @@ class PlayerLogicTest {
     }
 
     @Test
+    fun clipsOfAnExistingVideoOfferTheFullVideo() {
+        assertTrue(MenuEntry.FullVideo in PlayerLogic.menuEntries(PlayerKind.Clip, ctx().copy(hasFullVideo = true)))
+        assertFalse(MenuEntry.FullVideo in PlayerLogic.menuEntries(PlayerKind.Clip, ctx()))
+        assertFalse(MenuEntry.FullVideo in PlayerLogic.menuEntries(PlayerKind.Video, ctx().copy(hasFullVideo = true)))
+    }
+
+    @Test
     fun landscapeRowsAndChatRules() {
         val phone = PlayerLogic.menuEntries(PlayerKind.Stream, ctx(landscape = true))
         assertTrue(MenuEntry.Aspect in phone)

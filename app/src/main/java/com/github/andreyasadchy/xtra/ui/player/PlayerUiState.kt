@@ -66,6 +66,8 @@ class PlayerUiState {
     var loaded by mutableStateOf(false)
     var qualityLabel by mutableStateOf<String?>(null)
     var audioOnly by mutableStateOf(false)
+    /** Chat only: nothing plays, the controls stay up (v0.1). */
+    var chatOnly by mutableStateOf(false)
     /** Video rendering is switched off (audio only, or in the background); the surface is hidden. */
     var videoDisabled by mutableStateOf(false)
     var videoAspect by mutableFloatStateOf(16f / 9f)

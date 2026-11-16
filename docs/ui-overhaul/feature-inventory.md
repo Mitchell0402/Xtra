@@ -24,7 +24,7 @@ Outside the navigation graph:
 
 | Done | Screen | Where | Stage |
 |---|---|---|---|
-| [ ] | Player (live, video, clip, offline; mini player; picture-in-picture) | `MainActivity` playerContainer, `ui/player/` | U6 |
+| [x] | Player (live, video, clip, offline; mini player; picture-in-picture) | `MainActivity` playerContainer, `ui/player/` | U6: Compose page over the contract layer (u6-contract.md, u6-report.md) |
 | [ ] | Chat (live and replay) | `ui/chat/ChatFragment` inside the player | U7 |
 | [x] | Settings activity | `ui/settings/SettingsActivity` | U3 |
 | [x] | Login (web login, TV device code login, integrity check) | `ui/login/LoginActivity` | U3 |
@@ -374,13 +374,13 @@ Built in code (list editor or search page); see the class.
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/games/GamesSortDialog.kt` | BottomSheetDialogFragment | U4: removed, the filter sheet's tags |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginActivity.kt` | 5 alert dialog(s) | U3 |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt` | 2 alert dialog(s) | U3 (moved in U2: both are the in-app update dialogs, which belong with "About and updates") |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt` | 1 alert dialog(s) | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt` | 2 alert dialog(s) | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerGamesDialog.kt` | BottomSheetDialogFragment | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerSettingsDialog.kt` | BottomSheetDialogFragment | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerViewerListDialog.kt` | BottomSheetDialogFragment | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerVolumeDialog.kt` | BottomSheetDialogFragment | U6 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/SleepTimerDialog.kt` | DialogFragment; 1 alert dialog(s) | U6 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/ExoPlayerFragment.kt` | 1 alert dialog(s) | U6: moved into PlayerFragment (the debug playlist tags dialog, kept as is) |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt` | 2 alert dialog(s) | U6: unfollow confirmation is a ConfirmSheet; "stop the sleep timer?" is the sleep page's stop button |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerGamesDialog.kt` | BottomSheetDialogFragment | U6: chapters page of the player sheet (deleted) |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerSettingsDialog.kt` | BottomSheetDialogFragment | U6: player settings sheet, quality and speed pages (deleted) |
+| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerViewerListDialog.kt` | BottomSheetDialogFragment | U7 (plan 9 lists the viewer list with the chat); still opened from the player sheet |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerVolumeDialog.kt` | BottomSheetDialogFragment | U6: volume page of the player sheet (deleted) |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/player/SleepTimerDialog.kt` | DialogFragment; 1 alert dialog(s) | U6: sleep timer page of the player sheet (deleted); the clock picker stays for sleep_timer_use_time_picker |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/SavedMediaFragment.kt` | 1 alert dialog(s) | U5: same page as SavedPagerFragment |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/SavedPagerFragment.kt` | 1 alert dialog(s) | U5: log-out confirmation is a sheet |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/bookmarks/BookmarksAdapter.kt` | 1 popup menu(s) | U5: long-press action sheet; delete by swipe or menu with undo |

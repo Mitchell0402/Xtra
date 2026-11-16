@@ -15,4 +15,7 @@ class DownloadProgress(
     var lastSaved: Long = 0,
     /** When the service started writing this recording (U5: the Me page shows how long it has run). */
     var startedAt: Long = 0,
-)
+) {
+    /** Bytes received in this session, for the download speed on the Me page (U5); never stored. */
+    val transferred = java.util.concurrent.atomic.AtomicLong()
+}

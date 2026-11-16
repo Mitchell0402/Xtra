@@ -53,6 +53,13 @@ object BookmarkLogic {
         return if (left > 0) left / 1000 else null
     }
 
+    /** The time left to the two largest units, as a chip on the thumbnail (v0.1 showed it to the second). */
+    fun roughly(seconds: Long): Long = when {
+        seconds >= 86400 -> seconds - seconds % 3600
+        seconds >= 3600 -> seconds - seconds % 60
+        else -> seconds
+    }
+
     private fun created(bookmark: Bookmark) = bookmark.createdAt?.let { Instant.parseOrNull(it)?.toEpochMilliseconds()?.takeIf { ms -> ms > 0 } }
 
     fun sorted(list: List<Bookmark>, sort: String, order: String, nowMillis: Long): List<Bookmark> =

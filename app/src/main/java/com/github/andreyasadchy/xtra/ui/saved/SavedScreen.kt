@@ -54,6 +54,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -225,10 +226,11 @@ fun SavedScreen(
     val pending = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val removeWithUndo: (String, String, () -> Unit) -> Unit = { key, message, remove ->
         pending += key
         scope.launch {
-            val result = toast?.show(message, context.getString(R.string.saved_undo)) ?: ToastResult.Dismissed
+            val result = toast?.show(message, resources.getString(R.string.saved_undo)) ?: ToastResult.Dismissed
             if (result == ToastResult.ActionPerformed) pending -= key else remove()
         }
     }
@@ -405,6 +407,12 @@ private fun DownloadsList(
     var converting by remember { mutableStateOf<OfflineVideo?>(null) }
     var moving by remember { mutableStateOf<OfflineVideo?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
+    // v0.1 scrolled to a new download when it was added while the list was at its top
+    val firstId = downloads?.takeIf { it.itemCount > 0 }?.peek(0)?.id
+    LaunchedEffect(firstId) {
+        if (firstId != null && state.firstVisibleItemIndex <= 1) state.animateScrollToItem(0)
+    }
     SavedGrid(state, columns, top, bottom) {
         val first = downloads == null || downloads.itemCount == 0
         when {
@@ -419,7 +427,7 @@ private fun DownloadsList(
                 if (itemKey in pending) return@items
                 val name = video.name?.trim().orEmpty()
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
-                    removeWithUndo(itemKey, context.getString(R.string.saved_download_removed, name)) { actions.deleteDownload(video, keepFiles = true) }
+                    removeWithUndo(itemKey, resources.getString(R.string.saved_download_removed, name)) { actions.deleteDownload(video, keepFiles = true) }
                 }) {
                     DownloadCell(video, index, states[video.id], options, actions,
                         onDelete = { deleting = video }, onConvert = { converting = video }, onMoveToApp = { moving = video })
@@ -471,6 +479,7 @@ private fun DownloadCell(
     onMoveToApp: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var menuOpen by remember { mutableStateOf(false) }
     val status = DownloadLogic.shownStatus(video, state?.active == true)
     val recording = video.live && status == OfflineVideo.STATUS_DOWNLOADING
@@ -654,6 +663,11 @@ private fun BookmarksList(
 ) {
     var sortSheet by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val firstId = bookmarks?.firstOrNull()?.id
+    LaunchedEffect(firstId) {
+        if (firstId != null && state.firstVisibleItemIndex <= 2) state.animateScrollToItem(0)
+    }
     SavedGrid(state, columns, top, bottom) {
         item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
             FilterChipRow(
@@ -676,10 +690,10 @@ private fun BookmarksList(
                 val itemKey = "b${bookmark.id}"
                 if (itemKey in pending) return@items
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
-                    removeWithUndo(itemKey, context.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
+                    removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
                 }) {
                     BookmarkCell(bookmark, index, options, savedOptions, positions, bookmark.userId in ignored, actions, onDelete = {
-                        removeWithUndo(itemKey, context.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
+                        removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
                     })
                 }
             }
@@ -708,6 +722,7 @@ private fun BookmarkCell(
     onDelete: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var menuOpen by remember { mutableStateOf(false) }
     val durationSeconds = bookmark.duration?.let { it.toIntOrNull() ?: TwitchApiHelper.getDuration(it) }
     val position = bookmark.videoId?.toLongOrNull()?.let { positions[it] }
@@ -731,7 +746,7 @@ private fun BookmarkCell(
         add(ActionItem(stringResource(R.string.delete), LucideIcons.Trash2, destructive = true) { onDelete() })
     }
     val timeLeft = if (savedOptions.bookmarkTimeLeft && !ignored) {
-        BookmarkLogic.secondsLeft(bookmark, options.nowMillis())?.let { TwitchApiHelper.getDurationFromSeconds(context, it.toString()) }
+        BookmarkLogic.secondsLeft(bookmark, options.nowMillis())?.let { TwitchApiHelper.getDurationFromSeconds(context, BookmarkLogic.roughly(it).toString()) }
     } else null
     val meta = listOfNotNull(
         displayName(bookmark.userName, bookmark.userLogin, options.nameDisplay).takeIf { it.isNotEmpty() },
@@ -801,6 +816,7 @@ private fun FiltersList(
     removeWithUndo: (String, String, () -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     SavedGrid(state, columns, top, bottom) {
         val first = filters == null || filters.itemCount == 0
         when {
@@ -814,7 +830,7 @@ private fun FiltersList(
                 val itemKey = "f${filter.id}"
                 if (itemKey in pending) return@items
                 val title = filter.gameName ?: stringResource(R.string.saved_filter_all_games)
-                val remove = { removeWithUndo(itemKey, context.getString(R.string.saved_filter_removed, title)) { actions.deleteFilter(filter) } }
+                val remove = { removeWithUndo(itemKey, resources.getString(R.string.saved_filter_removed, title)) { actions.deleteFilter(filter) } }
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = remove) {
                     FilterCell(filter, title, index, actions, onDelete = remove)
                 }

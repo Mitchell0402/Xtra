@@ -672,6 +672,7 @@ private fun ChannelHeaderBlock(
         if (stream != null && live) {
             var menuOpen by remember { mutableStateOf(false) }
             val menu = liveMenu(stream, actions)
+            val watchLiveLabel = stringResource(R.string.watch_live)
             LiveCard(
                 title = stream.title?.trim().orEmpty(),
                 channelName = stream.gameName?.let { stringResource(R.string.channel_live_playing, it) } ?: stringResource(R.string.watch_live),
@@ -685,7 +686,7 @@ private fun ChannelHeaderBlock(
                 modifier = Modifier
                     .padding(top = LagoonSpacing.m)
                     .actionsForAccessibility(menu)
-                    .semantics { contentDescription = context.getString(R.string.watch_live) }
+                    .semantics { contentDescription = watchLiveLabel }
                     .testTag(ChannelLiveCardTag),
             )
             if (menuOpen) ActionSheet(menu, onDismiss = { menuOpen = false }, title = stream.title?.trim())

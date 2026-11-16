@@ -190,7 +190,7 @@ fun DownloadSheetContent(
                             SettingRow(
                                 storage.name,
                                 icon = LucideIcons.HardDrive,
-                                trailing = SettingTrailing.Value(storage.freeBytes?.let { stringResource(R.string.download_sheet_free, formatSize(it)) }.orEmpty()),
+                                trailing = SettingTrailing.Value(storage.freeBytes?.let { stringResource(R.string.download_sheet_free, formatSize(it)) }.orEmpty(), chevron = false),
                             )
                         }
                     }

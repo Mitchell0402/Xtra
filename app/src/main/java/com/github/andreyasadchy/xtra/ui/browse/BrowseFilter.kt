@@ -49,6 +49,8 @@ data class FilterSheetConfig(
     val showLanguages: Boolean = true,
     /** Channel lists remember their choices for the channel, not the game (U5). */
     val rememberForChannel: Boolean = false,
+    /** What an unset video sort means: views for game lists, newest first for channels (their view models' getters). */
+    val defaultVideoSort: String = VideoFilters.SORT_VIEWS,
 )
 
 /** The extra steps the user asked for when applying (v0.1 had one button for each). */

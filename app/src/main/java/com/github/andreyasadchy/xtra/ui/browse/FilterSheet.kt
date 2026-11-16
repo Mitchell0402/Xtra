@@ -131,7 +131,7 @@ fun filterChips(
             add(FilterChipItem(stringResource(R.string.browse_filter_tags), icon = LucideIcons.Tag, dropdown = true, onClick = onOpen))
         }
         FilterKind.Videos -> {
-            add(FilterChipItem(stringResource(videoSortLabel(FilterLogic.effectiveVideoSort(filter))), icon = LucideIcons.ArrowUpDown, dropdown = true, onClick = onOpen))
+            add(FilterChipItem(stringResource(videoSortLabel(filter.sort ?: config.defaultVideoSort)), icon = LucideIcons.ArrowUpDown, dropdown = true, onClick = onOpen))
             if (config.showPeriod) add(FilterChipItem(stringResource(periodLabel(FilterLogic.effectivePeriod(filter))), icon = LucideIcons.Clock, dropdown = true, onClick = onOpen))
             add(FilterChipItem(stringResource(typeLabel(FilterLogic.effectiveType(filter))), icon = LucideIcons.Film, dropdown = true, onClick = onOpen))
             if (config.showLanguages) add(FilterChipItem(languagesSummary(filter.languages), icon = LucideIcons.Languages, dropdown = true, onClick = onOpen))
@@ -269,7 +269,7 @@ private fun MainPage(
                 }
                 FilterKind.Videos -> {
                     SheetSection(stringResource(R.string.sort))
-                    val sort = FilterLogic.effectiveVideoSort(draft)
+                    val sort = draft.sort ?: config.defaultVideoSort
                     SingleChoiceList(
                         VideoSorts.map { ChoiceOption(stringResource(videoSortLabel(it))) },
                         selected = VideoSorts.indexOf(sort).coerceAtLeast(0),

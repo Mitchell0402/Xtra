@@ -236,7 +236,7 @@ class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
             filters = ChannelFilters(
                 videos = page.videosFilter(),
                 clips = page.clipsFilter(),
-                videosConfig = FilterSheetConfig(FilterKind.Videos, showPeriod = false, canRemember = canRemember, remembered = isRemembered, showLanguages = false, rememberForChannel = true),
+                videosConfig = FilterSheetConfig(FilterKind.Videos, showPeriod = false, canRemember = canRemember, remembered = isRemembered, showLanguages = false, rememberForChannel = true, defaultVideoSort = com.github.andreyasadchy.xtra.ui.common.VideoFilters.SORT_TIME),
                 clipsConfig = FilterSheetConfig(FilterKind.Clips, canRemember = canRemember, remembered = isRemembered, showLanguages = false, rememberForChannel = true),
             ),
             about = ChannelAbout(

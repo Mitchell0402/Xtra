@@ -303,7 +303,7 @@ open class SavedPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener
     private fun onProgress(progress: DownloadProgress) {
         val id = progress.id
         val now = System.currentTimeMillis()
-        val bytes = progress.bytes
+        val bytes = progress.transferred.get().takeIf { it > 0 } ?: progress.bytes
         val done = progress.progress
         val max = progress.maxProgress
         val chat = progress.chatProgress

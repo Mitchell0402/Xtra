@@ -413,7 +413,7 @@ fun PlayerScreen(
                     modifier = Modifier
                         .offset { IntOffset(0, geometry.slot.bottom.roundToInt()) }
                         .width(with(density) { geometry.paneWidth.toDp() })
-                        .graphicsLayer { alpha = 1f - p }
+                        .graphicsLayer { alpha = (1f - p * 3f).coerceAtLeast(0f) }
                         .onSizeChanged { if (it.height > 0) infoHeight = it.height },
                     scrollable = layout == PlayerLayout.Tablet,
                     maxHeight = with(density) { (height - geometry.slot.bottom).toDp() },
@@ -431,7 +431,7 @@ fun PlayerScreen(
                 options = options,
                 actions = actions,
                 geometry = geometry,
-                interactive = maximized && !state.inPictureInPicture,
+                interactive = state.mode == PlayerMode.Maximized && !state.inPictureInPicture && (p == 0f || dragging),
                 progress = p,
                 setDragging = { dragging = it },
                 progressAnim = progress,
@@ -478,7 +478,7 @@ private fun VideoLayer(
     var seekHint by remember { mutableStateOf<SeekHint?>(null) }
     var level by remember { mutableStateOf<LevelHint?>(null) }
     val pinned = state.audioOnly || (state.ended && state.kind.seekable)
-    val visible = interactive && (state.controlsVisible || pinned)
+    val visible = interactive && progress == 0f && (state.controlsVisible || pinned)
 
     // v0.1: the controls hide 3 s after the last touch while playing; paused, ended or audio only they stay
     LaunchedEffect(state.controlsVisible, state.showPlayButton, touchStamp, scrubbing, pinned) {
@@ -545,12 +545,16 @@ private fun VideoLayer(
                                     start.x > size.width * 2 / 3f -> 3
                                     else -> 1
                                 }
-                                if (kind == 1) setDragging(true)
+                                if (kind == 1) {
+                                    setDragging(true)
+                                    state.controlsVisible = false
+                                }
                             },
                             onDragEnd = {
                                 if (kind == 1) {
                                     when {
-                                        progressAnim.value > 0.2f -> scope.launch {
+                                        // decided on the distance: the snapTo calls below are still queued after a fast flick
+                                        total / dragRange > 0.15f -> scope.launch {
                                             setDragging(false)
                                             actions.minimize()
                                         }
@@ -579,6 +583,26 @@ private fun VideoLayer(
                             },
                         )
                     }
+            )
+        }
+
+        // phone landscape: the closed chat can be pulled out from the right edge (plan 7.4)
+        if (interactive && layout == PlayerLayout.Landscape && !state.chatOpen && !options.chatDisabled) {
+            val pull = with(density) { 48.dp.toPx() }
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(28.dp)
+                    .fillMaxHeight()
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart = { total = 0f },
+                            onDragEnd = { if (total < -pull) actions.setChatOpen(true) },
+                            onHorizontalDrag = { change, amount -> change.consume(); total += amount },
+                        )
+                    }
+                    .testTag("chatEdge")
             )
         }
 
@@ -1114,17 +1138,18 @@ private fun MiniPlayer(
             .graphicsLayer { alpha = progress * (1f - (abs(dismiss.value) / card.width).coerceIn(0f, 1f)) }
             .pointerInput(options.moveFreely) {
                 val tracker = VelocityTracker()
+                var dx = 0f
                 detectDragGestures(
-                    onDragStart = { tracker.resetTracking() },
+                    onDragStart = { tracker.resetTracking(); dx = 0f },
                     onDragEnd = {
                         val velocity = tracker.calculateVelocity().x
                         scope.launch {
-                            if (abs(velocity) > 1500f || (!options.moveFreely && abs(dismiss.value) > card.width * 0.4f)) {
-                                val target = if ((velocity.takeIf { abs(it) > 1500f } ?: dismiss.value) > 0) card.width * 1.2f else -card.width * 1.2f
+                            if (abs(velocity) > 1500f || (!options.moveFreely && abs(dx) > card.width * 0.4f)) {
+                                val target = if ((velocity.takeIf { abs(it) > 1500f } ?: dx) > 0) card.width * 1.2f else -card.width * 1.2f
                                 dismiss.animateTo(target, tween(200))
                                 actions.dismiss()
                             } else if (options.moveFreely) {
-                                onMove(Offset(dismiss.value, 0f))
+                                onMove(Offset(dx, 0f))
                                 dismiss.snapTo(0f)
                             } else {
                                 dismiss.animateTo(0f, tween(200))
@@ -1134,8 +1159,11 @@ private fun MiniPlayer(
                     onDragCancel = { scope.launch { dismiss.animateTo(0f) } },
                     onDrag = { change, amount ->
                         change.consume()
-                        tracker.addPosition(change.uptimeMillis, change.position)
-                        scope.launch { dismiss.snapTo(dismiss.value + amount.x) }
+                        dx += amount.x
+                        // the card moves under the finger: track the distance, not the position inside the card
+                        tracker.addPosition(change.uptimeMillis, Offset(dx, 0f))
+                        val target = dx
+                        scope.launch { dismiss.snapTo(target) }
                         if (options.moveFreely && amount.y != 0f) onMove(Offset(0f, amount.y))
                     },
                 )

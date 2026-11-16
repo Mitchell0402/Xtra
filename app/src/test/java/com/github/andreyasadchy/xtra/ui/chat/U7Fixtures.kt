@@ -96,8 +96,7 @@ class RecordingChatActions(private val state: ChatState) : ChatActions, ChatShee
     override fun copyFull(message: ChatMessage) { calls += "full:${message.id}" }
     override fun viewChannel(id: String?, login: String?, name: String?, image: String?) { calls += "channel:$login" }
     override fun setAutoClaim(on: Boolean) { calls += "auto:$on"; state.points = state.points?.copy(autoClaim = on) }
-    override fun setNotifyPoints(on: Boolean) { calls += "notify:$on" }
-    override val notifyPoints = false
+    override fun setNotifyPoints(on: Boolean) { calls += "notify:$on"; sheetData.notifyPoints = on }
     override val showFullMessage = false
 }
 

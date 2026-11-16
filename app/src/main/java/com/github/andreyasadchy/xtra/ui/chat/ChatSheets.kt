@@ -74,6 +74,7 @@ class ChatSheetData {
     var user by mutableStateOf<ChatUserInfo?>(null)
     var userFailed by mutableStateOf(false)
     var emoteSource by mutableStateOf<String?>(null)
+    var notifyPoints by mutableStateOf(false)
 }
 
 interface ChatSheetActions {
@@ -86,7 +87,6 @@ interface ChatSheetActions {
     fun viewChannel(id: String?, login: String?, name: String?, image: String?)
     fun setAutoClaim(on: Boolean)
     fun setNotifyPoints(on: Boolean)
-    val notifyPoints: Boolean
     val showFullMessage: Boolean
 }
 
@@ -313,7 +313,7 @@ private fun PointsSheet(state: ChatState, actions: ChatActions, sheet: ChatSheet
     )
     SettingRow(
         stringResource(R.string.points_notify), icon = LucideIcons.Bell,
-        trailing = SettingTrailing.Toggle(sheet.notifyPoints) { sheet.setNotifyPoints(it) }, onClick = { sheet.setNotifyPoints(!sheet.notifyPoints) },
+        trailing = SettingTrailing.Toggle(sheet.sheetData.notifyPoints) { sheet.setNotifyPoints(it) }, onClick = { sheet.setNotifyPoints(!sheet.sheetData.notifyPoints) },
     )
 }
 

@@ -416,13 +416,15 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
 
     /** The keyboard's height, for the emote panel that takes its place; the chat's own insets are consumed by its host. */
     private fun trackKeyboard(view: View) {
+        var imeShown = false
         val listener = ViewTreeObserver.OnGlobalLayoutListener {
             val ime = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
             val nav = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
-            if (ime > nav) {
-                state.keyboardHeight = ime - nav
-                if (state.emotePanel) toggleEmoteMenu(false)
-            }
+            val shown = ime > nav
+            if (shown) state.keyboardHeight = ime - nav
+            // only when the keyboard comes up: while it goes down after the emote button, the panel must stay
+            if (shown && !imeShown && state.emotePanel) toggleEmoteMenu(false)
+            imeShown = shown
         }
         layoutListener = listener
         view.viewTreeObserver.addOnGlobalLayoutListener(listener)
@@ -704,7 +706,10 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
         state.suggestions = emptyList()
     }
 
-    override fun openPoints() = openSheet(ChatSheet.Points)
+    override fun openPoints() {
+        sheetData.notifyPoints = requireContext().prefs().getBoolean(C.CHAT_POINTS_NOTIFY, false)
+        openSheet(ChatSheet.Points)
+    }
 
     override fun claimPoints() = viewModel.claimPoints()
 
@@ -781,10 +786,8 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
     override fun setNotifyPoints(on: Boolean) {
         requireContext().prefs().edit { putBoolean(C.CHAT_POINTS_NOTIFY, on) }
         viewModel.notifyPoints = on
-        state.points = state.points?.copy()
+        sheetData.notifyPoints = on
     }
-
-    override val notifyPoints: Boolean get() = requireContext().prefs().getBoolean(C.CHAT_POINTS_NOTIFY, false)
 
     override val showFullMessage: Boolean get() = requireContext().prefs().getBoolean(C.DEBUG_CHAT_FULL_MSG, false)
 

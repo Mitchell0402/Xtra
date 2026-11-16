@@ -117,6 +117,11 @@ android {
     packaging.dex.useLegacyPackaging = true
 }
 
+// memory check (plan 10.4, U7): gradlew assembleDebug -Pleakcanary adds LeakCanary to that debug build only; tests and CI never get it
+if (project.hasProperty("leakcanary")) {
+    dependencies { add("debugImplementation", "com.squareup.leakcanary:leakcanary-android:2.14") }
+}
+
 dependencies {
     compileOnly("com.google.j2objc:j2objc-annotations:3.0.0") // OkHttpDataSource SettableFuture
 

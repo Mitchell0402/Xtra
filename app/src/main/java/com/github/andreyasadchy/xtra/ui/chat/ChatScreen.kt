@@ -218,8 +218,8 @@ fun ChatHighlight.tint(): Color? = when (this) {
 /** The chat page. [sheets] off draws no sheet windows (tests draw the sheets in place). */
 @Composable
 fun ChatScreen(state: ChatState, actions: ChatActions, modifier: Modifier = Modifier, sheets: Boolean = true) {
-    val colors = Lagoon.colors
-    Column(modifier.fillMaxSize().background(colors.page)) {
+    // no background of its own: the player's container is the page colour, or see-through when the chat lies over the video
+    Column(modifier.fillMaxSize()) {
         if (state.disabled) return@Column
         ChatEventStrip(state, actions)
         Box(Modifier.weight(1f).fillMaxWidth()) {

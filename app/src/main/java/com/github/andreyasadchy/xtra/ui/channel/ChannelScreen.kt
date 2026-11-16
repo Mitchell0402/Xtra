@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -270,7 +271,8 @@ fun ChannelScreen(
         }
     }
     val paneWidthPx = if (twoPane) with(density) { InfoPaneWidth.roundToPx() } else 0
-    val bottomPx = with(density) { bottomPadding.roundToPx() }
+    // the chat's input sits above the keyboard (U7): the nav pill and the keyboard both push the chat's bottom up
+    val bottomPx = maxOf(with(density) { bottomPadding.roundToPx() }, WindowInsets.ime.getBottom(density))
     val chatTop = barTopPx + with(density) { (tabsBlock + LagoonSpacing.xs).roundToPx() }
     LaunchedEffect(chat, paneWidthPx, chatTop, bottomPx) {
         onChatArea(ChatArea(paneWidthPx, chatTop, bottomPx, chat))

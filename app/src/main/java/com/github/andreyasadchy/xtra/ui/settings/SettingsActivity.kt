@@ -37,15 +37,8 @@ import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.applyTheme
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.common.model.RemoteModelManager
-import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.TranslateRemoteModel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
 import org.chromium.net.CronetProvider
-import java.util.Locale
-import kotlin.coroutines.resume
 
 /**
  * Settings (plan 7.7, U3): one Compose screen in place of the Preference fragments, the drag-list dialogs, the search
@@ -176,15 +169,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun environment(): SettingsEnvironment {
         val httpEngine = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.S) >= 7
         val cronet = runCatching { CronetProvider.getAllProviders(this).any { it.isEnabled } }.getOrDefault(false)
-        val translate = Build.SUPPORTED_64_BIT_ABIS.firstOrNull() == "arm64-v8a"
         return SettingsEnvironment(
             pictureInPicture = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE),
-            translate = translate,
             androidS = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
             networkLibraries = listOfNotNull(C.HTTP_ENGINE.takeIf { httpEngine }, C.CRONET.takeIf { cronet }, C.OKHTTP),
-            translateLanguages = if (translate) {
-                TranslateLanguage.getAllLanguages().map { it to Locale.forLanguageTag(it).displayLanguage }
-            } else emptyList(),
             versionName = BuildConfig.VERSION_NAME,
         )
     }
@@ -238,7 +226,7 @@ class SettingsActivity : AppCompatActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, PROJECT_URL.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
                 }
                 // shown by the page itself
-                SettingAction.AdLog, SettingAction.DownloadedLanguages -> Unit
+                SettingAction.AdLog -> Unit
             }
         }
 
@@ -291,23 +279,6 @@ class SettingsActivity : AppCompatActivity() {
                 tags.startsWith("zh") -> "zh-CN"
                 tags.startsWith("en") -> "en"
                 else -> "auto"
-            }
-        }
-
-        override suspend fun downloadedLanguages(): List<String> = suspendCancellableCoroutine { continuation ->
-            RemoteModelManager.getInstance().getDownloadedModels(TranslateRemoteModel::class.java)
-                .addOnSuccessListener { models -> continuation.resume(models.map { it.language }) }
-                .addOnFailureListener { continuation.resume(emptyList()) }
-        }
-
-        override fun setDownloadedLanguages(keep: List<String>) {
-            val manager = RemoteModelManager.getInstance()
-            manager.getDownloadedModels(TranslateRemoteModel::class.java).addOnSuccessListener { models ->
-                val downloaded = models.map { it.language }
-                downloaded.filter { it !in keep }.forEach { manager.deleteDownloadedModel(TranslateRemoteModel.Builder(it).build()) }
-                keep.filter { it !in downloaded }.forEach {
-                    manager.download(TranslateRemoteModel.Builder(it).build(), DownloadConditions.Builder().build())
-                }
             }
         }
 

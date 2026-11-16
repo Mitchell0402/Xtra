@@ -23,8 +23,6 @@ coroutines = "1.11.0"
 cronet = "143.7445.0"
 junit = "4.13.2"
 fragment = "1.9.1"
-glide = "4.16.0"
-glide-webpdecoder = "2.7.4.16.0"
 kotlin = "2.4.21"
 ksp = "2.3.13"
 lifecycle = "2.11.0"
@@ -80,10 +78,6 @@ core = { module = "androidx.core:core", version.ref = "core" }
 coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 cronet-api = { module = "org.chromium.net:cronet-api", version.ref = "cronet" }
 fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
-glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
-glide-ksp = { module = "com.github.bumptech.glide:ksp", version.ref = "glide" }
-glide-okhttp = { module = "com.github.bumptech.glide:okhttp3-integration", version.ref = "glide" }
-glide-webpdecoder = { module = "com.github.zjupure:webpdecoder", version.ref = "glide-webpdecoder" }
 lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycle" }
 lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 markwon-core = { module = "io.noties.markwon:core", version.ref = "markwon" }

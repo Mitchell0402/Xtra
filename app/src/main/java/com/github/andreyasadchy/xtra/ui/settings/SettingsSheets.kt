@@ -81,7 +81,6 @@ fun SettingsSheet(request: SheetRequest, store: SettingsStore, host: SettingsHos
             onDismiss = onDismiss,
         )
         SheetRequest.AdLog -> AdLogSheet(onDismiss)
-        SheetRequest.Languages -> LanguagesSheet(host, onDismiss)
         SheetRequest.Account -> AccountSheet(host.account, host, onDismiss, onLogout = { onRequest(SheetRequest.ConfirmLogout) })
         SheetRequest.ConfirmLogout -> ConfirmSheet(
             title = stringResource(R.string.log_out),
@@ -327,37 +326,6 @@ private fun AdLogSheet(onDismiss: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun LanguagesSheet(host: SettingsHost, onDismiss: () -> Unit) {
-    val languages = host.environment.translateLanguages
-    var selected by remember { mutableStateOf<Set<Int>?>(null) }
-    LaunchedEffect(Unit) {
-        val downloaded = host.downloadedLanguages()
-        selected = languages.indices.filter { languages[it].first in downloaded }.toSet()
-    }
-    LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.downloaded_languages), skipHalfHeight = true) {
-        SheetExplanation(stringResource(R.string.st_languages_summary))
-        val current = selected
-        if (current != null) {
-            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                MultiChoiceList(
-                    options = languages.map { ChoiceOption(it.second) },
-                    selected = current,
-                    onToggle = { index, on -> selected = if (on) current + index else current - index },
-                )
-            }
-        }
-        SheetButtons(
-            secondary = stringResource(R.string.st_cancel) to onDismiss,
-            primary = stringResource(R.string.st_save) to {
-                selected?.let { set -> host.setDownloadedLanguages(set.map { languages[it].first }) }
-                onDismiss()
-            },
-            primaryEnabled = current != null,
-        )
     }
 }
 

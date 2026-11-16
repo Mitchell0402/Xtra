@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -79,6 +80,7 @@ import com.github.andreyasadchy.xtra.player.ads.AdLog
 import com.github.andreyasadchy.xtra.player.ads.AdStats
 import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.chat.ChatFragment
+import com.github.andreyasadchy.xtra.ui.chat.ViewerListSheet
 import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
 import android.app.admin.DeviceAdminReceiver
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
@@ -120,6 +122,7 @@ import kotlin.time.Instant
 abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener, PlayerConnection.Host, PlayerActions, PlayerSheetSource {
 
     protected val viewModel: PlayerViewModel by viewModels { PlayerViewModelFactory }
+    private val viewerListViewModel: PlayerViewerListViewModel by viewModels { PlayerViewerListViewModel.PlayerViewerListViewModelFactory }
     protected var chatFragment: ChatFragment? = null
     protected val state = PlayerUiState()
     protected val connection = PlayerConnection(state, this)
@@ -269,6 +272,19 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             onChatPlacement = ::placeChat,
             sideInsets = sideInsets(),
         )
+        if (state.viewerListOpen) {
+            val list by viewerListViewModel.viewerList.collectAsState()
+            ViewerListSheet(
+                list = list,
+                compactCount = requireContext().prefs().getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
+                onDismiss = { state.viewerListOpen = false },
+                onOpen = { login ->
+                    state.viewerListOpen = false
+                    findNavController().navigate(ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelLogin = login))
+                    minimize()
+                },
+            )
+        }
         if (confirmUnfollow) {
             ConfirmSheet(
                 title = stringResource(R.string.unfollow_channel, channelDisplayName() ?: ""),
@@ -328,18 +344,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                 chat.clearFocus()
             }
             chat.isVisible = placement.visible
-            // v0.1 showChat: jump to the newest message when the chat comes back, unless the viewer had scrolled up
-            if (placement.visible && lastChat?.visible == false) scrollChatToBottom()
+            // v0.1 showChat jumped to the newest message here; the Compose chat list stays pinned to it while it rests at the bottom
             lastChat = placement
-        }
-    }
-
-    private fun scrollChatToBottom() {
-        val view = chatContainer ?: return
-        if (view.findViewById<View>(R.id.btnDown)?.isVisible == false) {
-            view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recyclerView)?.let { list ->
-                list.adapter?.itemCount?.let { if (it > 0) list.scrollToPosition(it - 1) }
-            }
         }
     }
 
@@ -745,9 +751,10 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     }
 
     override fun openViewerList() {
-        backend?.channelLogin?.let { login ->
-            PlayerViewerListDialog.newInstance(login).show(childFragmentManager, "closeOnPip")
-        }
+        val login = backend?.channelLogin ?: return
+        val prefs = requireContext().prefs()
+        viewerListViewModel.loadViewerList(login, prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP), TwitchApiHelper.getGQLHeaders(requireContext()), prefs.getBoolean(C.ENABLE_INTEGRITY, false))
+        state.viewerListOpen = true
     }
 
     override fun watchFullVideo() {
@@ -877,9 +884,6 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             MenuEntry.ChatBar -> toggleChatBar()
             MenuEntry.ChatConnection -> if (chatFragment?.isActive() == true) chatFragment?.disconnect() else chatFragment?.reconnect()
             MenuEntry.ReloadEmotes -> chatFragment?.reloadEmotes()
-            MenuEntry.TranslateAll -> backend?.channelId?.let {
-                if (chatFragment?.getTranslateAllMessages() == true) chatFragment?.deleteTranslatedChannel(it) else chatFragment?.saveTranslatedChannel(it)
-            }
             MenuEntry.MediaPlaylistTags -> showPlaylistTags(true)
             MenuEntry.MultivariantPlaylistTags -> showPlaylistTags(false)
         }
@@ -956,7 +960,6 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             hasAudioOnly = backend?.qualities?.any { it.name == VideoQuality.AUDIO_ONLY_QUALITY } == true,
             hasChapters = state.chapters.isNotEmpty(),
             subtitles = state.subtitles,
-            translateAvailable = translateAll() != null,
             debugPlaylistTags = prefs.getBoolean(C.DEBUG_PLAYER_MENU_PLAYLIST_TAGS, false),
             hasFullVideo = state.hasFullVideo,
         )
@@ -1007,12 +1010,6 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     }
 
     override fun adLog() = AdLog.lines()
-
-    override fun translateAll(): Boolean? {
-        val prefs = requireContext().prefs()
-        if (!prefs.getBoolean(C.CHAT_TRANSLATE, false) || Build.SUPPORTED_64_BIT_ABIS.firstOrNull() != "arm64-v8a") return null
-        return if (!backend?.channelId.isNullOrBlank()) chatFragment?.getTranslateAllMessages() else null
-    }
 
     // --- v0.1 methods the activity, the chat and the menu still call ---
 
@@ -1073,21 +1070,10 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     }
 
     fun toggleChatBar() {
-        val bar = chatContainer?.findViewById<LinearLayout>(R.id.messageView) ?: return
-        if (bar.isVisible) {
-            (requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(chatContainer?.windowToken, 0)
-            chatContainer?.clearFocus()
-            if (state.kind == PlayerKind.Stream && chatFragment?.emoteMenuIsVisible() == true) {
-                chatFragment?.toggleEmoteMenu(false)
-            }
-            bar.visibility = View.GONE
-            requireContext().prefs().edit { putBoolean(C.KEY_CHAT_BAR_VISIBLE, false) }
-            state.chatBarVisible = false
-        } else {
-            bar.visibility = View.VISIBLE
-            requireContext().prefs().edit { putBoolean(C.KEY_CHAT_BAR_VISIBLE, true) }
-            state.chatBarVisible = true
-        }
+        val visible = !(chatFragment?.chatBarVisible() ?: state.chatBarVisible)
+        chatFragment?.setChatBarVisible(visible)
+        requireContext().prefs().edit { putBoolean(C.KEY_CHAT_BAR_VISIBLE, visible) }
+        state.chatBarVisible = visible
     }
 
     fun updateViewerCount(viewerCount: Int?) {
@@ -1443,11 +1429,10 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             state.controlsVisible = false
             state.sheet = null
             confirmUnfollow = false
-            // player dialogs and the chat's message dialogs
+            // player dialogs and the chat's sheets
             (childFragmentManager.findFragmentByTag("closeOnPip") as? DialogFragment)?.dismiss()
-            listOf("messageDialog", "replyDialog", "imageDialog").forEach {
-                (chatFragment?.childFragmentManager?.findFragmentByTag(it) as? DialogFragment)?.dismiss()
-            }
+            state.viewerListOpen = false
+            chatFragment?.closeSheets()
         }
     }
 

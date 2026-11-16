@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- U7 聊天 -->
+    <string name="cht_latest">最新消息</string>
+    <plurals name="cht_new_messages">
+        <item quantity="other">%d 条新消息</item>
+    </plurals>
+    <string name="cht_input_hint">发送消息</string>
+    <string name="cht_emotes">表情</string>
+    <string name="cht_keyboard">键盘</string>
+    <string name="cht_send">发送</string>
+    <string name="cht_delete_word">删除上一个词</string>
+    <string name="cht_clear_all">清空消息</string>
+    <string name="cht_replying">回复 %1$s：%2$s</string>
+    <string name="cht_cancel_reply">取消回复</string>
+    <string name="cht_close">关闭</string>
+
+    <string name="cht_mode_slow">慢速模式 · %s</string>
+    <string name="cht_mode_followers">仅关注者</string>
+    <string name="cht_mode_followers_min">关注满 %s 才能发言</string>
+    <string name="cht_mode_subs">仅订阅者</string>
+    <string name="cht_mode_emotes">仅表情</string>
+    <string name="cht_mode_unique">禁止重复消息</string>
+
+    <string name="cht_points">频道点数</string>
+    <string name="cht_points_desc">频道点数：%d</string>
+    <string name="cht_points_claim">领取</string>
+    <string name="cht_points_claim_bonus">领取奖励</string>
+    <string name="cht_points_last">上次获得 +%d</string>
+    <string name="cht_points_auto">自动领取奖励</string>
+    <string name="cht_points_auto_desc">宝箱一出现就自动打开</string>
+
+    <string name="cht_raid_title">正在突袭 %s</string>
+    <plurals name="cht_raid_viewers">
+        <item quantity="other">%d 位观众一同前往</item>
+    </plurals>
+    <string name="cht_poll">投票</string>
+    <string name="cht_prediction">预测</string>
+    <plurals name="cht_votes">
+        <item quantity="other">%s 票</item>
+    </plurals>
+    <string name="cht_time_left">还剩 %s</string>
+    <string name="cht_ended">已结束</string>
+    <string name="cht_poll_winner">胜出：%s</string>
+    <string name="cht_prediction_open">正在接受预测</string>
+    <string name="cht_prediction_winner">结果：%s</string>
+    <string name="cht_prediction_detail">%1$s 点 · %2$s 人</string>
+
+    <string name="cht_mention">提及</string>
+    <string name="cht_copy">复制</string>
+    <string name="cht_copy_to_input">跟发</string>
+    <string name="cht_view_channel">频道</string>
+    <string name="cht_view_thread">查看对话</string>
+    <string name="cht_thread">对话</string>
+    <string name="cht_user_created">注册于 %s</string>
+    <string name="cht_user_followed">关注于 %s</string>
+    <string name="cht_user_messages">在本聊天室的发言</string>
+
+    <string name="cht_emotes_search">搜索表情</string>
+    <string name="cht_emotes_recent">最近使用</string>
+    <string name="cht_emotes_personal">个人</string>
+    <string name="cht_emotes_channel">本频道</string>
+    <string name="cht_emotes_twitch">Twitch</string>
+    <string name="cht_emotes_stv">7TV</string>
+    <string name="cht_emotes_bttv">BTTV</string>
+    <string name="cht_emotes_ffz">FFZ</string>
+    <string name="cht_emotes_loading">正在加载表情…</string>
+    <string name="cht_emotes_none">没有匹配的表情</string>
+
+    <string name="cht_viewer_list">观众</string>
+    <string name="cht_viewer_search">搜索观众</string>
+    <string name="cht_viewer_none">没有匹配的观众</string>
+
+    <!-- chat settings preview -->
+    <string name="cht_preview_m1">这波残局太稳了</string>
+    <string name="cht_preview_m2">正在回看刚才那一回合</string>
+    <string name="cht_preview_m3">不错，被你说中了</string>
+    <string name="cht_preview_m4">大家好，第一次来！</string>
+</resources>

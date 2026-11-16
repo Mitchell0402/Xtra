@@ -208,7 +208,6 @@ object SettingsCatalog {
                     TextSetting(C.CHAT_BADGE_SIZE, "18.5", R.string.chat_badge_size, TextKind.Decimal),
                     ToggleSetting(C.CHAT_SHOW_GIF_MESSAGES, true, R.string.show_gif_messages, icon = LucideIcons.Image),
                     TextSetting(C.CHAT_GIF_SIZE, "79.5", R.string.chat_gif_size, TextKind.Decimal, dependsOn = C.CHAT_SHOW_GIF_MESSAGES),
-                    ChoiceSetting(C.CHAT_IMAGE_LIBRARY, "0", R.string.image_library, ChoiceSource.Arrays(R.array.imageLibraryEntries, R.array.imageLibraryValues)),
                     ToggleSetting(C.CHAT_USE_WEBP, true, R.string.use_webp_images),
                     ChoiceSetting(C.CHAT_IMAGE_QUALITY, "4", R.string.image_quality, ChoiceSource.Arrays(R.array.imageQualityEntries, R.array.imageQualityValues)),
                 )
@@ -244,13 +243,6 @@ object SettingsCatalog {
                     ToggleSetting(C.CHAT_RAIDS_AUTO_SWITCH, true, R.string.auto_switch_raids),
                     ToggleSetting(C.CHAT_POLLS_SHOW, true, R.string.show_polls),
                     ToggleSetting(C.CHAT_PREDICTIONS_SHOW, true, R.string.show_predictions),
-                )
-            ),
-            SettingsGroupSpec(
-                R.string.st_group_chat_translation, listOf(
-                    ToggleSetting(C.CHAT_TRANSLATE, false, R.string.translate_chat_messages, icon = LucideIcons.Languages, condition = SettingCondition.TranslateSupported),
-                    ChoiceSetting(C.CHAT_TRANSLATE_TARGET, "en", R.string.translate_target_language, ChoiceSource.Dynamic(DYNAMIC_TRANSLATE), condition = SettingCondition.TranslateSupported, dependsOn = C.CHAT_TRANSLATE),
-                    ActionRow("downloaded_languages", SettingAction.DownloadedLanguages, R.string.downloaded_languages, condition = SettingCondition.TranslateSupported, dependsOn = C.CHAT_TRANSLATE),
                 )
             ),
             SettingsGroupSpec(
@@ -538,7 +530,6 @@ object SettingsCatalog {
 
     const val DYNAMIC_LANGUAGE = "language"
     const val DYNAMIC_NETWORK = "network"
-    const val DYNAMIC_TRANSLATE = "translate"
 
     /**
      * v0.1 entries that are not on any page any more, with the reason (plan 7.7: the removal list goes into the U3
@@ -583,5 +574,9 @@ object SettingsCatalog {
         C.PLAYER_MENU_CHAT_TOGGLE to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
         C.PLAYER_MENU_RELOAD_EMOTES to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
         C.PLAYER_MENU_CHAT_DISCONNECT to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.CHAT_TRANSLATE to "chat translation removed together with ML Kit (plan 12, U7)",
+        C.CHAT_TRANSLATE_TARGET to "chat translation removed together with ML Kit (plan 12, U7)",
+        C.CHAT_IMAGE_LIBRARY to "the Compose chat draws every picture with Coil; Glide is gone (U7)",
+        "downloaded_languages" to "row that managed the translation models; chat translation removed (plan 12, U7)",
     )
 }

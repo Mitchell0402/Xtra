@@ -31,7 +31,6 @@ import com.github.andreyasadchy.xtra.model.chat.STVUser
 import com.github.andreyasadchy.xtra.model.chat.TwitchBadge
 import com.github.andreyasadchy.xtra.model.chat.TwitchEmote
 import com.github.andreyasadchy.xtra.model.chat.VideoChatMessage
-import com.github.andreyasadchy.xtra.model.ui.TranslatedChannel
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.PlayerRepository
@@ -110,6 +109,15 @@ class ChatViewModel(
     val recentEmotes by lazy { playerRepository.loadRecentEmotesFlow() }
     val hasRecentEmotes = MutableStateFlow(false)
     val userEmotes = mutableListOf<Emote>()
+    /** Names of the viewer's Twitch emotes that belong to this channel (the emote panel's "this channel" group). */
+    val channelTwitchEmoteNames = mutableSetOf<String>()
+    /** The viewer's channel points here: shown next to the chat input (U7). */
+    val channelPoints = MutableStateFlow<com.github.andreyasadchy.xtra.ui.chat.ChannelPoints?>(null)
+    @Volatile private var autoClaim = applicationContext.prefs().getBoolean(C.CHAT_POINTS_COLLECT, true)
+    @Volatile var notifyPoints = applicationContext.prefs().getBoolean(C.CHAT_POINTS_NOTIFY, false)
+    private var pointsLogin: String? = null
+    private var pointsChannelId: String? = null
+    private var pointsClaimId: String? = null
     private var loadedUserEmotes = false
     val localTwitchEmotes = mutableListOf<TwitchEmote>()
     val thirdPartyEmotes = mutableListOf<Emote>()
@@ -141,7 +149,6 @@ class ChatViewModel(
     val stvUsers = mutableListOf<STVUser>()
     var channelSTVEmoteSetId: String? = null
     var userSTVEmoteSetId: String? = null
-    val translateAllMessages = MutableStateFlow<Boolean?>(null)
 
     val reloadMessages = MutableStateFlow(false)
     val hideRaid = MutableStateFlow(false)
@@ -762,6 +769,10 @@ class ChatViewModel(
     private fun loadUserEmotes(channelId: String?) {
         val saved = savedUserEmotes
         if (!saved.isNullOrEmpty()) {
+            synchronized(channelTwitchEmoteNames) {
+                channelTwitchEmoteNames.clear()
+                channelTwitchEmoteNames.addAll(saved.filter { it.ownerId == channelId }.mapNotNull { it.name })
+            }
             synchronized(userEmotes) {
                 userEmotes.clear()
                 userEmotes.addAll(
@@ -808,6 +819,10 @@ class ChatViewModel(
                         val emotes = playerRepository.loadUserEmotes(networkLibrary, helixHeaders, gqlHeaders, channelId, accountId, animateGifs, enableIntegrity)
                         if (emotes.isNotEmpty()) {
                             val sorted = emotes.sortedByDescending { it.setId }
+                            synchronized(channelTwitchEmoteNames) {
+                                channelTwitchEmoteNames.clear()
+                                channelTwitchEmoteNames.addAll(sorted.filter { it.ownerId == channelId }.mapNotNull { it.name })
+                            }
                             synchronized(userEmotes) {
                                 userEmotes.clear()
                                 userEmotes.addAll(
@@ -940,24 +955,6 @@ class ChatViewModel(
         }
     }
 
-    fun checkTranslateAllMessages(id: String) {
-        viewModelScope.launch {
-            translateAllMessages.value = playerRepository.getTranslatedChannel(id) != null
-        }
-    }
-
-    fun saveTranslatedChannel(channelId: String) {
-        viewModelScope.launch {
-            playerRepository.saveTranslatedChannel(TranslatedChannel(channelId))
-        }
-    }
-
-    fun deleteTranslatedChannel(channelId: String) {
-        viewModelScope.launch {
-            playerRepository.deleteTranslatedChannel(TranslatedChannel(channelId))
-        }
-    }
-
     private fun getClearMessage(chatMessage: ChatMessage, deletedMessage: ChatMessage?, nameDisplay: String?): ChatMessage {
         val login = deletedMessage?.userLogin ?: chatMessage.userLogin
         val userName = if (deletedMessage?.userName != null && login != null && !login.equals(deletedMessage.userName, true)) {
@@ -1067,9 +1064,11 @@ class ChatViewModel(
         }
         if (usePubSub && !channelId.isNullOrBlank()) {
             val collectPoints = applicationContext.prefs().getBoolean(C.CHAT_POINTS_COLLECT, true)
+            autoClaim = collectPoints
             val gqlWebClientId = applicationContext.prefs().getString(C.GQL_CLIENT_ID_WEB, "kimne78kx3ncx6brgo4mv6wki5h1ko")
             val gqlWebToken = applicationContext.tokenPrefs().getString(C.GQL_TOKEN_WEB, null)
             val notifyPoints = applicationContext.prefs().getBoolean(C.CHAT_POINTS_NOTIFY, false)
+            this.notifyPoints = notifyPoints
             val showRaids = applicationContext.prefs().getBoolean(C.CHAT_RAIDS_SHOW, true)
             val showPolls = applicationContext.prefs().getBoolean(C.CHAT_POLLS_SHOW, true)
             val showPredictions = applicationContext.prefs().getBoolean(C.CHAT_PREDICTIONS_SHOW, true)
@@ -1088,13 +1087,14 @@ class ChatViewModel(
                         gqlWebToken
                     } else null
                 },
-                collectPoints = collectPoints,
+                collectPoints = true,
                 showRaids = applicationContext.prefs().getBoolean(C.CHAT_RAIDS_SHOW, true),
                 showPolls = applicationContext.prefs().getBoolean(C.CHAT_POLLS_SHOW, true),
                 showPredictions = applicationContext.prefs().getBoolean(C.CHAT_PREDICTIONS_SHOW, true),
                 listener = PubSubListener(channelLogin, collectPoints, notifyPoints, showRaids, showPolls, showPredictions, networkLibrary, gqlHeaders, isLoggedIn, accountId, channelId, enableIntegrity, showWebSocketDebugInfo)
             )
             pubSubJob = hermesWebSocket?.connect(viewModelScope)
+            if (isLoggedIn) loadChannelPoints(channelLogin, channelId)
         }
         val showNamePaints = applicationContext.prefs().getBoolean(C.CHAT_SHOW_PAINTS, true)
         val showSTVBadges = applicationContext.prefs().getBoolean(C.CHAT_SHOW_STV_BADGES, true)
@@ -1440,11 +1440,21 @@ class ChatViewModel(
         }
 
         override suspend fun onPointsEarned(message: JSONObject) {
-            if (notifyPoints) {
-                val result = PubSubUtils.parsePointsEarned(message)
-                val points = result.first
-                val messageChannelId = result.second
-                if (channelId == messageChannelId) {
+            val result = PubSubUtils.parsePointsEarned(message)
+            val points = result.first
+            val messageChannelId = result.second
+            if (channelId == messageChannelId) {
+                val data = message.optJSONObject("data")
+                val balance = data?.optJSONObject("balance")?.takeIf { it.has("balance") }?.optInt("balance")
+                val claimed = data?.optJSONObject("point_gain")?.optString("reason_code") == "CLAIM"
+                channelPoints.value?.let { current ->
+                    channelPoints.value = current.copy(
+                        balance = balance ?: (current.balance + (points.pointsGained ?: 0)),
+                        lastEarned = points.pointsGained ?: current.lastEarned,
+                        claimAvailable = current.claimAvailable && !claimed,
+                    )
+                }
+                if (this@ChatViewModel.notifyPoints) {
                     onMessage(ChatMessage(
                         type = ChatMessage.NOTICE_MESSAGE,
                         systemMsg = ContextCompat.getString(applicationContext, R.string.points_earned).format(points.pointsGained),
@@ -1456,7 +1466,7 @@ class ChatViewModel(
         }
 
         override suspend fun onClaimAvailable() {
-            if (collectPoints) {
+            if (autoClaim) {
                 if (!gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) {
                     viewModelScope.launch {
                         try {
@@ -1476,11 +1486,14 @@ class ChatViewModel(
                                     }
                                 }
                             }
+                            loadChannelPoints(channelLogin, channelId)
                         } catch (e: Exception) {
 
                         }
                     }
                 }
+            } else {
+                channelPoints.value?.let { channelPoints.value = it.copy(claimAvailable = true) }
             }
         }
 
@@ -1912,6 +1925,64 @@ class ChatViewModel(
                 }
             }
         }
+    }
+
+    /** Balance, pending bonus and the channel's name and picture for its points (ChannelPointsContext). */
+    fun loadChannelPoints(channelLogin: String, channelId: String?) {
+        val gqlHeaders = TwitchApiHelper.getGQLHeaders(applicationContext, true)
+        if (gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) return
+        pointsLogin = channelLogin
+        pointsChannelId = channelId
+        viewModelScope.launch {
+            try {
+                val networkLibrary = applicationContext.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP)
+                val response = graphQLRepository.loadChannelPointsContext(networkLibrary, gqlHeaders, channelLogin)
+                if (applicationContext.prefs().getBoolean(C.ENABLE_INTEGRITY, false)) {
+                    response.errors?.find { it.message == C.FAILED_INTEGRITY_CHECK }?.let {
+                        integrity.emit("refresh")
+                        return@launch
+                    }
+                }
+                val channel = response.data?.community?.channel ?: return@launch
+                val points = channel.self?.communityPoints ?: return@launch
+                val settings = channel.communityPointsSettings
+                pointsClaimId = points.availableClaim?.id
+                channelPoints.value = com.github.andreyasadchy.xtra.ui.chat.ChannelPoints(
+                    balance = points.balance ?: 0,
+                    claimAvailable = pointsClaimId != null,
+                    autoClaim = autoClaim,
+                    name = settings?.name,
+                    iconUrl = settings?.image?.url2x ?: settings?.image?.url,
+                    lastEarned = channelPoints.value?.lastEarned,
+                )
+            } catch (e: Exception) {
+
+            }
+        }
+    }
+
+    /** The bonus chest by hand, when automatic claiming is off. */
+    fun claimPoints() {
+        val login = pointsLogin ?: return
+        val gqlHeaders = TwitchApiHelper.getGQLHeaders(applicationContext, true)
+        viewModelScope.launch {
+            try {
+                val networkLibrary = applicationContext.prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP)
+                val claimId = graphQLRepository.loadChannelPointsContext(networkLibrary, gqlHeaders, login).data?.community?.channel?.self?.communityPoints?.availableClaim?.id
+                if (claimId != null) {
+                    graphQLRepository.loadClaimPoints(networkLibrary, gqlHeaders, pointsChannelId, claimId)
+                }
+            } catch (e: Exception) {
+
+            }
+            loadChannelPoints(login, pointsChannelId)
+        }
+    }
+
+    fun setAutoClaim(on: Boolean) {
+        autoClaim = on
+        channelPoints.value?.let { channelPoints.value = it.copy(autoClaim = on) }
+        if (on && channelPoints.value?.claimAvailable == true) claimPoints()
     }
 
     fun startPollTimeout(hide: () -> Unit) {

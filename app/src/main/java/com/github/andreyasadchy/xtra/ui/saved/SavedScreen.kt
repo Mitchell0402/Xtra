@@ -427,7 +427,7 @@ private fun DownloadsList(
                 if (itemKey in pending) return@items
                 val name = video.name?.trim().orEmpty()
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
-                    removeWithUndo(itemKey, resources.getString(R.string.saved_download_removed, name)) { actions.deleteDownload(video, keepFiles = true) }
+                    removeWithUndo(itemKey, resources.getString(R.string.saved_download_removed, name.short())) { actions.deleteDownload(video, keepFiles = true) }
                 }) {
                     DownloadCell(video, index, states[video.id], options, actions,
                         onDelete = { deleting = video }, onConvert = { converting = video }, onMoveToApp = { moving = video })
@@ -690,10 +690,10 @@ private fun BookmarksList(
                 val itemKey = "b${bookmark.id}"
                 if (itemKey in pending) return@items
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
-                    removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
+                    removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty().short())) { actions.deleteBookmark(bookmark) }
                 }) {
                     BookmarkCell(bookmark, index, options, savedOptions, positions, bookmark.userId in ignored, actions, onDelete = {
-                        removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty())) { actions.deleteBookmark(bookmark) }
+                        removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty().short())) { actions.deleteBookmark(bookmark) }
                     })
                 }
             }
@@ -830,7 +830,7 @@ private fun FiltersList(
                 val itemKey = "f${filter.id}"
                 if (itemKey in pending) return@items
                 val title = filter.gameName ?: stringResource(R.string.saved_filter_all_games)
-                val remove = { removeWithUndo(itemKey, resources.getString(R.string.saved_filter_removed, title)) { actions.deleteFilter(filter) } }
+                val remove = { removeWithUndo(itemKey, resources.getString(R.string.saved_filter_removed, title.short())) { actions.deleteFilter(filter) } }
                 SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = remove) {
                     FilterCell(filter, title, index, actions, onDelete = remove)
                 }
@@ -876,3 +876,6 @@ private fun FilterCell(filter: SavedFilter, title: String, index: Int, actions: 
     }
     if (menuOpen) ActionSheet(menu, onDismiss = { menuOpen = false }, title = title)
 }
+
+/** A title as it fits one line of the undo toast. */
+private fun String.short(max: Int = 32) = if (length <= max) this else take(max).trimEnd() + "…"

@@ -509,7 +509,7 @@ private fun LiveSegment(
 
 /** The card's long-press menu (plan 7.1), plus the jumps v0.1 had as taps on the avatar, game and tags. */
 @Composable
-private fun streamActions(stream: Stream, options: FollowingListOptions, actions: FollowingActions): List<ActionItem> {
+internal fun streamActions(stream: Stream, options: FollowingListOptions, actions: FollowingActions): List<ActionItem> {
     val name = displayName(stream.channelName, stream.channelLogin, options.nameDisplay)
     val list = mutableListOf(
         ActionItem(stringResource(R.string.following_open_channel), LucideIcons.User) {

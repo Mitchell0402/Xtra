@@ -94,24 +94,30 @@ fun PlayerSheetHost(state: PlayerUiState, source: PlayerSheetSource, actions: Pl
             transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fadeExit()) },
             label = "playerSheet",
         ) { current ->
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.85f).dp)
-                    .verticalScroll(rememberScrollState())
-                    .testTag("playerSheet-${current.name}")
-            ) {
-                when (current) {
-                    PlayerSheet.Settings -> SettingsPage(state, source, actions, layout)
-                    PlayerSheet.Quality -> SubPage(stringResource(R.string.pl_quality), back) { QualityPage(state, source, actions) }
-                    PlayerSheet.Speed -> SubPage(stringResource(R.string.pl_speed), back) { SpeedPage(state, source, actions) }
-                    PlayerSheet.Sleep -> SubPage(stringResource(R.string.pl_sleep), back) { SleepPage(state, source, actions) }
-                    PlayerSheet.Volume -> SubPage(stringResource(R.string.pl_volume), back) { VolumePage(source, actions) }
-                    PlayerSheet.Chapters -> SubPage(stringResource(R.string.pl_chapters), back) { ChaptersPage(state.chapters, state, actions) }
-                    PlayerSheet.AdBlock -> SubPage(stringResource(R.string.ad_block_settings), back) { AdBlockPage(state, source, actions) }
-                    PlayerSheet.Aspect -> SubPage(stringResource(R.string.pl_aspect), back) { AspectPage(state, actions) }
-                }
-            }
+            PlayerSheetPage(current, state, source, actions, layout, back)
+        }
+    }
+}
+
+/** One page of the sheet, drawn in the sheet window or in place (tests). */
+@Composable
+fun PlayerSheetPage(page: PlayerSheet, state: PlayerUiState, source: PlayerSheetSource, actions: PlayerActions, layout: PlayerLayout, back: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.85f).dp)
+            .verticalScroll(rememberScrollState())
+            .testTag("playerSheet-${page.name}")
+    ) {
+        when (page) {
+            PlayerSheet.Settings -> SettingsPage(state, source, actions, layout)
+            PlayerSheet.Quality -> SubPage(stringResource(R.string.pl_quality), back) { QualityPage(state, source, actions) }
+            PlayerSheet.Speed -> SubPage(stringResource(R.string.pl_speed), back) { SpeedPage(state, source, actions) }
+            PlayerSheet.Sleep -> SubPage(stringResource(R.string.pl_sleep), back) { SleepPage(state, source, actions) }
+            PlayerSheet.Volume -> SubPage(stringResource(R.string.pl_volume), back) { VolumePage(source, actions) }
+            PlayerSheet.Chapters -> SubPage(stringResource(R.string.pl_chapters), back) { ChaptersPage(state.chapters, state, actions) }
+            PlayerSheet.AdBlock -> SubPage(stringResource(R.string.ad_block_settings), back) { AdBlockPage(state, source, actions) }
+            PlayerSheet.Aspect -> SubPage(stringResource(R.string.pl_aspect), back) { AspectPage(state, actions) }
         }
     }
 }

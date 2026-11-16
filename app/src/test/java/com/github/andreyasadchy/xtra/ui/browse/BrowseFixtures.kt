@@ -51,6 +51,7 @@ class RecordingBrowseActions : GameActions, SearchActions, GamesGridActions {
     override fun openGame(id: String?, slug: String?, name: String?, boxArt: String?, updateLocal: Boolean) { calls += "openGame:$name" }
     override fun openStreamTag(tag: String) { calls += "streamTag:$tag" }
     override fun record(stream: Stream) { calls += "record:${stream.id}" }
+    override fun listen(stream: Stream) { calls += "listen:${stream.id}" }
     override fun share(url: String, title: String?) { calls += "share:$url" }
     override fun openVideo(video: Video, position: Long?) { calls += "openVideo:${video.id}" }
     override fun downloadVideo(video: Video) { calls += "downloadVideo:${video.id}" }

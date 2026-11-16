@@ -87,6 +87,7 @@ class RecordingActions : FollowingActions {
     override fun openStreamTag(tag: String) { calls += "streamTag:$tag" }
     override fun openGameTag(tag: Tag) { calls += "gameTag:${tag.name}" }
     override fun record(stream: Stream) { calls += "record:${stream.id}" }
+    override fun listen(stream: Stream) { calls += "listen:${stream.id}" }
     override fun share(url: String, title: String?) { calls += "share:$url" }
     override fun unfollow(channelId: String?, name: String) { calls += "unfollow:$channelId" }
     override fun openVideo(video: Video, position: Long?) { calls += "openVideo:${video.id}:$position" }

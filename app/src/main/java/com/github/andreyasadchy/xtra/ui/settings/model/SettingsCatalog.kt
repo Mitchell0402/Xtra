@@ -118,13 +118,16 @@ object SettingsCatalog {
             SettingsGroupSpec(
                 R.string.st_group_player_controls, listOf(
                     PageLink("player_button_settings", PageId.PlayerButtons, R.string.player_buttons, R.string.st_player_buttons_summary, LucideIcons.SlidersHorizontal),
-                    PageLink("player_menu_settings", PageId.PlayerMenu, R.string.player_menu_settings, R.string.st_player_menu_summary, LucideIcons.EllipsisVertical),
                 )
             ),
         ),
     )
 
-    /** 33 v0.1 entries, restyled and grouped; trimming them is U6's call (plan 7.7). */
+    /**
+     * v0.1's 33 entries less the eight buttons that moved into the player's settings sheet (U6 decision, option 1);
+     * the switches left pin a quick button to the video or change what the controls show. The page opens with a live
+     * preview of the controls.
+     */
     val playerButtons = SettingsPageSpec(
         id = PageId.PlayerButtons,
         title = R.string.player_buttons,
@@ -134,19 +137,11 @@ object SettingsCatalog {
             SettingsGroupSpec(
                 R.string.st_group_buttons, listOf(
                     ToggleSetting(C.PLAYER_MINIMIZE, true, R.string.minimize, icon = LucideIcons.Minimize),
-                    ToggleSetting(C.PLAYER_SETTINGS, true, R.string.quality, icon = LucideIcons.Gauge),
-                    ToggleSetting(C.PLAYER_MENU, true, R.string.player_menu, icon = LucideIcons.EllipsisVertical),
                     ToggleSetting(C.PLAYER_FULLSCREEN, true, R.string.fullscreen, icon = LucideIcons.Maximize),
                     ToggleSetting(C.PLAYER_CHAT_TOGGLE, true, R.string.chat_toggle, icon = LucideIcons.MessageSquare),
                     ToggleSetting(C.PLAYER_CHAT_BAR_TOGGLE, false, R.string.chat_input_toggle, icon = LucideIcons.Keyboard),
-                    ToggleSetting(C.PLAYER_SPEED_BUTTON, true, R.string.playback_speed, icon = LucideIcons.Gauge),
-                    ToggleSetting(C.PLAYER_ASPECT, true, R.string.aspect_ratio, icon = LucideIcons.Maximize),
-                    ToggleSetting(C.PLAYER_VOLUME_BUTTON, true, R.string.volume, icon = LucideIcons.Volume2),
-                    ToggleSetting(C.PLAYER_AUDIO_COMPRESSOR_BUTTON, true, R.string.audio_compressor, icon = LucideIcons.AudioLines),
                     ToggleSetting(C.PLAYER_MODE, false, R.string.audio_only, icon = LucideIcons.Headphones),
                     ToggleSetting(C.PLAYER_SUBTITLES, false, R.string.subtitles, icon = LucideIcons.Captions),
-                    ToggleSetting(C.PLAYER_GAMES_BUTTON, true, R.string.chapters, icon = LucideIcons.Gamepad2),
-                    ToggleSetting(C.PLAYER_RESTART, true, R.string.restart_player, icon = LucideIcons.RotateCw),
                     ToggleSetting(C.PLAYER_SEEK_LIVE, false, R.string.seek_to_live, icon = LucideIcons.SkipForward),
                     ToggleSetting(C.PLAYER_PAUSE, false, R.string.player_pause, icon = LucideIcons.Pause),
                     ToggleSetting(C.PLAYER_DOWNLOAD, false, R.string.download, icon = LucideIcons.Download),
@@ -167,6 +162,7 @@ object SettingsCatalog {
             SettingsGroupSpec(
                 R.string.st_group_gestures, listOf(
                     ToggleSetting(C.PLAYER_DOUBLE_TAP, true, R.string.player_doubletap, icon = LucideIcons.SquareMousePointer),
+                    ToggleSetting(C.PLAYER_LANDSCAPE_CHAT_OVERLAY, false, R.string.pl_chat_overlay_setting, R.string.pl_chat_overlay_setting_desc, LucideIcons.Columns2),
                     TextSetting(C.PLAYER_REWIND, "10", R.string.rewind, TextKind.Integer, unit = R.string.seconds_full, icon = LucideIcons.RotateCcw),
                     TextSetting(C.PLAYER_FORWARD, "10", R.string.forward, TextKind.Integer, unit = R.string.seconds_full, icon = LucideIcons.RotateCw),
                     TextSetting(C.PLAYER_SPEED_LIST, "0.25\n0.5\n0.75\n1.0\n1.25\n1.5\n1.75\n2.0\n3.0\n4.0\n8.0", R.string.playback_speeds, TextKind.Multiline, R.string.st_speed_list_summary, icon = LucideIcons.Gauge),
@@ -177,44 +173,6 @@ object SettingsCatalog {
                     ToggleSetting(C.SLEEP_TIMER_USE_TIME_PICKER, false, R.string.sleep_timer_time_picker, icon = LucideIcons.Clock),
                     ToggleSetting(C.SLEEP_TIMER_LOCK, false, R.string.sleep_timer_lock_screen, R.string.st_sleep_lock_summary, LucideIcons.Lock),
                     ActionRow("admin_settings", SettingAction.DeviceAdminSettings, R.string.admin_settings, R.string.st_admin_summary, LucideIcons.Shield),
-                )
-            ),
-        ),
-    )
-
-    val playerMenu = SettingsPageSpec(
-        id = PageId.PlayerMenu,
-        title = R.string.player_menu_settings,
-        icon = LucideIcons.EllipsisVertical,
-        parent = PageId.Playback,
-        groups = listOf(
-            SettingsGroupSpec(
-                R.string.st_group_menu_video, listOf(
-                    ToggleSetting(C.PLAYER_MENU_QUALITY, false, R.string.quality, icon = LucideIcons.Gauge),
-                    ToggleSetting(C.PLAYER_MENU_SPEED, false, R.string.playback_speed, icon = LucideIcons.Gauge),
-                    ToggleSetting(C.PLAYER_MENU_ASPECT, false, R.string.aspect_ratio, icon = LucideIcons.Maximize),
-                    ToggleSetting(C.PLAYER_MENU_VOLUME, false, R.string.volume, icon = LucideIcons.Volume2),
-                    ToggleSetting(C.PLAYER_MENU_SUBTITLES, true, R.string.toggle_subtitles, icon = LucideIcons.Captions),
-                    ToggleSetting(C.PLAYER_MENU_GAMES, false, R.string.chapters, icon = LucideIcons.Gamepad2),
-                    ToggleSetting(C.PLAYER_MENU_RESTART, false, R.string.restart_player, icon = LucideIcons.RotateCw),
-                    ToggleSetting(C.PLAYER_MENU_SLEEP, true, R.string.sleep_timer, icon = LucideIcons.Timer),
-                )
-            ),
-            SettingsGroupSpec(
-                R.string.st_group_menu_share, listOf(
-                    ToggleSetting(C.PLAYER_MENU_DOWNLOAD, true, R.string.download, icon = LucideIcons.Download),
-                    ToggleSetting(C.PLAYER_MENU_BOOKMARK, true, R.string.bookmark, icon = LucideIcons.Bookmark),
-                    ToggleSetting(C.PLAYER_MENU_SHARE, true, R.string.share, icon = LucideIcons.Share2),
-                    ToggleSetting(C.PLAYER_MENU_FIND_VOD, true, R.string.find_unlisted_video, icon = LucideIcons.Search),
-                )
-            ),
-            SettingsGroupSpec(
-                R.string.st_group_menu_chat, listOf(
-                    ToggleSetting(C.PLAYER_MENU_VIEWER_LIST, true, R.string.viewer_list, icon = LucideIcons.Users),
-                    ToggleSetting(C.PLAYER_MENU_CHAT_BAR, true, R.string.toggle_chat_bar, icon = LucideIcons.Keyboard),
-                    ToggleSetting(C.PLAYER_MENU_CHAT_TOGGLE, false, R.string.toggle_chat, icon = LucideIcons.MessageSquare),
-                    ToggleSetting(C.PLAYER_MENU_RELOAD_EMOTES, true, R.string.reload_emotes, icon = LucideIcons.Smile),
-                    ToggleSetting(C.PLAYER_MENU_CHAT_DISCONNECT, true, R.string.disconnect_chat, icon = LucideIcons.WifiOff),
                 )
             ),
         ),
@@ -565,7 +523,7 @@ object SettingsCatalog {
     val categories: List<SettingsPageSpec> = homeGroups.flatMap { it.second }
 
     val pages: List<SettingsPageSpec> = listOf(
-        appearance, playback, playerButtons, playerMenu, chat, adBlock, videoSwap, customProxy, streamProxy,
+        appearance, playback, playerButtons, chat, adBlock, videoSwap, customProxy, streamProxy,
         downloads, notifications, backup, advanced, buffer, apiTokens, debug, about,
     )
 
@@ -600,5 +558,30 @@ object SettingsCatalog {
         C.UI_FOLLOW_PAGER to "the Following page is one Compose page with segments (U2); nothing reads it",
         "ad_block_preset" to "was a second copy of the switches; the page now works the preset out from them (AdBlockPreset.match)",
         "theme_settings" to "link to the removed theme page",
+        C.PLAYER_SETTINGS to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_SPEED_BUTTON to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_ASPECT to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_VOLUME_BUTTON to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_AUDIO_COMPRESSOR_BUTTON to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_GAMES_BUTTON to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_RESTART to "moved into the player's settings sheet, which lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_QUALITY to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_SPEED to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_ASPECT to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_VOLUME to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_SUBTITLES to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_GAMES to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_RESTART to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_SLEEP to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_DOWNLOAD to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_BOOKMARK to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_SHARE to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_FIND_VOD to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_VIEWER_LIST to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_CHAT_BAR to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_CHAT_TOGGLE to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_RELOAD_EMOTES to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
+        C.PLAYER_MENU_CHAT_DISCONNECT to "the player's settings sheet lists every action that applies (U6 decision, option 1); the key is no longer read",
     )
 }

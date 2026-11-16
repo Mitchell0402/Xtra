@@ -52,6 +52,10 @@ abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseAct
         activity.startStream(stream)
     }
 
+    override fun listen(stream: Stream) {
+        activity.startStream(stream, audioOnly = true)
+    }
+
     override fun openChannel(id: String?, login: String?, name: String?, image: String?, streamId: String?) {
         fragment.findNavController().navigate(
             ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(

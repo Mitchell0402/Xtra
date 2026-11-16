@@ -851,7 +851,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
 
 //Navigation listeners
 
-    fun startStream(stream: Stream) {
+    fun startStream(stream: Stream, audioOnly: Boolean = false) {
         (playerFragment as? ExoPlayerFragment)?.close(deleteStates = false)
         viewModel.savePlaybackState(PlaybackState(
             type = BasePlaybackService.STREAM,
@@ -868,7 +868,9 @@ class MainActivity : AppCompatActivity(), ShellHost {
             createdAt = stream.createdAt,
             viewerCount = stream.viewerCount,
         ))
-        val fragment = ExoPlayerFragment()
+        val fragment = ExoPlayerFragment().apply {
+            if (audioOnly) arguments = Bundle().apply { putBoolean(PlayerFragment.KEY_AUDIO_ONLY, true) }
+        }
         startPlayer(fragment)
     }
 

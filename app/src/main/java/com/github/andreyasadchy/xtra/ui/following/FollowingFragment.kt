@@ -237,6 +237,10 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
         (requireActivity() as MainActivity).startStream(stream)
     }
 
+    override fun listen(stream: Stream) {
+        (requireActivity() as MainActivity).startStream(stream, audioOnly = true)
+    }
+
     override fun openChannel(id: String?, login: String?, name: String?, image: String?, streamId: String?) {
         findNavController().navigate(
             ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(

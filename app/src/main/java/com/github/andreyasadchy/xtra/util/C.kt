@@ -157,6 +157,8 @@ object C {
     const val PLAYER_QUALITY = "player_quality"
     const val PLAYER_VOLUME = "player_volume"
     const val PLAYER_SPEED = "player_speed"
+    /** U6, new key: in phone landscape the chat lies over the video instead of beside it. */
+    const val PLAYER_LANDSCAPE_CHAT_OVERLAY = "player_landscape_chat_overlay"
     const val PLAYER_SPEED_LIST = "player_speed_list"
     const val PLAYER_AUDIO_COMPRESSOR = "player_audio_compressor"
     const val PLAYER_SUBTITLES_ENABLED = "player_subtitles_enabled"

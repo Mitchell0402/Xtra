@@ -416,6 +416,9 @@ private fun PageHost(route: String, store: SettingsStore, host: SettingsHost, na
         PageId.Appearance -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
             item(key = "preview") { AppearancePreview(store) }
         }
+        PageId.PlayerButtons -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
+            item(key = "preview") { PlayerButtonsPreview(store) }
+        }
         PageId.About -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
             item(key = "version") { AboutCard(host.environment.versionName) }
         }

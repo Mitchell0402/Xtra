@@ -288,7 +288,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                         }
                         replyView.visibility = View.GONE
                         send.setOnClickListener { sendMessage() }
-                        if ((view.parent?.parent?.parent?.parent as? View)?.id == R.id.slidingLayout && !requireContext().prefs().getBoolean(C.KEY_CHAT_BAR_VISIBLE, true)) {
+                        if (parentFragment is PlayerFragment && !requireContext().prefs().getBoolean(C.KEY_CHAT_BAR_VISIBLE, true)) {
                             messageView.visibility = View.GONE
                         } else {
                             messageView.visibility = View.VISIBLE
@@ -799,7 +799,7 @@ class ChatFragment : BaseNetworkFragment(), MessageClickedDialog.OnButtonClickLi
                     chatReplayUnavailable.visibility = View.VISIBLE
                 }
             }
-            if ((view.parent?.parent?.parent?.parent as? View)?.id != R.id.slidingLayout) {
+            if (parentFragment !is PlayerFragment) {
                 ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
                     if (activity?.findViewById<LinearLayout>(R.id.navBarContainer)?.isVisible == false) {
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())

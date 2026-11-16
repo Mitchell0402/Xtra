@@ -68,6 +68,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.DeflaterOutputStream
 import java.util.zip.InflaterOutputStream
 import kotlin.concurrent.scheduleAtFixedRate
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -118,6 +119,7 @@ class ChatViewModel(
     private var pointsLogin: String? = null
     private var pointsChannelId: String? = null
     private var pointsClaimId: String? = null
+    private var pointsJob: Job? = null
     private var loadedUserEmotes = false
     val localTwitchEmotes = mutableListOf<TwitchEmote>()
     val thirdPartyEmotes = mutableListOf<Emote>()
@@ -1087,14 +1089,24 @@ class ChatViewModel(
                         gqlWebToken
                     } else null
                 },
-                collectPoints = true,
+                collectPoints = collectPoints,
                 showRaids = applicationContext.prefs().getBoolean(C.CHAT_RAIDS_SHOW, true),
                 showPolls = applicationContext.prefs().getBoolean(C.CHAT_POLLS_SHOW, true),
                 showPredictions = applicationContext.prefs().getBoolean(C.CHAT_PREDICTIONS_SHOW, true),
                 listener = PubSubListener(channelLogin, collectPoints, notifyPoints, showRaids, showPolls, showPredictions, networkLibrary, gqlHeaders, isLoggedIn, accountId, channelId, enableIntegrity, showWebSocketDebugInfo)
             )
             pubSubJob = hermesWebSocket?.connect(viewModelScope)
-            if (isLoggedIn) loadChannelPoints(channelLogin, channelId)
+            if (isLoggedIn) {
+                // the points topic only reaches logins with a web token; read the balance again every few minutes so it
+                // stays current and a pending bonus is claimed for any login
+                pointsJob?.cancel()
+                pointsJob = viewModelScope.launch {
+                    while (true) {
+                        loadChannelPoints(channelLogin, channelId)
+                        delay(POINTS_REFRESH)
+                    }
+                }
+            }
         }
         val showNamePaints = applicationContext.prefs().getBoolean(C.CHAT_SHOW_PAINTS, true)
         val showSTVBadges = applicationContext.prefs().getBoolean(C.CHAT_SHOW_STV_BADGES, true)
@@ -1120,6 +1132,7 @@ class ChatViewModel(
     }
 
     fun stopLiveChat() {
+        pointsJob?.cancel()
         if (started) {
             started = false
             if (chatReadIRCSocket != null) {
@@ -1486,7 +1499,7 @@ class ChatViewModel(
                                     }
                                 }
                             }
-                            loadChannelPoints(channelLogin, channelId)
+                            loadChannelPoints(channelLogin, channelId, claim = false)
                         } catch (e: Exception) {
 
                         }
@@ -1928,7 +1941,7 @@ class ChatViewModel(
     }
 
     /** Balance, pending bonus and the channel's name and picture for its points (ChannelPointsContext). */
-    fun loadChannelPoints(channelLogin: String, channelId: String?) {
+    fun loadChannelPoints(channelLogin: String, channelId: String?, claim: Boolean = true) {
         val gqlHeaders = TwitchApiHelper.getGQLHeaders(applicationContext, true)
         if (gqlHeaders[C.HEADER_TOKEN].isNullOrBlank()) return
         pointsLogin = channelLogin
@@ -1947,14 +1960,17 @@ class ChatViewModel(
                 val points = channel.self?.communityPoints ?: return@launch
                 val settings = channel.communityPointsSettings
                 pointsClaimId = points.availableClaim?.id
+                val previous = channelPoints.value
+                val balance = points.balance ?: 0
                 channelPoints.value = com.github.andreyasadchy.xtra.ui.chat.ChannelPoints(
-                    balance = points.balance ?: 0,
+                    balance = balance,
                     claimAvailable = pointsClaimId != null,
                     autoClaim = autoClaim,
                     name = settings?.name,
                     iconUrl = settings?.image?.url2x ?: settings?.image?.url,
-                    lastEarned = channelPoints.value?.lastEarned,
+                    lastEarned = if (previous != null && balance > previous.balance) balance - previous.balance else previous?.lastEarned,
                 )
+                if (claim && pointsClaimId != null && autoClaim) claimPoints()
             } catch (e: Exception) {
 
             }
@@ -1975,7 +1991,7 @@ class ChatViewModel(
             } catch (e: Exception) {
 
             }
-            loadChannelPoints(login, pointsChannelId)
+            loadChannelPoints(login, pointsChannelId, claim = false)
         }
     }
 
@@ -3212,6 +3228,8 @@ class ChatViewModel(
     companion object {
         private var savedEmoteSets: List<String>? = null
         private var savedUserEmotes: List<TwitchEmote>? = null
+        /** How often the chat reads the channel points balance again (U7). */
+        private val POINTS_REFRESH = 5.minutes
         private var savedGlobalBadges: List<TwitchBadge>? = null
         private var savedGlobalSTVEmotes: List<Emote>? = null
         private var savedGlobalBTTVEmotes: List<Emote>? = null

@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -291,6 +292,7 @@ private fun JumpToLatest(unseen: Int, onClick: () -> Unit) {
     val colors = Lagoon.colors
     Row(
         Modifier
+            .minimumInteractiveComponentSize()
             .heightIn(min = 36.dp)
             .pressable(onClick = onClick, shape = LagoonShapes.pill)
             .background(colors.control, LagoonShapes.pill)
@@ -345,13 +347,19 @@ fun ChatRow(
 @Composable
 fun ChatText(line: ChatLine, style: ChatStyle, onImageClick: ((ChatImage) -> Unit)?, maxLines: Int = Int.MAX_VALUE, scale: Float = 1f) {
     val density = LocalDensity.current
-    val inline = inlineContentFor(line.images, style, density, onImageClick)
+    // the learned picture ratios are read here, so a line only rebuilds its placeholders when one of its own pictures widens
+    val ratios = line.images.map { ChatImageRatios.of(it.model) + (it.overlays.maxOfOrNull { o -> ChatImageRatios.of(o.model) } ?: 0f) }
+    val inline = remember(line, style, density, ratios, onImageClick) { inlineContentFor(line.images, style, density, onImageClick) }
     val text = NamePaints.apply(line, style)
-    val size = style.textSize * scale
+    val primary = Lagoon.colors.textPrimary
+    val textStyle = remember(style.textSize, scale, primary) {
+        val size = style.textSize * scale
+        TextStyle(fontSize = size.sp, lineHeight = (size * 1.45f).sp, color = primary)
+    }
     Text(
         text = text,
         inlineContent = inline,
-        style = TextStyle(fontSize = size.sp, lineHeight = (size * 1.45f).sp, color = Lagoon.colors.textPrimary),
+        style = textStyle,
         maxLines = maxLines,
         overflow = if (maxLines == Int.MAX_VALUE) TextOverflow.Clip else TextOverflow.Ellipsis,
     )
@@ -516,6 +524,7 @@ private fun SuggestionRow(state: ChatState, actions: ChatActions) {
         items(state.suggestions, key = { it.text }) { s ->
             Row(
                 Modifier
+                    .minimumInteractiveComponentSize()
                     .heightIn(min = 36.dp)
                     .pressable(onClick = { actions.applySuggestion(s) }, shape = LagoonShapes.pill)
                     .background(colors.card, LagoonShapes.pill)
@@ -637,6 +646,7 @@ fun PointsChip(points: ChannelPoints, actions: ChatActions) {
     val description = stringResource(R.string.cht_points_desc, points.balance)
     Row(
         Modifier
+            .minimumInteractiveComponentSize()
             .heightIn(min = 32.dp)
             .pressable(onClick = { if (claim) actions.claimPoints() else actions.openPoints() }, shape = LagoonShapes.pill)
             .background(if (claim) colors.accent else colors.control, LagoonShapes.pill)

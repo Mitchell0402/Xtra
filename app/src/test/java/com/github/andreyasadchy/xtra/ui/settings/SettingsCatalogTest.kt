@@ -151,7 +151,9 @@ class SettingsCatalogTest {
             if (literal == actual) null else "${read.file}: ${read.key} read with $literal, catalogue $actual"
         }
         assertTrue(wrong.toString(), wrong.isEmpty())
-        assertTrue("only ${checked.size} keys checked", checked.size > 150)
+        // U6: the player no longer reads the 25 menu and button switches it dropped (SettingsCatalog.removed), so the
+        // floor went from 150 to 130
+        assertTrue("only ${checked.size} keys checked", checked.size > 130)
     }
 
     /**

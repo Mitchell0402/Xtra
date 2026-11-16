@@ -699,6 +699,7 @@ private fun ChannelHeaderBlock(
 @Composable
 private fun liveMenu(stream: Stream, actions: ChannelActions): List<ActionItem> = buildList {
     add(ActionItem(stringResource(R.string.watch_live), LucideIcons.Play) { actions.watchLive() })
+    add(ActionItem(stringResource(R.string.pl_listen), LucideIcons.Headphones) { actions.listen(stream) })
     stream.gameName?.let { game ->
         add(ActionItem(stringResource(R.string.following_open_game, game), LucideIcons.Gamepad2) { actions.openGame(stream.gameId, stream.gameSlug, stream.gameName) })
     }

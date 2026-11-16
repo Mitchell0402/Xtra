@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- U6: the player page's two plain views keep fixed ids, so the old chat restores into its container -->
+<resources>
+    <item name="chatFragmentContainer" type="id" />
+    <item name="playerVideo" type="id" />
+</resources>

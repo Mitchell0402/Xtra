@@ -156,6 +156,8 @@ interface FollowingActions {
     fun openStreamTag(tag: String)
     fun openGameTag(tag: GameTag)
     fun record(stream: Stream)
+    /** Plays the stream as audio only ("Listen only", U6). */
+    fun listen(stream: Stream) = openStream(stream)
     fun share(url: String, title: String?)
     fun unfollow(channelId: String?, name: String)
     fun openVideo(video: Video, position: Long?)
@@ -507,7 +509,7 @@ private fun LiveSegment(
 
 /** The card's long-press menu (plan 7.1), plus the jumps v0.1 had as taps on the avatar, game and tags. */
 @Composable
-private fun streamActions(stream: Stream, options: FollowingListOptions, actions: FollowingActions): List<ActionItem> {
+internal fun streamActions(stream: Stream, options: FollowingListOptions, actions: FollowingActions): List<ActionItem> {
     val name = displayName(stream.channelName, stream.channelLogin, options.nameDisplay)
     val list = mutableListOf(
         ActionItem(stringResource(R.string.following_open_channel), LucideIcons.User) {
@@ -524,6 +526,7 @@ private fun streamActions(stream: Stream, options: FollowingListOptions, actions
             list += ActionItem(stringResource(R.string.following_browse_tag, tag), LucideIcons.ListFilter) { actions.openStreamTag(tag) }
         }
     }
+    list += ActionItem(stringResource(R.string.pl_listen), LucideIcons.Headphones) { actions.listen(stream) }
     list += ActionItem(stringResource(R.string.following_record), LucideIcons.CircleDot) { actions.record(stream) }
     list += ActionItem(stringResource(R.string.share), LucideIcons.Share2) {
         actions.share("https://twitch.tv/${stream.channelLogin}", stream.title)

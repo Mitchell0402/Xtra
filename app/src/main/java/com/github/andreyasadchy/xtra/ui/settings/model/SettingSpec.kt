@@ -51,7 +51,7 @@ enum class SettingAction {
 
 /** The pages under the settings home (plan 7.7: nine categories) and their sub-pages. */
 enum class PageId {
-    Appearance, Playback, PlayerButtons, PlayerMenu, Chat, AdBlock, VideoSwap, CustomProxy, StreamProxy,
+    Appearance, Playback, PlayerButtons, Chat, AdBlock, VideoSwap, CustomProxy, StreamProxy,
     Downloads, Notifications, Backup, Advanced, Buffer, ApiTokens, Debug, About,
 }
 

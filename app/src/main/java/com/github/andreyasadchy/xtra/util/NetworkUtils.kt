@@ -89,12 +89,12 @@ object NetworkUtils {
 
         override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
             timeout.stop()
-            continuation.resume(HttpEngineResponse(info, mResponseBodyStream.toByteArray()))
+            if (timeout.finish()) continuation.resume(HttpEngineResponse(info, mResponseBodyStream.toByteArray()))
         }
 
         override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: HttpException) {
             timeout.stop()
-            continuation.resumeWithException(error)
+            if (timeout.finish()) continuation.resumeWithException(error)
         }
 
         override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
@@ -168,12 +168,12 @@ object NetworkUtils {
 
         override fun onSucceeded(request: org.chromium.net.UrlRequest, info: org.chromium.net.UrlResponseInfo) {
             timeout.stop()
-            continuation.resume(CronetResponse(info, mResponseBodyStream.toByteArray()))
+            if (timeout.finish()) continuation.resume(CronetResponse(info, mResponseBodyStream.toByteArray()))
         }
 
         override fun onFailed(request: org.chromium.net.UrlRequest, info: org.chromium.net.UrlResponseInfo?, error: CronetException) {
             timeout.stop()
-            continuation.resumeWithException(error)
+            if (timeout.finish()) continuation.resumeWithException(error)
         }
 
         override fun onCanceled(request: org.chromium.net.UrlRequest, info: org.chromium.net.UrlResponseInfo?) {
@@ -193,7 +193,7 @@ object NetworkUtils {
 
         override fun timeout() {
             request.cancel()
-            continuation.resumeWithException(IOException("Timed out"))
+            if (finish()) continuation.resumeWithException(IOException("Timed out"))
         }
     }
 
@@ -209,12 +209,20 @@ object NetworkUtils {
 
         override fun timeout() {
             request.cancel()
-            continuation.resumeWithException(IOException("Timed out"))
+            if (finish()) continuation.resumeWithException(IOException("Timed out"))
         }
     }
 
     abstract class Timeout(val timeout: Long): Comparable<Timeout> {
         var timeoutAt = System.currentTimeMillis() + timeout
+        private val finished = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        /**
+         * Claims the request's one answer. The watchdog thread and the network callback can both try to resume the
+         * same continuation (the request finishes just as it times out); the second resume crashed the app
+         * ("Already resumed", seen in the U6 ad regression run). Only the first caller gets true.
+         */
+        fun finish(): Boolean = finished.compareAndSet(false, true)
 
         fun updateTimeout() {
             lock.withLock {

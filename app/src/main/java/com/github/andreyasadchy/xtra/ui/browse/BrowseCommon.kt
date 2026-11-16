@@ -76,6 +76,8 @@ interface BrowseActions {
     /** Live streams with this tag (v0.1: the popular streams page with the tag). */
     fun openStreamTag(tag: String)
     fun record(stream: Stream)
+    /** Plays the stream as audio only ("Listen only", U6). */
+    fun listen(stream: Stream) = openStream(stream)
     fun share(url: String, title: String?)
     fun openVideo(video: Video, position: Long?)
     fun downloadVideo(video: Video)
@@ -229,6 +231,7 @@ fun streamMenu(
             list += ActionItem(stringResource(R.string.following_browse_tag, tag), LucideIcons.ListFilter) { onTag(tag) }
         }
     }
+    list += ActionItem(stringResource(R.string.pl_listen), LucideIcons.Headphones) { actions.listen(stream) }
     list += ActionItem(stringResource(R.string.following_record), LucideIcons.CircleDot) { actions.record(stream) }
     list += ActionItem(stringResource(R.string.share), LucideIcons.Share2) {
         actions.share("https://twitch.tv/${stream.channelLogin}", stream.title)

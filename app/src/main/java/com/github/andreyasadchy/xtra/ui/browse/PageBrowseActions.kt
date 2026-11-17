@@ -4,36 +4,31 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import com.github.andreyasadchy.xtra.model.ui.Clip
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Tag
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.games.GamesFragmentDirections
 import com.github.andreyasadchy.xtra.ui.login.LoginActivity
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
-import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
 
 /**
  * The calls the v0.1 browse fragments, adapters and menus made, call for call, for the Compose pages that replace
- * them (U4). Bookmarks and back differ per page and stay with the page.
+ * them (U4; from U8 on through the page's navigation instead of the fragment's). Bookmarks and back differ per page
+ * and stay with the page.
  */
-abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseActions {
+abstract class PageBrowseActions(private val page: ComposePage) : BrowseActions {
 
-    private val activity get() = fragment.requireActivity() as MainActivity
+    private val activity get() = page.activity
+    private val nav get() = page.nav
 
     override fun back() {
-        fragment.findNavController().navigateUp()
+        nav.back()
     }
 
     override fun search() {
-        fragment.findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
+        nav.openSearch()
     }
 
     fun settings() {
@@ -57,30 +52,20 @@ abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseAct
     }
 
     override fun openChannel(id: String?, login: String?, name: String?, image: String?, streamId: String?) {
-        fragment.findNavController().navigate(
-            ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(
-                channelId = id,
-                channelLogin = login,
-                channelName = name,
-                channelImage = image,
-                streamId = streamId,
-            )
-        )
+        nav.openChannel(id = id, login = login, name = name, image = image, streamId = streamId)
     }
 
     /** Both game destinations show the same Compose page now, so the `ui_gamepager` setting no longer picks one. */
     override fun openGame(id: String?, slug: String?, name: String?, boxArt: String?, updateLocal: Boolean) {
-        fragment.findNavController().navigate(
-            GamePagerFragmentDirections.actionGlobalGamePagerFragment(gameId = id, gameSlug = slug, gameName = name, boxArt = boxArt, updateLocal = updateLocal)
-        )
+        nav.openGame(id = id, slug = slug, name = name, boxArt = boxArt, updateLocal = updateLocal)
     }
 
     override fun openStreamTag(tag: String) {
-        fragment.findNavController().navigate(TopStreamsFragmentDirections.actionGlobalTopFragment(tags = arrayOf(tag)))
+        nav.openTopStreams(tags = listOf(tag))
     }
 
     open fun openGameTag(tag: Tag) {
-        fragment.findNavController().navigate(GamesFragmentDirections.actionGlobalGamesFragment(tags = arrayOf(tag)))
+        nav.openGames(listOf(tag))
     }
 
     /** Same as "Download" on a channel page that is live: the download dialog loads the stream's qualities itself. */
@@ -97,11 +82,11 @@ abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseAct
             title = stream.title,
             thumbnail = stream.thumbnail,
             createdAt = stream.createdAt,
-        ).show(fragment.childFragmentManager, null)
+        ).show(page.childFragmentManager, null)
     }
 
     override fun share(url: String, title: String?) {
-        fragment.startActivity(Intent.createChooser(Intent().apply {
+        page.startActivity(Intent.createChooser(Intent().apply {
             action = Intent.ACTION_SEND
             putExtra(Intent.EXTRA_TEXT, url)
             title?.let { putExtra(Intent.EXTRA_TITLE, it) }
@@ -133,7 +118,7 @@ abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseAct
             durationSeconds = video.durationSeconds,
             type = video.type,
             animatedPreviewUrl = video.animatedPreviewURL,
-        ).show(fragment.childFragmentManager, null)
+        ).show(page.childFragmentManager, null)
     }
 
     override fun openClip(clip: Clip) {
@@ -157,11 +142,11 @@ abstract class FragmentBrowseActions(private val fragment: Fragment) : BrowseAct
             videoId = clip.videoId,
             videoOffsetSeconds = clip.videoOffsetSeconds,
             videoCreatedAt = clip.videoCreatedAt,
-        ).show(fragment.childFragmentManager, null)
+        ).show(page.childFragmentManager, null)
     }
 
     override fun integrityCheckFailed() {
-        (fragment.activity as? MainActivity)?.getNewIntegrityToken(CALLBACK_REFRESH, fragment.childFragmentManager)
+        activity.getNewIntegrityToken(CALLBACK_REFRESH, page.childFragmentManager)
     }
 
     companion object {

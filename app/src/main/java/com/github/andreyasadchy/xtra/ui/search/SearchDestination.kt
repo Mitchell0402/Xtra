@@ -1,9 +1,8 @@
 package com.github.andreyasadchy.xtra.ui.search
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import androidx.compose.runtime.Composable
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
+import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -15,27 +14,16 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.model.ui.RecentSearch
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.browse.FragmentBrowseActions
+import com.github.andreyasadchy.xtra.ui.browse.PageBrowseActions
 import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
-import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.ui.search.SearchPagerViewModel.Companion.SearchPagerViewModelFactory
 import com.github.andreyasadchy.xtra.ui.search.channels.ChannelSearchViewModel
 import com.github.andreyasadchy.xtra.ui.search.games.GameSearchViewModel
@@ -53,7 +41,7 @@ import kotlinx.coroutines.flow.flowOf
  * The four search view models are unchanged; one query now goes to all of them, and the recent searches of all four
  * types show together.
  */
-class SearchPagerFragment : Fragment(), IntegrityDialog.Listener, SearchActions {
+class SearchDestination(host: PageHost) : ComposePage(host), SearchActions {
 
     private val viewModel: SearchPagerViewModel by viewModels { SearchPagerViewModelFactory }
     private val channels: ChannelSearchViewModel by viewModels { ChannelSearchViewModel.ChannelSearchViewModelFactory }
@@ -67,7 +55,7 @@ class SearchPagerFragment : Fragment(), IntegrityDialog.Listener, SearchActions 
     private var lookup by mutableStateOf<UserLookup?>(null)
     private val storeRecent get() = requireContext().prefs().getBoolean(C.UI_STORE_RECENT_SEARCHES, true)
 
-    private val delegate by lazy { object : FragmentBrowseActions(this@SearchPagerFragment) {
+    private val delegate by lazy { object : PageBrowseActions(this@SearchDestination) {
         override fun toggleBookmark(video: Video) {
             val context = requireContext()
             videos.saveBookmark(
@@ -77,10 +65,10 @@ class SearchPagerFragment : Fragment(), IntegrityDialog.Listener, SearchActions 
         }
     } }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    @Composable
+    override fun Content() {
         val context = requireContext()
         val prefs = context.prefs()
-        val shell = (activity as? ShellHost)?.shell
         groups = SearchGroup.list(prefs.getString(C.UI_SEARCH_TABS, null))
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
@@ -94,79 +82,72 @@ class SearchPagerFragment : Fragment(), IntegrityDialog.Listener, SearchActions 
         val showRecent = prefs.getBoolean(C.UI_STORE_RECENT_SEARCHES, true)
         // the query the view models still hold after a trip back from a result
         val initialQuery = channels.query.value
-        return ComposeView(context).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                LagoonTheme {
-                    val channelItems = channels.flow.collectAsLazyPagingItems()
-                    val streamItems = streams.flow.collectAsLazyPagingItems()
-                    val gameItems = games.flow.collectAsLazyPagingItems()
-                    val videoItems = videos.flow.collectAsLazyPagingItems()
-                    val recentFlow = remember {
-                        if (showRecent) combine(channels.recentSearches, streams.recentSearches, games.recentSearches, videos.recentSearches) { a, b, c, d -> a + b + c + d }
-                        else flowOf(emptyList())
-                    }
-                    val recentAll by recentFlow.collectAsState(emptyList())
-                    recentItems = recentAll
-                    val recent = recentAll.sortedByDescending { it.lastSearched }.map { it.query }.distinct().take(20)
-                    val positions by remember { videos.positions }.collectAsState(emptyList())
-                    val bookmarks by remember { videos.bookmarks }.collectAsState(emptyList())
-                    val online by mainViewModel.isNetworkAvailable.collectAsState()
-                    LaunchedEffect(refreshRequests.intValue) {
-                        if (refreshRequests.intValue > 0) { channelItems.refresh(); streamItems.refresh(); gameItems.refresh(); videoItems.refresh() }
-                    }
-                    LaunchedEffect(Unit) {
-                        viewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
-                    }
-                    LaunchedEffect(Unit) {
-                        viewModel.userResult.collect { result ->
-                            val asked = pendingLookup
-                            if (result != null && asked != null) {
-                                lookup = UserLookup(asked.first, asked.second, result.first?.takeIf { it.isNotBlank() }, result.second)
-                                viewModel.userResult.value = null
-                            }
-                        }
-                    }
-                    LaunchedEffect(Unit) {
-                        var wasOnline = mainViewModel.isNetworkAvailable.value ?: context.hasValidatedNetwork()
-                        mainViewModel.isNetworkAvailable.collectLatest { now ->
-                            if (now == true && !wasOnline) { channelItems.retry(); streamItems.retry(); gameItems.retry(); videoItems.retry() }
-                            if (now != null) wasOnline = now
-                        }
-                    }
-                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
-                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
-                        SearchScreen(
-                            groups = groups,
-                            results = SearchResults(
-                                channels = channelItems.takeIf { SearchGroup.Channels in groups },
-                                streams = streamItems.takeIf { SearchGroup.Streams in groups },
-                                games = gameItems.takeIf { SearchGroup.Games in groups },
-                                videos = videoItems.takeIf { SearchGroup.Videos in groups },
-                            ),
-                            recent = recent,
-                            options = options,
-                            compactStreams = compact,
-                            actions = this@SearchPagerFragment,
-                            initialQuery = initialQuery,
-                            showRecent = showRecent,
-                            videoPositions = positions.associate { it.id to it.position },
-                            bookmarkedVideoIds = bookmarks.mapNotNull { it.videoId }.toSet(),
-                            lookup = lookup,
-                            onLookupShown = { lookup = null },
-                            bottomPadding = bottom,
-                            navScroll = shell?.hideOnScroll?.nestedScrollConnection,
-                            offline = online == false || (online == null && !context.hasValidatedNetwork()),
-                        )
-                    }
+        val channelItems = channels.flow.collectAsLazyPagingItems()
+        val streamItems = streams.flow.collectAsLazyPagingItems()
+        val gameItems = games.flow.collectAsLazyPagingItems()
+        val videoItems = videos.flow.collectAsLazyPagingItems()
+        val recentFlow = remember {
+            if (showRecent) combine(channels.recentSearches, streams.recentSearches, games.recentSearches, videos.recentSearches) { a, b, c, d -> a + b + c + d }
+            else flowOf(emptyList())
+        }
+        val recentAll by recentFlow.collectAsState(emptyList())
+        recentItems = recentAll
+        val recent = recentAll.sortedByDescending { it.lastSearched }.map { it.query }.distinct().take(20)
+        val positions by remember { videos.positions }.collectAsState(emptyList())
+        val bookmarks by remember { videos.bookmarks }.collectAsState(emptyList())
+        val online by mainViewModel.isNetworkAvailable.collectAsState()
+        LaunchedEffect(refreshRequests.intValue) {
+            if (refreshRequests.intValue > 0) { channelItems.refresh(); streamItems.refresh(); gameItems.refresh(); videoItems.refresh() }
+        }
+        LaunchedEffect(Unit) {
+            viewModel.integrity.collect { activity.getNewIntegrityToken(it, childFragmentManager) }
+        }
+        LaunchedEffect(Unit) {
+            viewModel.userResult.collect { result ->
+                val asked = pendingLookup
+                if (result != null && asked != null) {
+                    lookup = UserLookup(asked.first, asked.second, result.first?.takeIf { it.isNotBlank() }, result.second)
+                    viewModel.userResult.value = null
                 }
             }
+        }
+        LaunchedEffect(Unit) {
+            var wasOnline = mainViewModel.isNetworkAvailable.value ?: context.hasValidatedNetwork()
+            mainViewModel.isNetworkAvailable.collectLatest { now ->
+                if (now == true && !wasOnline) { channelItems.retry(); streamItems.retry(); gameItems.retry(); videoItems.retry() }
+                if (now != null) wasOnline = now
+            }
+        }
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+        CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+            SearchScreen(
+                groups = groups,
+                results = SearchResults(
+                    channels = channelItems.takeIf { SearchGroup.Channels in groups },
+                    streams = streamItems.takeIf { SearchGroup.Streams in groups },
+                    games = gameItems.takeIf { SearchGroup.Games in groups },
+                    videos = videoItems.takeIf { SearchGroup.Videos in groups },
+                ),
+                recent = recent,
+                options = options,
+                compactStreams = compact,
+                actions = this@SearchDestination,
+                initialQuery = initialQuery,
+                showRecent = showRecent,
+                videoPositions = positions.associate { it.id to it.position },
+                bookmarkedVideoIds = bookmarks.mapNotNull { it.videoId }.toSet(),
+                lookup = lookup,
+                onLookupShown = { lookup = null },
+                bottomPadding = bottom,
+                navScroll = shell?.hideOnScroll?.nestedScrollConnection,
+                offline = online == false || (online == null && !context.hasValidatedNetwork()),
+            )
         }
     }
 
     override fun onIntegrityTokenLoaded(callback: String?) {
-        if (callback == FragmentBrowseActions.CALLBACK_REFRESH) refreshRequests.intValue++
+        if (callback == PageBrowseActions.CALLBACK_REFRESH) refreshRequests.intValue++
     }
 
     // SearchActions
@@ -220,10 +201,7 @@ class SearchPagerFragment : Fragment(), IntegrityDialog.Listener, SearchActions 
 
     override fun openUser(byId: Boolean, value: String) {
         lookup = null
-        findNavController().navigate(
-            if (byId) ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelId = value)
-            else ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelLogin = value)
-        )
+        if (byId) nav.openChannel(id = value) else nav.openChannel(login = value)
     }
 
     // BrowseActions, as v0.1's adapters did

@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
 import android.annotation.SuppressLint
 import android.net.http.HttpEngine
 import androidx.lifecycle.SavedStateHandle
@@ -54,7 +55,7 @@ class ChannelPagerViewModel(
 
     val integrity = MutableSharedFlow<String?>()
 
-    private val args = ChannelPagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = ChannelArgs.fromSavedStateHandle(savedStateHandle)
     private val _notificationsEnabled = MutableStateFlow<Boolean?>(null)
     val notificationsEnabled: StateFlow<Boolean?> = _notificationsEnabled
     val notifications = MutableStateFlow<Pair<Boolean, String?>?>(null)

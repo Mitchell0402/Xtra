@@ -1,5 +1,8 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import com.github.andreyasadchy.xtra.ui.main.nav.BrowseRoute
+import com.github.andreyasadchy.xtra.ui.main.nav.FollowingRoute
+import com.github.andreyasadchy.xtra.ui.main.nav.SavedRoute
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -85,15 +88,15 @@ class FollowingScreenshotTest(private val case: Case, private val variant: Varia
 }
 
 private val tabs = listOf(
-    ShellTab(ShellTabs.KEY_FOLLOWING, R.id.followPagerFragment),
-    ShellTab(ShellTabs.KEY_BROWSE, R.id.rootGamesFragment),
-    ShellTab(ShellTabs.KEY_MINE, R.id.savedPagerFragment),
+    ShellTab(ShellTabs.KEY_FOLLOWING, FollowingRoute),
+    ShellTab(ShellTabs.KEY_BROWSE, BrowseRoute),
+    ShellTab(ShellTabs.KEY_MINE, SavedRoute),
 )
 
 /** The page as MainActivity shows it: the floating pill over the content, or the rail beside it on wide windows. */
 @Composable
 internal fun ShellFrame(modifier: Modifier = Modifier, content: @Composable (bottomPadding: androidx.compose.ui.unit.Dp) -> Unit) {
-    val state = ShellState(tabs).apply { legacyPage = false }
+    val state = ShellState(tabs)
     val wide = WidthClass.of(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp) == WidthClass.Expanded
     if (wide) {
         Row(modifier.fillMaxSize().background(Lagoon.colors.page)) {

@@ -1,59 +1,40 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import androidx.compose.runtime.Composable
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
+import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.model.ui.ChannelSort
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Tag
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
-import com.github.andreyasadchy.xtra.ui.common.Scrollable
 import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
 import com.github.andreyasadchy.xtra.ui.following.channels.FollowedChannelsViewModel
 import com.github.andreyasadchy.xtra.ui.following.games.FollowedGamesViewModel
 import com.github.andreyasadchy.xtra.ui.following.streams.FollowedStreamsViewModel
 import com.github.andreyasadchy.xtra.ui.following.videos.FollowedVideosViewModel
-import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.games.GamesFragmentDirections
 import com.github.andreyasadchy.xtra.ui.login.LoginActivity
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
 import com.github.andreyasadchy.xtra.ui.main.shell.FollowingSegment
-import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
-import com.github.andreyasadchy.xtra.ui.search.SearchPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
-import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.prefs
@@ -64,10 +45,9 @@ import kotlinx.coroutines.launch
 
 /**
  * The Following page in Compose (U2), in place of FollowPagerFragment / FollowMediaFragment and their four list
- * fragments. It stays a Fragment destination of the old navigation graph until U8 (plan 8), so every
- * findNavController call elsewhere keeps working and the page restores with the back stack.
+ * fragments.
  */
-class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, FollowingActions {
+class FollowingDestination(host: PageHost) : ComposePage(host), FollowingActions {
 
     private val viewModel: FollowingViewModel by viewModels { FollowingViewModel.Factory }
     private val streamsViewModel: FollowedStreamsViewModel by viewModels { FollowedStreamsViewModel.FollowedStreamsViewModelFactory }
@@ -79,8 +59,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
     private val scrollToTopRequests = mutableIntStateOf(0)
     private val refreshRequests = mutableIntStateOf(0)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onCreate() {
         // the saved sorts, read the same way the v0.1 list fragments did before their first load
         lifecycleScope.launch {
             if (videosViewModel.filter.value == null) {
@@ -94,7 +73,8 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    @Composable
+    override fun Content() {
         val context = requireContext()
         val prefs = context.prefs()
         val gqlToken = TwitchApiHelper.getGQLHeaders(context, true)[C.HEADER_TOKEN]
@@ -112,83 +92,75 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
             compactStreams = prefs.getString(C.COMPACT_STREAMS, "disabled") != "disabled",
             usePositions = prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true),
         )
-        val shell = (activity as? ShellHost)?.shell
-        return ComposeView(context).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                LagoonTheme {
-                    val segmentKey by viewModel.segment.collectAsState()
-                    val selected = segmentKey?.let { FollowingSegment.of(it) }?.takeIf { it in segments } ?: defaultSegment
-                    val streams = streamsViewModel.flow.collectAsLazyPagingItems()
-                    val videosFilter by videosViewModel.filter.collectAsState()
-                    val videos = (if (FollowingSegment.Videos in segments && videosFilter != null) videosViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
-                    val channelsFilter by channelsViewModel.filter.collectAsState()
-                    val channels = (if (channelsFilter != null) channelsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
-                    val games = gamesViewModel.flow.collectAsLazyPagingItems()
-                    val recentlyLive = viewModel.recentlyLive.collectAsLazyPagingItems()
-                    val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
-                    val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
-                    val toast = rememberToastHostState()
-                    val online by mainViewModel.isNetworkAvailable.collectAsState()
-                    LaunchedEffect(refreshRequests.intValue) {
-                        if (refreshRequests.intValue > 0) {
-                            streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
-                        }
+        val segmentKey by viewModel.segment.collectAsState()
+        val selected = segmentKey?.let { FollowingSegment.of(it) }?.takeIf { it in segments } ?: defaultSegment
+        val streams = streamsViewModel.flow.collectAsLazyPagingItems()
+        val videosFilter by videosViewModel.filter.collectAsState()
+        val videos = (if (FollowingSegment.Videos in segments && videosFilter != null) videosViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val channelsFilter by channelsViewModel.filter.collectAsState()
+        val channels = (if (channelsFilter != null) channelsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val games = gamesViewModel.flow.collectAsLazyPagingItems()
+        val recentlyLive = viewModel.recentlyLive.collectAsLazyPagingItems()
+        val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
+        val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
+        val toast = rememberToastHostState()
+        val online by mainViewModel.isNetworkAvailable.collectAsState()
+        LaunchedEffect(refreshRequests.intValue) {
+            if (refreshRequests.intValue > 0) {
+                streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
+            }
+        }
+        LaunchedEffect(Unit) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    FollowingViewModel.Event.Unfollowed -> {
+                        refreshRequests.intValue++
+                        lastUnfollowedName?.let { toast.show(getString(R.string.following_unfollowed, it)) }
                     }
-                    LaunchedEffect(Unit) {
-                        viewModel.events.collect { event ->
-                            when (event) {
-                                FollowingViewModel.Event.Unfollowed -> {
-                                    refreshRequests.intValue++
-                                    lastUnfollowedName?.let { toast.show(getString(R.string.following_unfollowed, it)) }
-                                }
-                                is FollowingViewModel.Event.UnfollowFailed -> toast.show(getString(R.string.following_unfollow_failed, event.message ?: ""))
-                                FollowingViewModel.Event.NeedsIntegrity -> (activity as? MainActivity)?.getNewIntegrityToken(CALLBACK_UNFOLLOW, childFragmentManager)
-                            }
-                        }
-                    }
-                    // v0.1 retried the lists when the connection came back (BaseNetworkFragment.onNetworkRestored)
-                    LaunchedEffect(Unit) {
-                        // the followed lists turn failed requests into empty pages, so reload them rather than retry
-                        var wasOnline = mainViewModel.isNetworkAvailable.value ?: hasValidatedNetwork()
-                        mainViewModel.isNetworkAvailable.collectLatest { online ->
-                            if (online == true && !wasOnline) {
-                                streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
-                            }
-                            if (online != null) wasOnline = online
-                        }
-                    }
-                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                    val bottomPadding = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
-                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
-                    FollowingScreen(
-                        segments = segments,
-                        selected = selected,
-                        onSelectSegment = { viewModel.selectSegment(it.key) },
-                        account = account,
-                        lists = FollowingLists(
-                            streams = streams,
-                            videos = if (FollowingSegment.Videos in segments) videos else null,
-                            channels = channels,
-                            games = games,
-                            recentlyLive = recentlyLive,
-                        ),
-                        options = options,
-                        videoSort = VideoSortChoice(videosViewModel.sort, videosViewModel.type),
-                        channelSort = ChannelSortChoice(channelsViewModel.sort, channelsViewModel.order),
-                        videoPositions = positions.associate { it.id to it.position },
-                        bookmarkedVideoIds = bookmarks.mapNotNull { it.videoId }.toSet(),
-                        actions = this@FollowingFragment,
-                        bottomPadding = bottomPadding,
-                        navScroll = shell?.hideOnScroll?.nestedScrollConnection,
-                        scrollToTopRequests = scrollToTopRequests.intValue,
-                        toast = toast,
-                        // MainActivity only fills isNetworkAvailable once the network callback fires
-                        offline = online == false || (online == null && !hasValidatedNetwork()),
-                    )
-                    }
+                    is FollowingViewModel.Event.UnfollowFailed -> toast.show(getString(R.string.following_unfollow_failed, event.message ?: ""))
+                    FollowingViewModel.Event.NeedsIntegrity -> activity.getNewIntegrityToken(CALLBACK_UNFOLLOW, childFragmentManager)
                 }
             }
+        }
+        // v0.1 retried the lists when the connection came back (BaseNetworkFragment.onNetworkRestored)
+        LaunchedEffect(Unit) {
+            // the followed lists turn failed requests into empty pages, so reload them rather than retry
+            var wasOnline = mainViewModel.isNetworkAvailable.value ?: hasValidatedNetwork()
+            mainViewModel.isNetworkAvailable.collectLatest { online ->
+                if (online == true && !wasOnline) {
+                    streams.refresh(); videos.refresh(); channels.refresh(); games.refresh(); recentlyLive.refresh()
+                }
+                if (online != null) wasOnline = online
+            }
+        }
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottomPadding = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+        CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+        FollowingScreen(
+            segments = segments,
+            selected = selected,
+            onSelectSegment = { viewModel.selectSegment(it.key) },
+            account = account,
+            lists = FollowingLists(
+                streams = streams,
+                videos = if (FollowingSegment.Videos in segments) videos else null,
+                channels = channels,
+                games = games,
+                recentlyLive = recentlyLive,
+            ),
+            options = options,
+            videoSort = VideoSortChoice(videosViewModel.sort, videosViewModel.type),
+            channelSort = ChannelSortChoice(channelsViewModel.sort, channelsViewModel.order),
+            videoPositions = positions.associate { it.id to it.position },
+            bookmarkedVideoIds = bookmarks.mapNotNull { it.videoId }.toSet(),
+            actions = this@FollowingDestination,
+            bottomPadding = bottomPadding,
+            navScroll = shell?.hideOnScroll?.nestedScrollConnection,
+            scrollToTopRequests = scrollToTopRequests.intValue,
+            toast = toast,
+            // MainActivity only fills isNetworkAvailable once the network callback fires
+            offline = online == false || (online == null && !hasValidatedNetwork()),
+        )
         }
     }
 
@@ -215,60 +187,46 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
     // FollowingActions: what the v0.1 fragments, adapters and toolbar menu did, call for call
 
     override fun search() {
-        findNavController().navigate(SearchPagerFragmentDirections.actionGlobalSearchPagerFragment())
+        nav.openSearch()
     }
 
     override fun settings() {
-        val activity = requireActivity() as MainActivity
+        val activity = requireActivity()
         activity.settingsResultLauncher?.launch(Intent(activity, SettingsActivity::class.java))
     }
 
     override fun logIn() {
-        val activity = requireActivity() as MainActivity
+        val activity = requireActivity()
         activity.loginResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
     }
 
     override fun logOut() {
-        val activity = requireActivity() as MainActivity
+        val activity = requireActivity()
         activity.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
     }
 
     override fun openStream(stream: Stream) {
-        (requireActivity() as MainActivity).startStream(stream)
+        activity.startStream(stream)
     }
 
     override fun listen(stream: Stream) {
-        (requireActivity() as MainActivity).startStream(stream, audioOnly = true)
+        activity.startStream(stream, audioOnly = true)
     }
 
     override fun openChannel(id: String?, login: String?, name: String?, image: String?, streamId: String?) {
-        findNavController().navigate(
-            ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(
-                channelId = id,
-                channelLogin = login,
-                channelName = name,
-                channelImage = image,
-                streamId = streamId,
-            )
-        )
+        nav.openChannel(id = id, login = login, name = name, image = image, streamId = streamId)
     }
 
     override fun openGame(id: String?, slug: String?, name: String?, updateLocal: Boolean) {
-        findNavController().navigate(
-            if (requireContext().prefs().getBoolean(C.UI_GAME_PAGER, true)) {
-                GamePagerFragmentDirections.actionGlobalGamePagerFragment(gameId = id, gameSlug = slug, gameName = name, updateLocal = updateLocal)
-            } else {
-                GameMediaFragmentDirections.actionGlobalGameMediaFragment(gameId = id, gameSlug = slug, gameName = name, updateLocal = updateLocal)
-            }
-        )
+        nav.openGame(id = id, slug = slug, name = name, updateLocal = updateLocal)
     }
 
     override fun openStreamTag(tag: String) {
-        findNavController().navigate(TopStreamsFragmentDirections.actionGlobalTopFragment(tags = arrayOf(tag)))
+        nav.openTopStreams(tags = listOf(tag))
     }
 
     override fun openGameTag(tag: Tag) {
-        findNavController().navigate(GamesFragmentDirections.actionGlobalGamesFragment(tags = arrayOf(tag)))
+        nav.openGames(listOf(tag))
     }
 
     /** Same as "Download" on a channel page that is live: the download dialog loads the stream's qualities itself. */
@@ -307,7 +265,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
         val duration = video.durationSeconds
         val startFromBeginning = position != null && duration != null && duration > 0 && position >= duration * 1000L &&
                 video.thumbnail.let { it != null && !it.startsWith("https://vod-secure.twitch.tv/_404/404_processing") }
-        (requireActivity() as MainActivity).startVideo(video, if (startFromBeginning) 0 else position, startFromBeginning)
+        activity.startVideo(video, if (startFromBeginning) 0 else position, startFromBeginning)
     }
 
     override fun download(video: Video) {
@@ -371,7 +329,7 @@ class FollowingFragment : Fragment(), Scrollable, IntegrityDialog.Listener, Foll
     }
 
     override fun integrityCheckFailed() {
-        (activity as? MainActivity)?.getNewIntegrityToken(CALLBACK_REFRESH, childFragmentManager)
+        activity.getNewIntegrityToken(CALLBACK_REFRESH, childFragmentManager)
     }
 
     private companion object {

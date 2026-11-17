@@ -1,13 +1,14 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -17,16 +18,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentContainerView
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.navArgs
+import androidx.compose.ui.unit.dp
+import androidx.fragment.compose.AndroidFragment
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.browse.FilterKind
@@ -37,17 +32,15 @@ import com.github.andreyasadchy.xtra.ui.channel.clips.ChannelClipsViewModel
 import com.github.andreyasadchy.xtra.ui.channel.suggestions.ChannelSuggestionsViewModel
 import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosViewModel
 import com.github.andreyasadchy.xtra.ui.chat.ChatFragment
-import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
-import com.github.andreyasadchy.xtra.ui.common.Scrollable
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
 import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
-import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
 import com.github.andreyasadchy.xtra.ui.following.displayName
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
-import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
+import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
+import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.prefs
@@ -58,13 +51,11 @@ import kotlin.time.Instant
 
 /**
  * A channel's page in Compose (U5), in place of the v0.1 ChannelPagerFragment, its view pager and its four list
- * fragments. It stays a Fragment destination of the old navigation graph until U8 (plan 8), so links, deep links and
- * the back stack work as before. The chat segment is still the old ChatFragment (U7), placed in a container over
- * the page under the pinned tabs.
+ * fragments. The chat segment is the chat fragment (U7), hosted over the page under the pinned tabs.
  */
-class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
+class ChannelDestination(host: PageHost) : ComposePage(host) {
 
-    private val args: ChannelPagerFragmentArgs by navArgs()
+    private val args = ChannelArgs.fromBundle(arguments)
     private val pagerViewModel: ChannelPagerViewModel by viewModels { ChannelPagerViewModel.Companion.ChannelPagerViewModelFactory }
     private val videosViewModel: ChannelVideosViewModel by viewModels { ChannelVideosViewModel.Companion.ChannelVideosViewModelFactory }
     private val clipsViewModel: ChannelClipsViewModel by viewModels { ChannelClipsViewModel.Companion.ChannelClipsViewModelFactory }
@@ -73,42 +64,56 @@ class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
     private val mainViewModel: MainViewModel by activityViewModels { MainViewModel.Companion.MainViewModelFactory }
     private val scrollToTopRequests = mutableIntStateOf(0)
     private val page by lazy { ChannelPage(this, args, pagerViewModel, videosViewModel, clipsViewModel, aboutViewModel) }
-    private var chatContainer: FragmentContainerView? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onCreate() {
         page.start()
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val context = requireContext()
-        val prefs = context.prefs()
-        val shell = (activity as? ShellHost)?.shell
-        val root = FrameLayout(context)
-        val compose = ComposeView(context).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                LagoonTheme {
-                    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                    val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
-                    CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
-                        Content(prefs, bottom, shell?.hideOnScroll?.nestedScrollConnection)
-                    }
+    @Composable
+    override fun Content() {
+        val prefs = remember { requireContext().prefs() }
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottom = shell?.let { with(LocalDensity.current) { it.bottomBarHeightPx.toDp() } }?.takeIf { it.value > 0f } ?: navBottom
+        // the chat area the page leaves under its pinned tabs; the chat stays alive once opened, hidden while another segment shows
+        var chatArea by remember { mutableStateOf<ChatArea?>(null) }
+        var chatOpened by rememberSaveable { mutableStateOf(false) }
+        Box(Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalGlass provides (shell?.pageGlass() ?: GlassContext.Solid)) {
+                Page(prefs, bottom, shell?.hideOnScroll?.nestedScrollConnection) { area ->
+                    chatArea = area
+                    if (area.visible) chatOpened = true
                 }
             }
+            val area = chatArea
+            if (chatOpened) {
+                val density = LocalDensity.current
+                val chatArgs = remember {
+                    ChatFragment.newInstance(
+                        channelId = page.channelId,
+                        channelLogin = page.channelLogin,
+                        channelName = page.channelName,
+                        streamId = pagerViewModel.stream.value?.id ?: args.streamId,
+                    ).arguments ?: Bundle()
+                }
+                AndroidFragment<ChatFragment>(
+                    modifier = if (area != null && area.visible) {
+                        with(density) { Modifier.fillMaxSize().padding(start = area.left.toDp(), top = area.top.toDp(), bottom = area.bottom.toDp()) }
+                    } else {
+                        Modifier.size(0.dp)
+                    },
+                    arguments = chatArgs,
+                )
+            }
         }
-        root.addView(compose, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        val chat = FragmentContainerView(context).apply {
-            id = R.id.channelChat
-            isVisible = false
-        }
-        root.addView(chat, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        chatContainer = chat
-        return root
     }
 
-    @androidx.compose.runtime.Composable
-    private fun Content(prefs: android.content.SharedPreferences, bottomPadding: androidx.compose.ui.unit.Dp, navScroll: androidx.compose.ui.input.nestedscroll.NestedScrollConnection?) {
+    @Composable
+    private fun Page(
+        prefs: android.content.SharedPreferences,
+        bottomPadding: androidx.compose.ui.unit.Dp,
+        navScroll: androidx.compose.ui.input.nestedscroll.NestedScrollConnection?,
+        onChatArea: (ChatArea) -> Unit,
+    ) {
         val context = requireContext()
         val segmentsPref = remember { prefs.getString(C.UI_CHANNEL_TABS, null) }
         val segments = remember { ChannelSegment.list(segmentsPref) }
@@ -151,10 +156,10 @@ class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
         page.refreshLists = { suggestions.refresh(); videos.refresh(); clips.refresh() }
 
         LaunchedEffect(Unit) {
-            pagerViewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
+            pagerViewModel.integrity.collect { activity.getNewIntegrityToken(it, childFragmentManager) }
         }
         LaunchedEffect(Unit) {
-            aboutViewModel.integrity.collect { (activity as? MainActivity)?.getNewIntegrityToken(it, childFragmentManager) }
+            aboutViewModel.integrity.collect { activity.getNewIntegrityToken(it, childFragmentManager) }
         }
         LaunchedEffect(user) { if (user != null) page.onUserLoaded() }
         LaunchedEffect(Unit) {
@@ -261,32 +266,8 @@ class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
             scrollToTopRequests = scrollToTopRequests.intValue,
             toast = toast,
             offline = online == false || (online == null && !context.hasValidatedNetwork()),
-            onChatArea = ::placeChat,
+            onChatArea = onChatArea,
         )
-    }
-
-    /** Shows the old chat in the area the Compose page left for it, creating it the first time. */
-    private fun placeChat(area: ChatArea) {
-        val container = chatContainer ?: return
-        container.updateLayoutParams<FrameLayout.LayoutParams> {
-            leftMargin = area.left
-            topMargin = area.top
-            bottomMargin = area.bottom
-        }
-        container.isVisible = area.visible
-        if (area.visible && childFragmentManager.findFragmentById(R.id.channelChat) == null && !childFragmentManager.isStateSaved) {
-            childFragmentManager.beginTransaction()
-                .replace(
-                    R.id.channelChat,
-                    ChatFragment.newInstance(
-                        channelId = page.channelId,
-                        channelLogin = page.channelLogin,
-                        channelName = page.channelName,
-                        streamId = pagerViewModel.stream.value?.id ?: args.streamId,
-                    )
-                )
-                .commitNow()
-        }
     }
 
     override fun scrollToTop() {
@@ -295,10 +276,5 @@ class ChannelPagerFragment : Fragment(), Scrollable, IntegrityDialog.Listener {
 
     override fun onIntegrityTokenLoaded(callback: String?) {
         page.onIntegrityTokenLoaded(callback)
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        chatContainer = null
     }
 }

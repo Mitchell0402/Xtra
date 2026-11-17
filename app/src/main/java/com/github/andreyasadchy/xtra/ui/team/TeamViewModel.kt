@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.team
 
+import com.github.andreyasadchy.xtra.ui.main.nav.TeamArgs
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -31,7 +32,7 @@ class TeamViewModel(
 
     val integrity = MutableSharedFlow<String?>()
 
-    private val args = TeamFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = TeamArgs.fromSavedStateHandle(savedStateHandle)
     val team = MutableStateFlow<Team?>(null)
 
     private var isLoading = false

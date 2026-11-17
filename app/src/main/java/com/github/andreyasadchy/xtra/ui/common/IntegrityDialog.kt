@@ -73,7 +73,7 @@ class IntegrityDialog : DialogFragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        listener = parentFragment as? Listener
+        listener = parentFragment as? Listener ?: activity as? Listener
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {

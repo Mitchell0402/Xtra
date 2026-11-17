@@ -26,11 +26,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.fragment.findNavController
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.model.chat.ChatMessage
 import com.github.andreyasadchy.xtra.model.ui.Stream
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.chat.ChatViewModel.Companion.ChatViewModelFactory
 import com.github.andreyasadchy.xtra.ui.chat.ImageClickedViewModel.Companion.ImageClickedViewModelFactory
 import com.github.andreyasadchy.xtra.ui.chat.MessageClickedViewModel.Companion.MessageClickedViewModelFactory
@@ -38,6 +36,7 @@ import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
+import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.ui.player.PlayerFragment
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
@@ -159,7 +158,7 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
         }
         if (parentFragment !is PlayerFragment) {
             ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-                if (activity?.findViewById<LinearLayout>(R.id.navBarContainer)?.isVisible == false) {
+                if ((activity as? ShellHost)?.shell?.hasNavigation == false) {
                     val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
                     view.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                         bottomMargin = insets.bottom
@@ -772,9 +771,7 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
 
     override fun viewChannel(id: String?, login: String?, name: String?, image: String?) {
         state.sheet = null
-        findNavController().navigate(
-            ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelId = id, channelLogin = login, channelName = name, channelImage = image)
-        )
+        (activity as? MainActivity)?.nav?.openChannel(id = id, login = login, name = name, image = image)
         (parentFragment as? PlayerFragment)?.minimize()
     }
 

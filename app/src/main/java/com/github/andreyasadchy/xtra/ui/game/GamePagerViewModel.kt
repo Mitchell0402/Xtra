@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.game
 
+import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
 import android.annotation.SuppressLint
 import android.net.http.HttpEngine
 import androidx.lifecycle.SavedStateHandle
@@ -47,7 +48,7 @@ class GamePagerViewModel(
 
     val integrity = MutableSharedFlow<String?>()
 
-    private val args = GamePagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = GameArgs.fromSavedStateHandle(savedStateHandle)
     private val _isFollowing = MutableStateFlow<Boolean?>(null)
     val isFollowing: StateFlow<Boolean?> = _isFollowing
     val follow = MutableStateFlow<Pair<Boolean, String?>?>(null)

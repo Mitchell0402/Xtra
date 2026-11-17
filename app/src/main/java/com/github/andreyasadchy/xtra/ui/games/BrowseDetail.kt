@@ -30,7 +30,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -46,7 +46,7 @@ data class GameRef(
 ) : Parcelable {
     val key: String get() = id ?: name.orEmpty()
 
-    fun args() = GamePagerFragmentArgs(gameId = id, gameSlug = slug, gameName = name, boxArt = boxArt)
+    fun args() = GameArgs(gameId = id, gameSlug = slug, gameName = name, boxArt = boxArt)
 }
 
 /**

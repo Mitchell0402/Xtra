@@ -29,11 +29,11 @@ import com.github.andreyasadchy.xtra.ui.design.components.NavItem
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 
 /**
- * State of the app shell (plan 7.1 and 8): the floating navigation around the legacy fragment navigation host.
+ * State of the app shell (plan 7.1 and 8): the floating navigation around the pages.
  *
- * MainActivity's layout stays the activity's root, so fragments and the player restore exactly as before (U0 spike 3,
- * option 2); the navigation is a ComposeView inside it, under the player container. Compose pages read this state
- * through [ShellHost] to draw under the floating pill and to hide it while scrolling.
+ * Since U8 the shell, the navigation and every page are one composition (MainShell); the player container stays a
+ * view above it. Pages read this state to draw under the floating pill and to hide it while scrolling; the player
+ * reads the height of the navigation to place the mini player above it.
  */
 @Stable
 class ShellState(val tabs: List<ShellTab>) {
@@ -51,12 +51,15 @@ class ShellState(val tabs: List<ShellTab>) {
     /** The player covers the window: pages leave the back gesture to it (U4, Browse's game page). */
     var playerMaximized by mutableStateOf(false)
 
-    /** The current page is an old Fragment page: its content stops above the pill, so the pill never hides. */
-    var legacyPage by mutableStateOf(true)
+    /** v0.1 hid the whole navigation when every tab was switched off. */
+    var hasNavigation by mutableStateOf(true)
+
+    /** The player fills a picture-in-picture window: the navigation stays out of it (keeping its place). */
+    var inPictureInPicture by mutableStateOf(false)
 
     val hideOnScroll = HideOnScrollState()
 
-    val navLocked: Boolean get() = miniPlayer || legacyPage
+    val navLocked: Boolean get() = miniPlayer
 
     /** The backdrop Compose pages register and the pill blurs (glass plan section 6): one per activity. */
     val hazeState = lagoonHazeState()
@@ -78,7 +81,7 @@ class ShellState(val tabs: List<ShellTab>) {
     fun pageGlass(): GlassContext = GlassContext(hazeState, blurAllowed && glassWindowAllowsBlur())
 }
 
-/** Implemented by the activity that hosts the shell, so Compose pages can reach it from their fragment. */
+/** Implemented by the activity that hosts the shell, so the player can reach it from its fragment. */
 interface ShellHost {
     val shell: ShellState?
 }
@@ -117,8 +120,7 @@ private fun SyncLock(state: ShellState) {
 
 /**
  * The phone navigation: the floating pill at the bottom. While the rail shows, only the gesture bar's height is left
- * here: the old pages and the mini player read this area's height as "what covers the bottom of the window", and a
- * hidden (gone) view keeps reporting its last height.
+ * here: pages and the mini player read this area's height as "what covers the bottom of the window".
  */
 @Composable
 fun ShellBottomBar(state: ShellState, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -127,8 +129,7 @@ fun ShellBottomBar(state: ShellState, onSelect: (Int) -> Unit, modifier: Modifie
         Spacer(modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
         return
     }
-    // the pill blurs only over a Compose page: old pages end above it, so there is nothing to blur (plan section 6)
-    val glass = GlassContext(state.hazeState, state.blurAllowed && !state.legacyPage && glassWindowAllowsBlur())
+    val glass = GlassContext(state.hazeState, state.blurAllowed && glassWindowAllowsBlur())
     CompositionLocalProvider(LocalGlass provides glass) {
         FloatingNavBar(
             items = navItems(state.tabs),

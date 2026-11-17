@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.util.updateUrl
 import android.Manifest
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
@@ -213,7 +214,7 @@ class SettingsActivity : AppCompatActivity() {
                     this@SettingsActivity.messages.tryEmit(getString(R.string.st_checking_updates))
                     viewModel.checkUpdates(
                         prefs().getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                        prefs().getString(C.UPDATE_URL, null) ?: DEFAULT_UPDATE_URL,
+                        prefs().updateUrl(),
                         tokenPrefs().getLong(C.UPDATE_LAST_CHECKED, 0),
                     )
                 }
@@ -352,7 +353,6 @@ class SettingsActivity : AppCompatActivity() {
         private const val KEY_WAS_LOGGED_IN = "was_logged_in"
         private const val KEY_ACCOUNT_CHANGED = "account_changed"
         const val EXTRA_ACCOUNT_CHANGED = "account_changed"
-        const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/Mitchell0402/Xtra/releases/latest"
         const val PROJECT_URL = "https://github.com/Mitchell0402/Xtra"
     }
 }

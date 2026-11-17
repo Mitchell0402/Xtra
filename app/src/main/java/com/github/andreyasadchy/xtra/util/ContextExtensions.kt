@@ -49,3 +49,13 @@ fun Activity.applyTheme() {
 
 /** The one plain dialog left (the player's debug playlist tags). */
 fun Context.getAlertDialogBuilder(): AlertDialog.Builder = MaterialAlertDialogBuilder(this)
+/** Lagoon's own releases: the in-app update check reads the latest one (needs an .apk asset). */
+const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/Mitchell0402/Xtra/releases/latest"
+
+/**
+ * The update check's URL. v0.1's update settings page carried the upstream project's address as its default and
+ * stored it as soon as the page was opened; that address never offers a Lagoon build, so it counts as unset and the
+ * check goes to Lagoon's releases (U8, plan 10.7). The stored value itself is left alone (plan 10.1).
+ */
+fun SharedPreferences.updateUrl(): String =
+    getString(C.UPDATE_URL, null)?.takeIf { it.isNotBlank() && !it.contains("/repos/crackededed/", ignoreCase = true) } ?: DEFAULT_UPDATE_URL

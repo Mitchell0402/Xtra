@@ -74,4 +74,5 @@
     <string name="pl_forward">Fast forward</string>
     <string name="pl_chat_overlay_setting">Chat over the video in landscape</string>
     <string name="pl_chat_overlay_setting_desc">On phones in landscape the chat lies over the video instead of beside it</string>
+    <string name="pl_unlisted_vod_title">VOD · %s</string>
 </resources>

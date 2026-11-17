@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.player
 
+import com.github.andreyasadchy.xtra.ui.settings.model.PageId
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -522,7 +523,15 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                     viewModel.unlistedVideoQualities.collectLatest { qualities ->
                         if (qualities != null) {
                             if (qualities.isNotBlank()) {
-                                (requireActivity() as MainActivity).startVideo(Video(), 0, qualities = qualities)
+                                // U9 C3: carry the channel over and mark the title, so the page does not look empty or like the live stream
+                                val b = backend
+                                val video = Video(
+                                    channelId = b?.channelId, channelLogin = b?.channelLogin ?: state.channelLogin,
+                                    channelName = b?.channelName ?: state.channelName, channelImageURL = b?.channelImage ?: state.channelImage,
+                                    gameId = b?.gameId, gameName = b?.gameName,
+                                    title = getString(R.string.pl_unlisted_vod_title, b?.title ?: state.title ?: ""),
+                                )
+                                (requireActivity() as MainActivity).startVideo(video, 0, qualities = qualities)
                             } else {
                                 Toast.makeText(requireContext(), R.string.video_not_found, Toast.LENGTH_SHORT).show()
                             }
@@ -918,7 +927,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     }
 
     override fun openAdBlockSettings() {
-        startActivity(Intent(requireContext(), SettingsActivity::class.java))
+        // U9 C4: straight to Settings > Ad blocking; back returns to the player
+        startActivity(Intent(requireContext(), SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_PAGE, PageId.AdBlock.name))
     }
 
     // --- PlayerSheetSource ---

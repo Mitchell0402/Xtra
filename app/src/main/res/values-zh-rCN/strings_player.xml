@@ -74,4 +74,5 @@
     <string name="pl_forward">快进</string>
     <string name="pl_chat_overlay_setting">横屏时聊天叠在画面上</string>
     <string name="pl_chat_overlay_setting_desc">手机横屏时聊天盖在画面上，而不是挤在旁边</string>
+    <string name="pl_unlisted_vod_title">回放 · %s</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.settings.model.PageId
+import androidx.compose.runtime.remember
 import com.github.andreyasadchy.xtra.util.updateUrl
 import android.Manifest
 import android.app.admin.DeviceAdminReceiver
@@ -143,7 +145,8 @@ class SettingsActivity : AppCompatActivity() {
         val host = Host(environment(), lists)
         setContent {
             LagoonTheme {
-                val nav = rememberSettingsNav()
+                val initialPage = remember { intent.getStringExtra(EXTRA_PAGE)?.let { name -> PageId.entries.find { it.name == name } } }
+                val nav = rememberSettingsNav(initialPage).also { it.exitAtHome = initialPage != null }
                 SettingsApp(store, host, nav)
                 UpdatePrompt(
                     updatePrompt,
@@ -350,6 +353,8 @@ class SettingsActivity : AppCompatActivity() {
 
     companion object {
         const val KEY_CHANGED = "changed"
+        /** A [PageId] name: open settings on that page; back from it returns to the caller (U9 C4). */
+        const val EXTRA_PAGE = "page"
         private const val KEY_WAS_LOGGED_IN = "was_logged_in"
         private const val KEY_ACCOUNT_CHANGED = "account_changed"
         const val EXTRA_ACCOUNT_CHANGED = "account_changed"

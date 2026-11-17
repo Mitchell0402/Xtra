@@ -72,6 +72,11 @@ jobs:
     - uses: gradle/actions/setup-gradle@v6
       with:
         cache-provider: 'basic'
+    # U9 plan gate 1: no legacy Material / platform UI, every sub-screen registered in docs/ui-overhaul/u9/surfaces.md
+    - name: Legacy UI guard
+      run: |
+        python3 tools/ci/test_legacy_ui_guard.py
+        python3 tools/ci/legacy_ui_guard.py
     - name: Lint (fails on new errors; existing ones are in app/lint-baseline.xml)
       run: ./gradlew :app:lintDebug
     - name: Upload lint report

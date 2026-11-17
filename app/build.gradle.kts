@@ -100,6 +100,9 @@ android {
     lint {
         disable += "ContentDescription"
         error += "MissingTranslation"
+        // U9 plan 4.5 item 6: a manifest or layout naming a class that is not there (the one place a removed
+        // library would only show up at run time)
+        error += "MissingClass"
         // existing issues are recorded here; CI fails only on new ones
         baseline = file("lint-baseline.xml")
         checkReleaseBuilds = false

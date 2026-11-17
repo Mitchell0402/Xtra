@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -9,8 +10,6 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -22,13 +21,12 @@ import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.ui.browse.BrowseFilter
 import com.github.andreyasadchy.xtra.ui.browse.FilterKind
 import com.github.andreyasadchy.xtra.ui.browse.FilterSaves
-import com.github.andreyasadchy.xtra.ui.browse.FragmentBrowseActions
+import com.github.andreyasadchy.xtra.ui.browse.PageBrowseActions
 import com.github.andreyasadchy.xtra.ui.channel.about.ChannelAboutViewModel
 import com.github.andreyasadchy.xtra.ui.channel.clips.ChannelClipsViewModel
 import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosViewModel
 import com.github.andreyasadchy.xtra.ui.main.LiveNotificationWorker
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
-import com.github.andreyasadchy.xtra.ui.team.TeamFragmentDirections
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.prefs
@@ -39,18 +37,19 @@ import java.util.concurrent.TimeUnit
 
 /**
  * What v0.1's ChannelPagerFragment and its list fragments did on start, on sort changes, on follow, on notifications
- * and on the integrity check, call for call, for the Compose channel page (U5). The view models live in the fragment.
+ * and on the integrity check, call for call, for the Compose channel page (U5). The view models live in the page's
+ * navigation entry.
  */
 class ChannelPage(
-    private val fragment: ChannelPagerFragment,
-    val args: ChannelPagerFragmentArgs,
+    private val page: ComposePage,
+    val args: ChannelArgs,
     val pager: ChannelPagerViewModel,
     val videos: ChannelVideosViewModel,
     val clips: ChannelClipsViewModel,
     val about: ChannelAboutViewModel,
-) : FragmentBrowseActions(fragment), ChannelActions {
+) : PageBrowseActions(page), ChannelActions {
 
-    private val context get() = fragment.requireContext()
+    private val context get() = page.requireContext()
     private val prefs get() = context.prefs()
     private val followSetting get() = prefs.getString(C.UI_FOLLOW_BUTTON, "0")?.toIntOrNull() ?: 0
     private val networkLibrary get() = prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP)
@@ -68,7 +67,7 @@ class ChannelPage(
 
     /** v0.1's initialize() of the pager and of the videos, clips and about fragments. */
     fun start() {
-        fragment.lifecycleScope.launch {
+        page.lifecycleScope.launch {
             if (videos.filter.value == null) {
                 val saved = args.channelId?.let { videos.getChannelSort(it) } ?: videos.getChannelSort(ChannelFilterLogic.DEFAULT_ID)
                 val filter = ChannelFilterLogic.initialVideos(saved)
@@ -149,7 +148,7 @@ class ChannelPage(
             val notificationsEnabled = prefs.getBoolean(C.LIVE_NOTIFICATIONS_ENABLED, false)
             pager.enableNotifications(userId, args.channelId, followSetting, notificationsEnabled, networkLibrary, TwitchApiHelper.getGQLHeaders(context, true), enableIntegrity)
             if (!args.channelId.isNullOrBlank() && !notificationsEnabled) {
-                val activity = fragment.requireActivity()
+                val activity = page.activity
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 ) {
@@ -171,8 +170,7 @@ class ChannelPage(
 
     /** v0.1's "watch live" button: the loaded stream, or one built from the link before it loads. */
     override fun watchLive() {
-        val activity = fragment.requireActivity() as MainActivity
-        activity.startStream(
+        page.activity.startStream(
             pager.stream.value?.takeIf { it.viewerCount != null } ?: Stream(
                 id = args.streamId,
                 channelId = args.channelId,
@@ -188,7 +186,7 @@ class ChannelPage(
     }
 
     override fun openTeam(name: String) {
-        fragment.findNavController().navigate(TeamFragmentDirections.actionGlobalTeamFragment(teamName = name))
+        page.nav.openTeam(name)
     }
 
     /** About links and panel images open in the browser (v0.1: the same intent and the same message without one). */
@@ -214,7 +212,7 @@ class ChannelPage(
     /** v0.1's onChange of the two lists: reload when something changed, then save what was asked for, in order. */
     override fun applyFilter(kind: FilterKind, filter: BrowseFilter, saves: FilterSaves) {
         val id = args.channelId
-        fragment.lifecycleScope.launch {
+        page.lifecycleScope.launch {
             if (saves.forget && id != null) {
                 videos.getChannelSort(id)?.let { videos.deleteChannelSort(it) }
             }

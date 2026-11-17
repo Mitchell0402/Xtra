@@ -1,15 +1,17 @@
 package com.github.andreyasadchy.xtra.ui.main.shell
 
-import androidx.annotation.IdRes
-import com.github.andreyasadchy.xtra.R
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import com.github.andreyasadchy.xtra.ui.main.nav.BrowseRoute
+import com.github.andreyasadchy.xtra.ui.main.nav.FollowingRoute
+import com.github.andreyasadchy.xtra.ui.main.nav.SavedRoute
 import com.github.andreyasadchy.xtra.util.C
 
 /**
  * One item of the shell navigation (plan 7.1: Following, Browse, Me). [key] is the key used by the stored tab list
- * setting (`ui_navigation_tab_list`, "key:default:enabled" per tab); [destinationId] is the legacy navigation graph
- * destination the item opens.
+ * setting (`ui_navigation_tab_list`, "key:default:enabled" per tab); [route] is the page the item opens.
  */
-data class ShellTab(val key: String, @param:IdRes val destinationId: Int)
+data class ShellTab(val key: String, val route: Any)
 
 /**
  * Reads the stored tab list settings. The setting keys, their format and their defaults are unchanged from v0.1
@@ -40,13 +42,13 @@ object ShellTabs {
     private fun List<String>.parts() = map { it.split(':') }
 
     /** The navigation items in the stored order, without disabled ones and without the Popular tab. */
-    fun tabs(pref: String?, savedPager: Boolean): List<ShellTab> =
+    fun tabs(pref: String?): List<ShellTab> =
         normalize(pref, C.DEFAULT_NAVIGATION_TAB_LIST).parts().mapNotNull { split ->
             if (split.getOrNull(2) == "0") return@mapNotNull null
             when (split[0]) {
-                KEY_BROWSE -> ShellTab(KEY_BROWSE, R.id.rootGamesFragment)
-                KEY_FOLLOWING -> ShellTab(KEY_FOLLOWING, R.id.followPagerFragment)
-                KEY_MINE -> ShellTab(KEY_MINE, if (savedPager) R.id.savedPagerFragment else R.id.savedMediaFragment)
+                KEY_BROWSE -> ShellTab(KEY_BROWSE, BrowseRoute)
+                KEY_FOLLOWING -> ShellTab(KEY_FOLLOWING, FollowingRoute)
+                KEY_MINE -> ShellTab(KEY_MINE, SavedRoute)
                 else -> null
             }
         }
@@ -56,21 +58,20 @@ object ShellTabs {
         normalize(pref, C.DEFAULT_NAVIGATION_TAB_LIST).parts().any { it.getOrNull(2) != "0" }
 
     /** The page the app opens on: the tab marked as default, Following when none is (there is no Popular tab). */
-    @IdRes
-    fun startDestination(pref: String?, savedPager: Boolean): Int {
+    fun startDestination(pref: String?): Any {
         val defaultKey = normalize(pref, C.DEFAULT_NAVIGATION_TAB_LIST).parts().find { it.getOrNull(1) != "0" }?.get(0) ?: KEY_FOLLOWING
         return when (defaultKey) {
-            KEY_BROWSE -> R.id.rootGamesFragment
-            KEY_MINE -> if (savedPager) R.id.savedPagerFragment else R.id.savedMediaFragment
-            else -> R.id.followPagerFragment
+            KEY_BROWSE -> BrowseRoute
+            KEY_MINE -> SavedRoute
+            else -> FollowingRoute
         }
     }
 
-    /** Which tab a destination belongs to, or -1 for pages that are not a tab root. */
-    fun indexOf(tabs: List<ShellTab>, @IdRes destinationId: Int): Int {
-        val id = if (destinationId == R.id.followMediaFragment) R.id.followPagerFragment else destinationId
-        return tabs.indexOfFirst { it.destinationId == id }
-    }
+    /** Which tab a route belongs to, or -1 for pages that are not a tab root. */
+    fun indexOf(tabs: List<ShellTab>, route: Any): Int = tabs.indexOfFirst { it.route == route }
+
+    /** Which tab a navigation destination belongs to, or -1 for pages that are not a tab root. */
+    fun indexOf(tabs: List<ShellTab>, destination: NavDestination): Int = tabs.indexOfFirst { destination.hasRoute(it.route::class) }
 }
 
 /** The segments of the Following page (setting `ui_following_tabs`, same format as the navigation list). */

@@ -14,7 +14,7 @@ import androidx.paging.cachedIn
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.datasource.ChannelSuggestionsDataSource
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.prefs
@@ -25,7 +25,7 @@ class ChannelSuggestionsViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val args = ChannelPagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = ChannelArgs.fromSavedStateHandle(savedStateHandle)
 
     val flow = Pager(
         PagingConfig(pageSize = 30, prefetchDistance = 10, initialLoadSize = 30)

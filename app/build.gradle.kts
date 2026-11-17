@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.navigation.safeargs)
     alias(libs.plugins.apollo)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.roborazzi)
@@ -51,8 +50,8 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 9
-        versionName = "0.1"
+        versionCode = 10
+        versionName = "0.2"
     }
 
     buildTypes {
@@ -81,6 +80,13 @@ android {
             initWith(getByName("qa"))
             applicationIdSuffix = ".bench"
             versionNameSuffix = "-BENCH"
+            // -Plagoon.profiling: the same build without R8, so a baseline profile recorded on it names the source
+            // classes and methods (a profile recorded on the R8 build names merged and inlined classes that the
+            // release build's R8 cannot map back, U8)
+            if (providers.gradleProperty("lagoon.profiling").isPresent) {
+                isMinifyEnabled = false
+                isShrinkResources = false
+            }
         }
     }
     buildFeatures {
@@ -131,22 +137,16 @@ dependencies {
 
     implementation(libs.activity)
     implementation(libs.appcompat)
-    implementation(libs.constraintlayout)
-    implementation(libs.coordinatorlayout)
     implementation(libs.core)
     implementation(libs.fragment)
     implementation(libs.lifecycle.service)
     implementation(libs.lifecycle.viewmodel)
-    implementation(libs.navigation.fragment)
-    implementation(libs.navigation.ui)
+    implementation(libs.navigation.compose)
+    implementation(libs.fragment.compose)
     implementation(libs.paging.runtime)
-    implementation(libs.preference.ktx)
-    implementation(libs.recyclerview)
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     implementation(libs.room.paging)
-    implementation(libs.swiperefreshlayout)
-    implementation(libs.viewpager2)
     implementation(libs.webkit)
     implementation(libs.work.runtime)
 

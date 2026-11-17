@@ -21,7 +21,7 @@ import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.datasource.GameClipsDataSource
 import com.github.andreyasadchy.xtra.ui.common.VideoFilters
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.prefs
@@ -39,7 +39,7 @@ class GameClipsViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val args = GamePagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = GameArgs.fromSavedStateHandle(savedStateHandle)
     val filter = MutableStateFlow<Filter?>(null)
     val sortText = MutableStateFlow<CharSequence?>(null)
     val filtersText = MutableStateFlow<CharSequence?>(null)

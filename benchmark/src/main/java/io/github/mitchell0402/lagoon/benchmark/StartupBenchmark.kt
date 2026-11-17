@@ -24,6 +24,6 @@ class StartupBenchmark {
         iterations = 10,
     ) {
         pressHome()
-        startActivityAndWait()
+        startMainActivity()
     }
 }

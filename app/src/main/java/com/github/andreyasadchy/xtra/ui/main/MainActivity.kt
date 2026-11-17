@@ -24,25 +24,18 @@ import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.OptIn
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.core.content.res.use
 import androidx.core.net.toUri
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.core.os.LocaleListCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
-import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
@@ -53,10 +46,6 @@ import androidx.lifecycle.withStarted
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavOptions
-import androidx.navigation.fragment.NavHostFragment
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -69,22 +58,18 @@ import com.github.andreyasadchy.xtra.model.ui.Clip
 import com.github.andreyasadchy.xtra.model.ui.OfflineVideo
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
 import com.github.andreyasadchy.xtra.ui.settings.UpdatePrompt
 import com.github.andreyasadchy.xtra.ui.settings.UpdatePromptState
-import com.github.andreyasadchy.xtra.ui.common.Scrollable
 import com.github.andreyasadchy.xtra.ui.download.StreamDownloadService
 import com.github.andreyasadchy.xtra.ui.download.VideoDownloadService
-import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
-import com.github.andreyasadchy.xtra.ui.games.GamesFragmentDirections
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel.Companion.MainViewModelFactory
+import com.github.andreyasadchy.xtra.ui.main.nav.AppNavigator
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
+import com.github.andreyasadchy.xtra.ui.main.nav.MainShell
 import com.github.andreyasadchy.xtra.ui.main.shell.GlassPolicy
-import com.github.andreyasadchy.xtra.ui.main.shell.ShellBottomBar
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
-import com.github.andreyasadchy.xtra.ui.main.shell.ShellRail
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellState
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellTabs
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
@@ -92,15 +77,13 @@ import com.github.andreyasadchy.xtra.ui.design.theme.WidthClass
 import com.github.andreyasadchy.xtra.ui.player.BasePlaybackService
 import com.github.andreyasadchy.xtra.ui.player.ExoPlayerFragment
 import com.github.andreyasadchy.xtra.ui.player.PlayerFragment
-import com.github.andreyasadchy.xtra.ui.saved.SavedPagerFragment
-import com.github.andreyasadchy.xtra.ui.team.TeamFragmentDirections
-import com.github.andreyasadchy.xtra.ui.top.TopStreamsFragmentDirections
+import com.github.andreyasadchy.xtra.ui.saved.SavedDestination
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import com.github.andreyasadchy.xtra.util.applyTheme
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
+import com.github.andreyasadchy.xtra.util.updateUrl
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.chromium.net.CronetProvider
@@ -108,7 +91,7 @@ import java.util.Timer
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.schedule
 
-class MainActivity : AppCompatActivity(), ShellHost {
+class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
 
     companion object {
         const val KEY_VIDEO = "video"
@@ -120,19 +103,13 @@ class MainActivity : AppCompatActivity(), ShellHost {
         const val INTENT_OPEN_PLAYER = "com.github.andreyasadchy.xtra.OPEN_PLAYER"
         const val INTENT_START_AUDIO_ONLY = "com.github.andreyasadchy.xtra.START_AUDIO_ONLY"
         const val INTENT_PLAY_PAUSE_PLAYER = "com.github.andreyasadchy.xtra.PLAY_PAUSE_PLAYER"
-
-        /** Destinations drawn in Compose: they fill the window and scroll under the floating navigation. */
-        val ComposeDestinations = setOf(
-            R.id.followPagerFragment, R.id.followMediaFragment, // U2
-            R.id.rootGamesFragment, R.id.gamesFragment, R.id.gamePagerFragment, R.id.gameMediaFragment, // U4
-            R.id.rootTopFragment, R.id.topFragment, R.id.searchPagerFragment, // U4
-            R.id.channelPagerFragment, R.id.teamFragment, R.id.savedPagerFragment, R.id.savedMediaFragment, // U5
-        )
     }
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels { MainViewModelFactory }
-    private lateinit var navController: NavController
+    /** The pages' navigation (U8: Compose navigation in place of the v0.1 graph). */
+    val nav = AppNavigator()
+    private val pages = mutableMapOf<String, ComposePage>()
     var playerFragment: Fragment? = null
         private set
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -168,28 +145,6 @@ class MainActivity : AppCompatActivity(), ShellHost {
         applyTheme()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setNavBarColor(resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
-        val ignoreCutouts = prefs.getBoolean(C.UI_DRAW_BEHIND_CUTOUTS, false)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
-            val insets = if (ignoreCutouts) {
-                windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
-            } else {
-                windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime() or WindowInsetsCompat.Type.displayCutout())
-            }
-            binding.navHostFragment.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                // the rail already sits after the left inset
-                leftMargin = if (binding.navRail.isVisible) 0 else insets.left
-                rightMargin = insets.right
-            }
-            binding.navBarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                leftMargin = insets.left
-                rightMargin = insets.right
-            }
-            binding.navRail.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                leftMargin = insets.left
-            }
-            windowInsets
-        }
         settingsResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.data?.getBooleanExtra(SettingsActivity.EXTRA_ACCOUNT_CHANGED, false) == true) {
                 // logged in or out from settings: same as the login launchers below
@@ -209,6 +164,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
 
         var initialized = savedInstanceState != null
         initNavigation()
+        setNavBarColor(resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
         val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         if (!initialized) {
             val networkCapabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
@@ -255,7 +211,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
                                 ) {
                                     viewModel.checkUpdates(
                                         prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP),
-                                        prefs.getString(C.UPDATE_URL, null) ?: "https://api.github.com/repos/Mitchell0402/Xtra/releases/latest",
+                                        prefs.updateUrl(),
                                         tokenPrefs().getLong(C.UPDATE_LAST_CHECKED, 0)
                                     )
                                 }
@@ -291,8 +247,8 @@ class MainActivity : AppCompatActivity(), ShellHost {
                                         }
                                         startService(intent)
                                     }
-                                    val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                                    if (currentFragment is SavedPagerFragment) {
+                                    val currentFragment = currentPage()
+                                    if (currentFragment is SavedDestination) {
                                         if (downloads.any { it.live }) {
                                             currentFragment.bindStreamDownloadService(true)
                                         }
@@ -326,8 +282,8 @@ class MainActivity : AppCompatActivity(), ShellHost {
                         }
                         startService(intent)
                     }
-                    val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                    if (currentFragment is SavedPagerFragment) {
+                    val currentFragment = currentPage()
+                    if (currentFragment is SavedDestination) {
                         if (live) {
                             currentFragment.bindStreamDownloadService(true)
                         } else {
@@ -335,30 +291,6 @@ class MainActivity : AppCompatActivity(), ShellHost {
                         }
                     }
                 }
-            }
-        }
-        // the update prompt (U3): Compose sheets in place of the two v0.1 dialogs; check, download and install unchanged
-        binding.sheetHost.setContent {
-            LagoonTheme {
-                UpdatePrompt(
-                    updatePrompt,
-                    onUpdate = { url ->
-                        if (prefs.getBoolean(C.UPDATE_USE_BROWSER, false)) {
-                            updatePrompt.close()
-                            try {
-                                startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
-                                tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) }
-                            } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(this@MainActivity, R.string.no_browser_found, Toast.LENGTH_LONG).show()
-                            }
-                        } else {
-                            updatePrompt.startDownload(viewModel.updateSize)
-                            viewModel.downloadUpdate(prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP), url)
-                        }
-                    },
-                    onLater = { tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) } },
-                    onCancelDownload = { viewModel.updateJob?.cancel() },
-                )
             }
         }
         lifecycleScope.launch {
@@ -489,14 +421,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
                     if (user != null) {
                         if (!user.id.isNullOrBlank() || !user.login.isNullOrBlank()) {
                             (playerFragment as? PlayerFragment)?.minimize()
-                            navController.navigate(
-                                ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(
-                                    channelId = user.id,
-                                    channelLogin = user.login,
-                                    channelName = user.name,
-                                    channelImage = user.profileImage,
-                                )
-                            )
+                            nav.openChannel(id = user.id, login = user.login, name = user.name, image = user.profileImage)
                         }
                         viewModel.user.value = null
                     }
@@ -511,25 +436,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
                         val tag = pair.second
                         if (game != null) {
                             (playerFragment as? PlayerFragment)?.minimize()
-                            navController.navigate(
-                                if (prefs.getBoolean(C.UI_GAME_PAGER, true)) {
-                                    GamePagerFragmentDirections.actionGlobalGamePagerFragment(
-                                        gameId = game.id,
-                                        gameSlug = game.slug,
-                                        gameName = game.name,
-                                        boxArt = game.boxArt,
-                                        tags = tag?.let { arrayOf(it) },
-                                    )
-                                } else {
-                                    GameMediaFragmentDirections.actionGlobalGameMediaFragment(
-                                        gameId = game.id,
-                                        gameSlug = game.slug,
-                                        gameName = game.name,
-                                        boxArt = game.boxArt,
-                                        tags = tag?.let { arrayOf(it) },
-                                    )
-                                }
-                            )
+                            nav.openGame(id = game.id, slug = game.slug, name = game.name, boxArt = game.boxArt, tags = tag?.let { listOf(it) })
                         }
                         viewModel.game.value = null
                     }
@@ -541,11 +448,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
                 viewModel.tag.collectLatest { tag ->
                     if (tag != null) {
                         (playerFragment as? PlayerFragment)?.minimize()
-                        navController.navigate(
-                            GamesFragmentDirections.actionGlobalGamesFragment(
-                                tags = arrayOf(tag)
-                            )
-                        )
+                        nav.openGames(listOf(tag))
                         viewModel.tag.value = null
                     }
                 }
@@ -569,35 +472,11 @@ class MainActivity : AppCompatActivity(), ShellHost {
         }
     }
 
+    /** The gesture bar stays see-through over the floating pill in portrait; v0.1's scrim elsewhere. */
     private fun setNavBarColor(isPortrait: Boolean) {
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                window.isNavigationBarContrastEnforced = !isPortrait || !binding.navBarContainer.isVisible
-            }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
-                @Suppress("DEPRECATION")
-                window.navigationBarColor = if (isPortrait && binding.navBarContainer.isVisible) {
-                    Color.TRANSPARENT
-                } else {
-                    val isLightTheme = obtainStyledAttributes(intArrayOf(androidx.appcompat.R.attr.isLightTheme)).use {
-                        it.getBoolean(0, false)
-                    }
-                    ContextCompat.getColor(this, if (!isLightTheme) R.color.darkScrim else R.color.lightScrim)
-                }
-            }
-            else -> {
-                val isLightTheme = obtainStyledAttributes(intArrayOf(androidx.appcompat.R.attr.isLightTheme)).use {
-                    it.getBoolean(0, false)
-                }
-                @Suppress("DEPRECATION")
-                if (!isLightTheme) {
-                    window.navigationBarColor = if (isPortrait && binding.navBarContainer.isVisible) {
-                        Color.TRANSPARENT
-                    } else {
-                        ContextCompat.getColor(this, R.color.darkScrim)
-                    }
-                }
-            }
+        val overPill = isPortrait && shell?.hasNavigation == true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = !overPill
         }
     }
 
@@ -731,18 +610,12 @@ class MainActivity : AppCompatActivity(), ShellHost {
                             val tag = url.substringAfter("twitch.tv/directory/all/tags/").takeIf { it.isNotBlank() }?.let { it.substringBefore("?", it.substringBefore("/")) }
                             if (!tag.isNullOrBlank()) {
                                 (playerFragment as? PlayerFragment)?.minimize()
-                                navController.navigate(
-                                    TopStreamsFragmentDirections.actionGlobalTopFragment(
-                                        tags = arrayOf(Uri.decode(tag))
-                                    )
-                                )
+                                nav.openTopStreams(tags = listOf(Uri.decode(tag)))
                             }
                         }
                         url.contains("twitch.tv/directory/all") -> {
                             (playerFragment as? PlayerFragment)?.minimize()
-                            navController.navigate(
-                                TopStreamsFragmentDirections.actionGlobalTopFragment()
-                            )
+                            nav.openTopStreams()
                         }
                         url.contains("twitch.tv/directory/tags/") -> {
                             val tagId = url.substringAfter("twitch.tv/directory/tags/").takeIf { it.isNotBlank() }?.let { it.substringBefore("?", it.substringBefore("/")) }
@@ -757,19 +630,13 @@ class MainActivity : AppCompatActivity(), ShellHost {
                         }
                         url.contains("twitch.tv/directory") -> {
                             (playerFragment as? PlayerFragment)?.minimize()
-                            navController.navigate(
-                                GamesFragmentDirections.actionGlobalGamesFragment()
-                            )
+                            nav.openGames()
                         }
                         url.contains("twitch.tv/team/") -> {
                             val teamName = url.substringAfter("twitch.tv/team/").takeIf { it.isNotBlank() }?.let { it.substringBefore("?", it.substringBefore("/")) }
                             if (!teamName.isNullOrBlank()) {
                                 (playerFragment as? PlayerFragment)?.minimize()
-                                navController.navigate(
-                                    TeamFragmentDirections.actionGlobalTeamFragment(
-                                        teamName = Uri.decode(teamName)
-                                    )
-                                )
+                                nav.openTeam(Uri.decode(teamName))
                             }
                         }
                         else -> {
@@ -834,6 +701,22 @@ class MainActivity : AppCompatActivity(), ShellHost {
                 }
             }
         }
+    }
+
+    /** The page shown now, or null while the navigation is not set up yet. */
+    fun currentPage(): ComposePage? = nav.controller?.currentBackStackEntry?.id?.let { pages[it] }
+
+    fun registerPage(entryId: String, page: ComposePage) {
+        pages[entryId] = page
+    }
+
+    fun unregisterPage(entryId: String, page: ComposePage) {
+        if (pages[entryId] === page) pages.remove(entryId)
+    }
+
+    /** An integrity check a page asked for finished: the page shown now gets the result (a Fragment's parent did before). */
+    override fun onIntegrityTokenLoaded(callback: String?) {
+        currentPage()?.onIntegrityTokenLoaded(callback)
     }
 
     fun getNewIntegrityToken(callback: String?, fragmentManager: FragmentManager) {
@@ -1059,73 +942,74 @@ class MainActivity : AppCompatActivity(), ShellHost {
     }
 
     fun popFragment() {
-        navController.navigateUp()
+        nav.back()
+    }
+
+    /** From the player and the chat: these pages open over the minimized player, as v0.1's global actions did. */
+    fun openChannel(id: String?, login: String?, name: String?, image: String?) {
+        (playerFragment as? PlayerFragment)?.minimize()
+        nav.openChannel(id = id, login = login, name = name, image = image)
+    }
+
+    fun openGame(id: String?, slug: String?, name: String?) {
+        (playerFragment as? PlayerFragment)?.minimize()
+        nav.openGame(id = id, slug = slug, name = name)
     }
 
     private fun initNavigation() {
-        navController = (supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment).navController
         val tabPref = prefs.getString(C.UI_NAVIGATION_TAB_LIST, null)
-        val savedPager = prefs.getBoolean(C.UI_SAVED_PAGER, true)
-        navController.setGraph(navController.navInflater.inflate(R.navigation.nav_graph).also {
-            it.setStartDestination(ShellTabs.startDestination(tabPref, savedPager))
-        }, null)
-        val state = ShellState(ShellTabs.tabs(tabPref, savedPager))
+        val state = ShellState(ShellTabs.tabs(tabPref))
         state.glassPolicy = GlassPolicy(this).also { lifecycle.addObserver(it) }
+        state.hasNavigation = ShellTabs.showNavigation(tabPref) && state.tabs.isNotEmpty()
         shell = state
-        binding.navBar.setContent {
+        val startRoute = ShellTabs.startDestination(tabPref)
+        val ignoreCutouts = prefs.getBoolean(C.UI_DRAW_BEHIND_CUTOUTS, false)
+        // the player container is a sibling after this view: leave it the window insets (Android 10 stops at the first view that consumes them)
+        binding.shell.consumeWindowInsets = false
+        binding.shell.setContent {
             LagoonTheme {
-                ShellBottomBar(state, ::selectTab)
+                MainShell(
+                    activity = this,
+                    state = state,
+                    nav = nav,
+                    startRoute = startRoute,
+                    ignoreCutouts = ignoreCutouts,
+                    onSelectTab = ::selectTab,
+                ) {
+                    // the update prompt (U3): Compose sheets in place of the two v0.1 dialogs; check, download and install unchanged
+                    UpdatePrompt(
+                        updatePrompt,
+                        onUpdate = { url ->
+                            if (prefs.getBoolean(C.UPDATE_USE_BROWSER, false)) {
+                                updatePrompt.close()
+                                try {
+                                    startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
+                                    tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) }
+                                } catch (e: ActivityNotFoundException) {
+                                    Toast.makeText(this@MainActivity, R.string.no_browser_found, Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                updatePrompt.startDownload(viewModel.updateSize)
+                                viewModel.downloadUpdate(prefs.getString(C.NETWORK_LIBRARY, C.OKHTTP), url)
+                            }
+                        },
+                        onLater = { tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) } },
+                        onCancelDownload = { viewModel.updateJob?.cancel() },
+                    )
+                }
             }
-        }
-        binding.navRail.setContent {
-            LagoonTheme {
-                ShellRail(state, ::selectTab)
-            }
-        }
-        binding.navBarContainer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateShellPadding() }
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            ShellTabs.indexOf(state.tabs, destination.id).takeIf { it != -1 }?.let { state.selectedIndex = it }
-            state.legacyPage = destination.id !in ComposeDestinations
-            updateShellPadding()
         }
         addOnPictureInPictureModeChangedListener { info ->
             // the player fills the picture-in-picture window; keep the navigation out of it and away from screen readers
-            inPictureInPicture = info.isInPictureInPictureMode
-            applyShellLayout(resources.configuration)
+            state.inPictureInPicture = info.isInPictureInPictureMode
         }
         applyShellLayout(resources.configuration)
     }
 
-    private var inPictureInPicture = false
-
-    /** Rail on the left above 840 dp, floating pill at the bottom below (plan 4); v0.1 hid the bar when every tab was off. */
+    /** Rail on the left above 840 dp, floating pill at the bottom below (plan 4). */
     private fun applyShellLayout(configuration: Configuration) {
         val state = shell ?: return
-        val hasNavigation = ShellTabs.showNavigation(prefs.getString(C.UI_NAVIGATION_TAB_LIST, null)) && state.tabs.isNotEmpty()
-        val rail = hasNavigation && WidthClass.of(configuration.screenWidthDp) == WidthClass.Expanded
-        state.useRail = rail
-        binding.navRail.isVisible = rail
-        // stays visible with the rail, holding only the gesture bar's height (see ShellBottomBar)
-        binding.navBarContainer.isVisible = hasNavigation
-        // invisible, not gone: the mini player keeps its place above the pill
-        binding.navBar.visibility = if (inPictureInPicture) View.INVISIBLE else View.VISIBLE
-        binding.navRail.alpha = if (inPictureInPicture) 0f else 1f
-        ViewCompat.requestApplyInsets(binding.root)
-        updateShellPadding()
-    }
-
-    /**
-     * Old Fragment pages stop above the floating pill; Compose pages fill the window and pad their own content, so
-     * they can scroll under the pill and let it hide.
-     */
-    private fun updateShellPadding() {
-        val state = shell ?: return
-        val barHeight = if (binding.navBarContainer.isVisible) binding.navBarContainer.height else 0
-        state.bottomBarHeightPx = barHeight
-        val padding = if (state.legacyPage) barHeight else 0
-        if (binding.navHostFragment.paddingBottom != padding) {
-            binding.navHostFragment.updatePadding(bottom = padding)
-        }
+        state.useRail = state.hasNavigation && WidthClass.of(configuration.screenWidthDp) == WidthClass.Expanded
     }
 
     /** Called by the player when it opens, closes, minimizes or maximizes (U0 spike 3, point 2). */
@@ -1136,9 +1020,7 @@ class MainActivity : AppCompatActivity(), ShellHost {
         shell?.playerMaximized = maximized
         // the maximized player covers the shell; keep screen readers off the pages and navigation underneath
         val accessibility = if (maximized) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
-        binding.navBarContainer.importantForAccessibility = accessibility
-        binding.navRail.importantForAccessibility = accessibility
-        binding.navHostFragment.importantForAccessibility = accessibility
+        binding.shell.importantForAccessibility = accessibility
     }
 
     /**
@@ -1149,29 +1031,14 @@ class MainActivity : AppCompatActivity(), ShellHost {
         val state = shell ?: return
         val tab = state.tabs.getOrNull(index) ?: return
         if (index == state.selectedIndex) {
-            if (!navController.popBackStack(tab.destinationId, false)) {
-                val currentFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment)?.childFragmentManager?.fragments?.getOrNull(0)
-                (currentFragment as? Scrollable)?.scrollToTop()
+            if (!nav.popToTabRoot(tab.route)) {
+                currentPage()?.scrollToTop()
             }
             return
         }
-        val forward = index > state.selectedIndex
-        val options = NavOptions.Builder()
-            .setLaunchSingleTop(true)
-            .setRestoreState(true)
-            .setPopUpTo(navController.graph.findStartDestination().id, inclusive = false, saveState = true)
-            .setEnterAnim(if (forward) R.anim.shell_sibling_enter_next else R.anim.shell_sibling_enter_prev)
-            .setExitAnim(if (forward) R.anim.shell_sibling_exit_next else R.anim.shell_sibling_exit_prev)
-            .setPopEnterAnim(R.anim.shell_back_enter)
-            .setPopExitAnim(R.anim.shell_back_exit)
-            .build()
-        try {
-            navController.navigate(tab.destinationId, null, options)
-            state.selectedIndex = index
-            state.hideOnScroll.show()
-        } catch (e: IllegalArgumentException) {
-            // the destination is not in the graph; NavigationUI.onNavDestinationSelected returned false here
-        }
+        nav.selectTab(tab.route, forward = index > state.selectedIndex)
+        state.selectedIndex = index
+        state.hideOnScroll.show()
     }
 
     @OptIn(UnstableApi::class)

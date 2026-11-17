@@ -31,21 +31,11 @@ object SettingsCatalog {
                 R.string.st_group_cards, listOf(
                     ChoiceSetting(C.COMPACT_STREAMS, "disabled", R.string.hide_stream_previews, ChoiceSource.Arrays(R.array.compactStreamsEntries, R.array.compactStreamsValues), R.string.st_compact_streams_summary, LucideIcons.Rows3, refresh = true),
                     ChoiceSetting(C.UI_NAME_DISPLAY, "0", R.string.name_display, ChoiceSource.Arrays(R.array.nameDisplayEntries, R.array.nameDisplayValues), R.string.name_display_summary, LucideIcons.Type, refresh = true),
-                    ToggleSetting(C.UI_ROUND_USER_IMAGE, true, R.string.rounduserimage, icon = LucideIcons.User, refresh = true),
                     ToggleSetting(C.UI_TRUNCATE_VIEW_COUNT, true, R.string.compact_number_formatting, R.string.st_truncate_summary, LucideIcons.Hash, refresh = true),
                     ToggleSetting(C.UI_UPTIME, true, R.string.show_uptime, icon = LucideIcons.Clock, refresh = true),
                     ToggleSetting(C.UI_TAGS, true, R.string.show_tags, icon = LucideIcons.Tag, refresh = true),
                     ToggleSetting(C.UI_BROADCASTERS_COUNT, true, R.string.broadcastersCount, icon = LucideIcons.Users, refresh = true),
                     ToggleSetting(C.UI_BOOKMARK_TIME_LEFT, true, R.string.show_vod_time_left, icon = LucideIcons.Bookmark, refresh = true),
-                )
-            ),
-            SettingsGroupSpec(
-                R.string.st_group_layout, listOf(
-                    ChoiceSetting(C.PORTRAIT_COLUMN_COUNT, "1", R.string.portrait_column_count, ChoiceSource.Arrays(R.array.portraitColumnCount, R.array.portraitColumnCount), R.string.st_columns_summary, LucideIcons.Columns2, refresh = true),
-                    ChoiceSetting(C.LANDSCAPE_COLUMN_COUNT, "2", R.string.landscape_column_count, ChoiceSource.Arrays(R.array.landscapeColumnCount, R.array.landscapeColumnCount), R.string.st_columns_summary, LucideIcons.LayoutGrid, refresh = true),
-                    ToggleSetting(C.UI_SAVED_PAGER, true, R.string.use_savedpager, R.string.st_pager_summary, LucideIcons.Folder, refresh = true),
-                    ToggleSetting(C.UI_GAME_PAGER, true, R.string.use_gamepager, R.string.st_pager_summary, LucideIcons.Gamepad2, refresh = true),
-                    ToggleSetting(C.UI_SCROLL_TOP, true, R.string.show_scrolltop, icon = LucideIcons.ArrowUp, refresh = true),
                 )
             ),
             SettingsGroupSpec(
@@ -545,7 +535,13 @@ object SettingsCatalog {
         C.UI_THEME_COMPACT_TEXT to "one type scale (plan 4); hidden since U1, nothing reads it",
         C.UI_THEME_MATERIAL3 to "one design system (U1); hidden since U1, nothing reads it",
         C.UI_THEME_BOTTOM_NAV_COLOR to "the floating pill has one colour (U2); nothing reads it",
-        C.UI_THEME_APPBAR_LIFT to "hidden since U1; the old pages still read it (default on) until they are rewritten",
+        C.UI_THEME_APPBAR_LIFT to "hidden since U1; the last old pages that read it went in U8",
+        C.UI_ROUND_USER_IMAGE to "avatars follow the design system's shape (U2 to U5); nothing read it since, removed from the page in U8",
+        C.PORTRAIT_COLUMN_COUNT to "lists and grids size their columns to the window (U2 to U5); nothing read it since, removed from the page in U8",
+        C.LANDSCAPE_COLUMN_COUNT to "lists and grids size their columns to the window (U2 to U5); nothing read it since, removed from the page in U8",
+        C.UI_SAVED_PAGER to "both Me layouts became one page with segments (U5); removed with the navigation graph in U8",
+        C.UI_GAME_PAGER to "both game layouts became one page with segments (U4); removed with the navigation graph in U8",
+        C.UI_SCROLL_TOP to "lists scroll to the top on a tap of the current tab (U2 on); the floating button was not rebuilt, removed from the page in U8",
         C.UI_FOLLOW_PAGER to "the Following page is one Compose page with segments (U2); nothing reads it",
         "ad_block_preset" to "was a second copy of the switches; the page now works the preset out from them (AdBlockPreset.match)",
         "theme_settings" to "link to the removed theme page",

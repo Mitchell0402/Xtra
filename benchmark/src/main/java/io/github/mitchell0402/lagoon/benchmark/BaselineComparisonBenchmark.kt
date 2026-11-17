@@ -37,7 +37,7 @@ class BaselineComparisonBenchmark(private val run: Int, private val pkg: String)
         iterations = 1,
     ) {
         pressHome()
-        startActivityAndWait()
+        startMainActivity()
     }
 
     /** Opens the games directory (a link the app handles) and flings the grid down and up. */

@@ -28,7 +28,7 @@ import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.PlayerRepository
 import com.github.andreyasadchy.xtra.repository.datasource.GameVideosDataSource
 import com.github.andreyasadchy.xtra.ui.common.VideoFilters
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.NetworkUtils
 import com.github.andreyasadchy.xtra.util.NetworkUtils.executeAsync
@@ -61,7 +61,7 @@ class GameVideosViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val args = GamePagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = GameArgs.fromSavedStateHandle(savedStateHandle)
     val filter = MutableStateFlow<Filter?>(null)
     val sortText = MutableStateFlow<CharSequence?>(null)
     val filtersText = MutableStateFlow<CharSequence?>(null)

@@ -71,14 +71,12 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.hls.HlsManifest
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.SubtitleView
-import androidx.navigation.fragment.findNavController
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.model.VideoQuality
 import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.player.ads.AdBlockPreset
 import com.github.andreyasadchy.xtra.player.ads.AdLog
 import com.github.andreyasadchy.xtra.player.ads.AdStats
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.chat.ChatFragment
 import com.github.andreyasadchy.xtra.ui.chat.ViewerListSheet
 import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
@@ -87,8 +85,6 @@ import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
 import com.github.andreyasadchy.xtra.ui.following.ConfirmSheet
-import com.github.andreyasadchy.xtra.ui.game.GameMediaFragmentDirections
-import com.github.andreyasadchy.xtra.ui.game.GamePagerFragmentDirections
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
 import com.github.andreyasadchy.xtra.ui.main.shell.ShellHost
 import com.github.andreyasadchy.xtra.ui.player.PlayerViewModel.Companion.PlayerViewModelFactory
@@ -280,7 +276,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                 onDismiss = { state.viewerListOpen = false },
                 onOpen = { login ->
                     state.viewerListOpen = false
-                    findNavController().navigate(ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(channelLogin = login))
+                    (activity as? MainActivity)?.nav?.openChannel(login = login)
                     minimize()
                 },
             )
@@ -691,26 +687,14 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
 
     override fun openChannel() {
         val backend = backend ?: return
-        findNavController().navigate(
-            ChannelPagerFragmentDirections.actionGlobalChannelPagerFragment(
-                channelId = backend.channelId,
-                channelLogin = backend.channelLogin,
-                channelName = backend.channelName,
-            )
-        )
+        (activity as? MainActivity)?.nav?.openChannel(id = backend.channelId, login = backend.channelLogin, name = backend.channelName)
         minimize()
     }
 
     override fun openGame() {
         val backend = backend ?: return
         val gameName = backend.gameName ?: return
-        findNavController().navigate(
-            if (requireContext().prefs().getBoolean(C.UI_GAME_PAGER, true)) {
-                GamePagerFragmentDirections.actionGlobalGamePagerFragment(gameId = backend.gameId, gameSlug = backend.gameSlug, gameName = gameName)
-            } else {
-                GameMediaFragmentDirections.actionGlobalGameMediaFragment(gameId = backend.gameId, gameSlug = backend.gameSlug, gameName = gameName)
-            }
-        )
+        (activity as? MainActivity)?.nav?.openGame(id = backend.gameId, slug = backend.gameSlug, name = gameName)
         minimize()
     }
 

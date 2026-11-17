@@ -26,7 +26,7 @@ import com.github.andreyasadchy.xtra.repository.GraphQLRepository
 import com.github.andreyasadchy.xtra.repository.HelixRepository
 import com.github.andreyasadchy.xtra.repository.PlayerRepository
 import com.github.andreyasadchy.xtra.repository.datasource.ChannelVideosDataSource
-import com.github.andreyasadchy.xtra.ui.channel.ChannelPagerFragmentArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
 import com.github.andreyasadchy.xtra.ui.common.VideoFilters
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.NetworkUtils
@@ -60,7 +60,7 @@ class ChannelVideosViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val args = ChannelPagerFragmentArgs.fromSavedStateHandle(savedStateHandle)
+    private val args = ChannelArgs.fromSavedStateHandle(savedStateHandle)
     val filter = MutableStateFlow<Filter?>(null)
     val sortText = MutableStateFlow<CharSequence?>(null)
     val positions = playerRepository.loadVideoPositions()

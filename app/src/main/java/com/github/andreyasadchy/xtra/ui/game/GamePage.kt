@@ -11,12 +11,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.unit.Dp
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -29,7 +27,7 @@ import com.github.andreyasadchy.xtra.ui.browse.FilterLogic
 import com.github.andreyasadchy.xtra.ui.browse.FilterSaves
 import com.github.andreyasadchy.xtra.ui.browse.FilterSheetConfig
 import com.github.andreyasadchy.xtra.ui.browse.FilterTag
-import com.github.andreyasadchy.xtra.ui.browse.FragmentBrowseActions
+import com.github.andreyasadchy.xtra.ui.browse.PageBrowseActions
 import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
 import com.github.andreyasadchy.xtra.ui.common.SearchTagsViewModel
 import com.github.andreyasadchy.xtra.ui.design.components.ToastHostState
@@ -37,7 +35,9 @@ import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
 import com.github.andreyasadchy.xtra.ui.game.clips.GameClipsViewModel
 import com.github.andreyasadchy.xtra.ui.game.streams.GameStreamsViewModel
 import com.github.andreyasadchy.xtra.ui.game.videos.GameVideosViewModel
-import com.github.andreyasadchy.xtra.ui.main.MainActivity
+import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
+import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
+import com.github.andreyasadchy.xtra.ui.main.nav.OnceFlag
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
@@ -49,25 +49,25 @@ import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
 /** Hands a game page's arguments to its view models when they do not live in the game fragment (Browse, U4). */
-val GameArgsKey = object : CreationExtras.Key<GamePagerFragmentArgs> {}
+val GameArgsKey = object : CreationExtras.Key<GameArgs> {}
 
 /**
  * One game page: its view models, what v0.1's GamePagerFragment and its three list fragments did on start, on
- * filter changes and on follow, and the Compose content. The view models live in [owner]: the game fragment for the
+ * filter changes and on follow, and the Compose content. The view models live in [owner]: the game page's navigation entry for the
  * game destination, a store of its own for a game opened inside Browse (the shared box-art transition, U4).
  */
 class GamePage(
-    private val fragment: Fragment,
+    private val page: ComposePage,
     owner: ViewModelStoreOwner,
-    val args: GamePagerFragmentArgs,
+    val args: GameArgs,
     private val mainViewModel: MainViewModel,
     private val onBack: () -> Unit,
-) : FragmentBrowseActions(fragment), GameActions {
+) : PageBrowseActions(page), GameActions {
 
-    private val context get() = fragment.requireContext()
+    private val context get() = page.requireContext()
     private val store = owner.viewModelStore
     private val extras = MutableCreationExtras().apply {
-        set(APPLICATION_KEY, fragment.requireActivity().application)
+        set(APPLICATION_KEY, page.activity.application)
         set(GameArgsKey, args)
     }
 
@@ -90,9 +90,16 @@ class GamePage(
     private val enableIntegrity get() = context.prefs().getBoolean(C.ENABLE_INTEGRITY, false)
     private var refreshLists: () -> Unit = {}
 
-    /** v0.1's initialize(): the lists' first filters from the remembered choices, the game, follow state, local update. */
+    private val started by lazy { vm("started", OnceFlag.Factory, OnceFlag::class) }
+
+    /**
+     * v0.1's initialize(): the lists' first filters from the remembered choices, the game, follow state, local update.
+     * Once per page: the page object is made again when Browse comes back from another page, its view models are not.
+     */
     fun start() {
-        fragment.lifecycleScope.launch {
+        if (started.done) return
+        started.done = true
+        page.lifecycleScope.launch {
             val id = args.gameId
             if (streams.filter.value == null) {
                 val saved = id?.let { streams.getGameSort(it) } ?: streams.getGameSort(FilterLogic.DEFAULT_ID)
@@ -182,7 +189,7 @@ class GamePage(
     override fun applyFilter(kind: FilterKind, filter: BrowseFilter, saves: FilterSaves) {
         val id = args.gameId
         val helix = hasHelixToken
-        fragment.lifecycleScope.launch {
+        page.lifecycleScope.launch {
             if (saves.forget && id != null) {
                 streams.getGameSort(id)?.let { streams.deleteGameSort(it) }
             }
@@ -269,7 +276,7 @@ class GamePage(
         refreshLists = { streamItems.refresh(); videoItems.refresh(); clipItems.refresh() }
 
         LaunchedEffect(Unit) {
-            pager.integrity.collect { (fragment.activity as? MainActivity)?.getNewIntegrityToken(it, fragment.childFragmentManager) }
+            pager.integrity.collect { page.activity.getNewIntegrityToken(it, page.childFragmentManager) }
         }
         LaunchedEffect(Unit) {
             pager.follow.collect { pair ->

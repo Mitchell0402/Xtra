@@ -81,7 +81,7 @@ class SearchDestination(host: PageHost) : ComposePage(host), SearchActions {
         val compact = prefs.getString(C.COMPACT_STREAMS, "disabled") == "all"
         val showRecent = prefs.getBoolean(C.UI_STORE_RECENT_SEARCHES, true)
         // the query the view models still hold after a trip back from a result
-        val initialQuery = channels.query.value
+        val initialQuery = remember { channels.query.value }
         val channelItems = channels.flow.collectAsLazyPagingItems()
         val streamItems = streams.flow.collectAsLazyPagingItems()
         val gameItems = games.flow.collectAsLazyPagingItems()

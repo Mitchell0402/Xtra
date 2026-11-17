@@ -12,18 +12,14 @@ import kotlinx.coroutines.flow.emptyFlow
 @Immutable
 data class SettingsEnvironment(
     val pictureInPicture: Boolean = true,
-    val translate: Boolean = false,
     val androidS: Boolean = true,
     /** Network libraries this device can use; fewer than two hides the choice. */
     val networkLibraries: List<String> = listOf("OkHttp"),
-    /** Translation target languages: code to display name. */
-    val translateLanguages: List<Pair<String, String>> = emptyList(),
     val versionName: String = "",
 ) {
     fun allows(condition: SettingCondition): Boolean = when (condition) {
         SettingCondition.Always -> true
         SettingCondition.PictureInPicture -> pictureInPicture
-        SettingCondition.TranslateSupported -> translate
         SettingCondition.AndroidS -> androidS
         SettingCondition.NetworkChoice -> networkLibraries.size > 1
     }
@@ -48,10 +44,6 @@ interface SettingsHost {
 
     /** The value a choice shows when it is not simply read from storage (the app language comes from the system). */
     fun currentChoice(setting: ChoiceSetting): String? = null
-
-    /** Translation models on the device, for the downloaded-languages sheet. */
-    suspend fun downloadedLanguages(): List<String> = emptyList()
-    fun setDownloadedLanguages(keep: List<String>) {}
 
     fun login() {}
     fun logout() {}

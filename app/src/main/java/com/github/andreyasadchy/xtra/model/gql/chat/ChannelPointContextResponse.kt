@@ -20,12 +20,27 @@ class ChannelPointContextResponse(
 
     @Serializable
     class Channel(
-        val self: Self,
+        val self: Self? = null,
+        val communityPointsSettings: Settings? = null,
     )
 
     @Serializable
     class Self(
-        val communityPoints: Points,
+        val communityPoints: Points? = null,
+    )
+
+    /** The channel's own name and picture for its points, when it set them. */
+    @Serializable
+    class Settings(
+        val name: String? = null,
+        val image: Image? = null,
+    )
+
+    @Serializable
+    class Image(
+        val url: String? = null,
+        val url2x: String? = null,
+        val url4x: String? = null,
     )
 
     @Serializable

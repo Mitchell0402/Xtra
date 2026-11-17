@@ -51,7 +51,7 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 8
+        versionCode = 9
         versionName = "0.1"
     }
 
@@ -115,20 +115,15 @@ android {
     // minSdk 29 would store dex files uncompressed (+4.7 MB APK); keep them compressed like v0.1 so the
     // size gate (plan 10.4) compares like with like and the GitHub download stays small
     packaging.dex.useLegacyPackaging = true
-    packaging.jniLibs.excludes.addAll(listOf(
-        "lib/x86/libtranslate_jni.so",
-        "lib/x86/liblanguage_id_l2c_jni.so",
-        "lib/x86_64/libtranslate_jni.so",
-        "lib/x86_64/liblanguage_id_l2c_jni.so",
-        "lib/armeabi-v7a/libtranslate_jni.so",
-        "lib/armeabi-v7a/liblanguage_id_l2c_jni.so",
-    ))
+}
+
+// memory check (plan 10.4, U7): gradlew assembleDebug -Pleakcanary adds LeakCanary to that debug build only; tests and CI never get it
+if (project.hasProperty("leakcanary")) {
+    dependencies { add("debugImplementation", "com.squareup.leakcanary:leakcanary-android:2.14") }
 }
 
 dependencies {
     compileOnly("com.google.j2objc:j2objc-annotations:3.0.0") // OkHttpDataSource SettableFuture
-    implementation("com.google.mlkit:language-id:17.0.6")
-    implementation("com.google.mlkit:translate:17.0.3")
 
     implementation(libs.material)
     implementation(libs.markwon.core)
@@ -171,10 +166,6 @@ dependencies {
     implementation(libs.coil.gif)
     implementation(libs.coil.okhttp)
 
-    implementation(libs.glide)
-    ksp(libs.glide.ksp)
-    implementation(libs.glide.okhttp)
-    implementation(libs.glide.webpdecoder)
 
     implementation(libs.coroutines)
 

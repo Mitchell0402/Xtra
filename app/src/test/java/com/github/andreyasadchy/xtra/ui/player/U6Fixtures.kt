@@ -88,7 +88,6 @@ class FakeSheetSource(private val layoutIsLandscape: Boolean = false) : PlayerSh
         hasAudioOnly = true,
         hasChapters = true,
         subtitles = SubtitleState.Off,
-        translateAvailable = false,
         debugPlaylistTags = false,
     )
     override fun qualities() = PlayerLogic.qualityLabels(U6Fixtures.qualities, "Auto", "Source", "Audio only", "Chat only")
@@ -101,7 +100,6 @@ class FakeSheetSource(private val layoutIsLandscape: Boolean = false) : PlayerSh
     override fun adBlockPreset() = "Balanced"
     override fun adBlockSummary() = "3 ad breaks, 4 min of ads"
     override fun adLog() = listOf("12:00:01 ad break detected, 30 s", "12:00:02 swap web/highlighter ready")
-    override fun translateAll(): Boolean? = null
 }
 
 /** Records what the page asked for. */

@@ -50,7 +50,7 @@ class SettingsBehaviourTest {
     private val host = RecordingHost()
 
     class RecordingHost : SettingsHost {
-        override val environment = SettingsEnvironment(translate = true, translateLanguages = listOf("en" to "English", "de" to "German"), networkLibraries = listOf("Cronet", "OkHttp"), versionName = "0.2")
+        override val environment = SettingsEnvironment(networkLibraries = listOf("Cronet", "OkHttp"), versionName = "0.2")
         override val account = AccountInfo(true, "mitchell")
         val actions = mutableListOf<SettingAction>()
         val changes = mutableListOf<Pair<String, Any?>>()

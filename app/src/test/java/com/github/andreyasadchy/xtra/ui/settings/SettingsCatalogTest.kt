@@ -152,8 +152,8 @@ class SettingsCatalogTest {
         }
         assertTrue(wrong.toString(), wrong.isEmpty())
         // U6: the player no longer reads the 25 menu and button switches it dropped (SettingsCatalog.removed), so the
-        // floor went from 150 to 130
-        assertTrue("only ${checked.size} keys checked", checked.size > 130)
+        // floor went from 150 to 130; U7 dropped the reads of the two translation keys and the image library
+        assertTrue("only ${checked.size} keys checked", checked.size > 125)
     }
 
     /**

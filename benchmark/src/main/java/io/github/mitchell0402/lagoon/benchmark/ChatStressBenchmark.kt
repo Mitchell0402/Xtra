@@ -15,12 +15,15 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 /**
- * U0 validation 1: a recorded chat stream replayed at 30 messages/s for 60 s into the current chat list
- * ("legacy", RecyclerView + ChatAdapter) and into the Compose prototype ("compose"), measured with the same
- * frame metrics. Needs the lab screens, so it only runs against this checkout's benchmark build.
+ * U0 validation 1 and the U7 chat gate (plan 10.4): a recorded chat stream replayed at 30 messages/s for 60 s into
+ * the chat list, measured with frame metrics. Needs the lab screens (benchmark build).
  *
- * Runner arguments: chatRate (default 30), chatSeconds (60), chatLimit (600), chatSample (xqc-20261112.irc),
- * chatAnimated (true), chatIterations (3).
+ * Modes: "u7" is the chat list the app ships since U7. Benchmark APKs up to U6 have "legacy" (RecyclerView +
+ * ChatAdapter, v0.1) and "compose" (the U0 prototype) instead; pick them with the chatModes argument when the
+ * installed target is such an APK.
+ *
+ * Runner arguments: chatModes (u7, comma-separated), chatRate (default 30), chatSeconds (60), chatLimit (600),
+ * chatSample (xqc-20261112.irc), chatAnimated (true), chatIterations (3).
  */
 @RunWith(Parameterized::class)
 class ChatStressBenchmark(private val mode: String) {
@@ -60,6 +63,6 @@ class ChatStressBenchmark(private val mode: String) {
     companion object {
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")
-        fun modes() = listOf("legacy", "compose")
+        fun modes() = (InstrumentationRegistry.getArguments().getString("chatModes") ?: "u7").split(',')
     }
 }

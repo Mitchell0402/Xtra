@@ -169,7 +169,6 @@ sealed interface SheetRequest {
     data class Tabs(val setting: TabOrderSetting) : SheetRequest
     data class Confirm(val row: ActionRow) : SheetRequest
     data object AdLog : SheetRequest
-    data object Languages : SheetRequest
     data object Account : SheetRequest
     data object ConfirmLogout : SheetRequest
 }
@@ -199,7 +198,6 @@ fun SettingsApp(
             run = { row ->
                 when {
                     row.action == SettingAction.AdLog -> sheet = SheetRequest.AdLog
-                    row.action == SettingAction.DownloadedLanguages -> sheet = SheetRequest.Languages
                     row.destructive -> sheet = SheetRequest.Confirm(row)
                     else -> host.runAction(row.action)
                 }
@@ -416,6 +414,9 @@ private fun PageHost(route: String, store: SettingsStore, host: SettingsHost, na
         PageId.Appearance -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
             item(key = "preview") { AppearancePreview(store) }
         }
+        PageId.Chat -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
+            item(key = "preview") { ChatSettingsPreview(store) }
+        }
         PageId.PlayerButtons -> SettingsPage(page, store, host, nav, actions, onBack, headerItems = 1) {
             item(key = "preview") { PlayerButtonsPreview(store) }
         }
@@ -581,7 +582,6 @@ fun choiceOptions(setting: ChoiceSetting, host: SettingsHost): List<Pair<String,
     is ChoiceSource.Dynamic -> when (source.id) {
         SettingsCatalog.DYNAMIC_LANGUAGE -> stringArrayResource(R.array.language).zip(stringArrayResource(R.array.languageEntries))
         SettingsCatalog.DYNAMIC_NETWORK -> host.environment.networkLibraries.map { it to it }
-        SettingsCatalog.DYNAMIC_TRANSLATE -> host.environment.translateLanguages
         else -> emptyList()
     }
 }

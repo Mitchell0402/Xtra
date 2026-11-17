@@ -31,7 +31,7 @@ enum class TextKind {
 }
 
 /** When a row shows at all; resolved by [SettingsEnvironment] (the device and Android version). */
-enum class SettingCondition { Always, PictureInPicture, TranslateSupported, AndroidS, NetworkChoice }
+enum class SettingCondition { Always, PictureInPicture, AndroidS, NetworkChoice }
 
 /** One-shot actions a row runs instead of storing a value. */
 enum class SettingAction {
@@ -45,7 +45,6 @@ enum class SettingAction {
     ResetAdStats,
     DeviceAdminSettings,
     IntegrityToken,
-    DownloadedLanguages,
     OpenProjectPage,
 }
 

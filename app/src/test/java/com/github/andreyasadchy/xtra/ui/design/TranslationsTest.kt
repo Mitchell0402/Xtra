@@ -31,7 +31,7 @@ class TranslationsTest {
         val missing = en.keys - zh.keys
         assertTrue("missing in zh-CN: $missing", missing.isEmpty())
         // formats, library names and emoji layouts read the same in both languages
-        val sameOnPurpose = Regex("^(timestamp_format_\\d|imageLibraryEntries\\d|poll_choice.*|prediction_outcome.*|moderators|vips)$")
+        val sameOnPurpose = Regex("^(timestamp_format_\\d|imageLibraryEntries\\d|cht_emotes_(twitch|stv|bttv|ffz)|poll_choice.*|prediction_outcome.*|moderators|vips)$")
         val english = zh.filter { (k, v) ->
             !sameOnPurpose.matches(k) && !v.contains(Regex("[\\u3400-\\u9fff]")) && v.contains(Regex("[A-Za-z]{3,}"))
         }

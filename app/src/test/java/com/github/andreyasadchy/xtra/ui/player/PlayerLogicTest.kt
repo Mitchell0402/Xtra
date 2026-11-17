@@ -29,9 +29,8 @@ class PlayerLogicTest {
         hasAudioOnly: Boolean = true,
         hasChapters: Boolean = false,
         subtitles: SubtitleState = SubtitleState.None,
-        translate: Boolean = false,
         debug: Boolean = false,
-    ) = MenuContext(landscape, phoneLandscape, loggedIn, chatDisabled, hasAudioOnly, hasChapters, subtitles, translate, debug)
+    ) = MenuContext(landscape, phoneLandscape, loggedIn, chatDisabled, hasAudioOnly, hasChapters, subtitles, debug)
 
     @Test
     fun liveStreamRowsMatchV01() {

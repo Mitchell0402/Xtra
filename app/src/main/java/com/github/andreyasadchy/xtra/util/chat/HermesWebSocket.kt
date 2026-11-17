@@ -208,7 +208,9 @@ class HermesWebSocket(
                         pongTimer?.cancel()
                         startPongTimer()
                         subscribe()
-                        if (collectPoints && !userId.isNullOrBlank() && !gqlToken.isNullOrBlank() && minuteWatchedTimer == null) {
+                        // watch time is reported for any logged-in viewer (U7): the minute-watched event does not use the
+                        // web token that the points topic needs, so a TV-code login earns watch points too
+                        if (collectPoints && !userId.isNullOrBlank() && minuteWatchedTimer == null) {
                             startMinuteWatchedTimer()
                         }
                     }

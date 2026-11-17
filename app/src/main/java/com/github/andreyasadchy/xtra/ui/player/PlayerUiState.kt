@@ -95,6 +95,8 @@ class PlayerUiState {
     var chatOverlay by mutableStateOf(false)
     var chatWidthPx by mutableStateOf(0)
     var keyboardShown by mutableStateOf(false)
+    /** The viewer list sheet (U7). */
+    var viewerListOpen by mutableStateOf(false)
     /** Tablet in landscape: the video fills the window like on a phone (the fullscreen button). */
     var tabletFullscreen by mutableStateOf(false)
     /** The sheet open over the page, null when none. */

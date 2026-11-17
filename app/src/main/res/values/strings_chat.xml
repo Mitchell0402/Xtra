@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- U7 chat -->
+    <string name="cht_latest">Latest messages</string>
+    <plurals name="cht_new_messages">
+        <item quantity="one">%d new message</item>
+        <item quantity="other">%d new messages</item>
+    </plurals>
+    <string name="cht_input_hint">Send a message</string>
+    <string name="cht_emotes">Emotes</string>
+    <string name="cht_keyboard">Keyboard</string>
+    <string name="cht_send">Send</string>
+    <string name="cht_delete_word">Delete last word</string>
+    <string name="cht_clear_all">Clear message</string>
+    <string name="cht_replying">Replying to %1$s: %2$s</string>
+    <string name="cht_cancel_reply">Cancel reply</string>
+    <string name="cht_close">Close</string>
+
+    <string name="cht_mode_slow">Slow mode · %s</string>
+    <string name="cht_mode_followers">Followers only</string>
+    <string name="cht_mode_followers_min">Followers of %s or more</string>
+    <string name="cht_mode_subs">Subscribers only</string>
+    <string name="cht_mode_emotes">Emotes only</string>
+    <string name="cht_mode_unique">Unique messages</string>
+
+    <string name="cht_points">Channel points</string>
+    <string name="cht_points_desc">Channel points: %d</string>
+    <string name="cht_points_claim">Claim</string>
+    <string name="cht_points_claim_bonus">Claim bonus</string>
+    <string name="cht_points_last">Last earned +%d</string>
+    <string name="cht_points_auto">Claim bonuses automatically</string>
+    <string name="cht_points_auto_desc">Opens the bonus chest as soon as it appears</string>
+
+    <string name="cht_raid_title">Raiding %s</string>
+    <plurals name="cht_raid_viewers">
+        <item quantity="one">%d viewer is coming along</item>
+        <item quantity="other">%d viewers are coming along</item>
+    </plurals>
+    <string name="cht_poll">Poll</string>
+    <string name="cht_prediction">Prediction</string>
+    <plurals name="cht_votes">
+        <item quantity="one">%s vote</item>
+        <item quantity="other">%s votes</item>
+    </plurals>
+    <string name="cht_time_left">%s left</string>
+    <string name="cht_ended">Ended</string>
+    <string name="cht_poll_winner">Winner: %s</string>
+    <string name="cht_prediction_open">Open for predictions</string>
+    <string name="cht_prediction_winner">Result: %s</string>
+    <string name="cht_prediction_detail">%1$s points · %2$s people</string>
+
+    <string name="cht_mention">Mention</string>
+    <string name="cht_copy">Copy</string>
+    <string name="cht_copy_to_input">Repeat</string>
+    <string name="cht_view_channel">Channel</string>
+    <string name="cht_view_thread">View conversation</string>
+    <string name="cht_thread">Conversation</string>
+    <string name="cht_user_created">Joined %s</string>
+    <string name="cht_user_followed">Following since %s</string>
+    <string name="cht_user_messages">Messages in this chat</string>
+
+    <string name="cht_emotes_search">Search emotes</string>
+    <string name="cht_emotes_recent">Recent</string>
+    <string name="cht_emotes_personal">Personal</string>
+    <string name="cht_emotes_channel">This channel</string>
+    <string name="cht_emotes_twitch">Twitch</string>
+    <string name="cht_emotes_stv">7TV</string>
+    <string name="cht_emotes_bttv">BTTV</string>
+    <string name="cht_emotes_ffz">FFZ</string>
+    <string name="cht_emotes_loading">Loading emotes…</string>
+    <string name="cht_emotes_none">No emotes match</string>
+
+    <string name="cht_viewer_list">Viewers</string>
+    <string name="cht_viewer_search">Search viewers</string>
+    <string name="cht_viewer_none">Nobody matches</string>
+
+    <!-- chat settings preview -->
+    <string name="cht_preview_m1">What a clutch</string>
+    <string name="cht_preview_m2">Replaying that round right now</string>
+    <string name="cht_preview_m3">nice, you called it</string>
+    <string name="cht_preview_m4">Hi chat, first time here!</string>
+</resources>

@@ -75,8 +75,6 @@ interface PlayerSheetSource {
     fun adBlockPreset(): String
     fun adBlockSummary(): String?
     fun adLog(): List<String>
-    /** Translate every message on this channel: null when translation is off or not available. */
-    fun translateAll(): Boolean?
 }
 
 /** One sheet window; its pages switch inside it, the main list stays one step back. */
@@ -236,10 +234,6 @@ private fun MenuRow(entry: MenuEntry, state: PlayerUiState, source: PlayerSheetS
             trailing = SettingTrailing.None, onClick = { run(entry) },
         )
         MenuEntry.ReloadEmotes -> SettingRow(stringResource(R.string.pl_reload_emotes), m, icon = LucideIcons.Smile, trailing = SettingTrailing.None, onClick = { run(entry) })
-        MenuEntry.TranslateAll -> SettingRow(
-            stringResource(R.string.translate_all_messages), m, icon = LucideIcons.Languages,
-            trailing = SettingTrailing.Toggle(source.translateAll() == true) { run(entry) },
-        )
         MenuEntry.MediaPlaylistTags -> SettingRow(stringResource(R.string.show_media_playlist_tags), m, icon = LucideIcons.Code, trailing = SettingTrailing.None, onClick = { run(entry) })
         MenuEntry.MultivariantPlaylistTags -> SettingRow(stringResource(R.string.show_multivariant_playlist_tags), m, icon = LucideIcons.Code, trailing = SettingTrailing.None, onClick = { run(entry) })
     }

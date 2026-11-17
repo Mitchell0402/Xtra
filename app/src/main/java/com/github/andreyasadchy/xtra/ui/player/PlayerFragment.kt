@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.player
 
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonToast
 import com.github.andreyasadchy.xtra.ui.settings.model.PageId
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
@@ -377,15 +378,13 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                     if (pair != null) {
                         val (following, errorMessage) = pair
                         val name = channelDisplayName()
-                        Toast.makeText(
-                            requireContext(),
+                        requireContext().lagoonToast(
                             when {
                                 !errorMessage.isNullOrBlank() -> errorMessage
                                 following -> getString(R.string.now_following, name)
                                 else -> getString(R.string.unfollowed, name)
                             },
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        )
                         viewModel.follow.value = null
                     }
                 }
@@ -412,12 +411,13 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
 
     override fun onLoaded() = applyAudioOnlyStart()
 
+    // the service's messages (stream ended, playback error, subscribers only) as Lagoon toasts (U9 B1)
     override fun toast(resId: Int, duration: Int) {
-        Toast.makeText(requireContext(), resId, duration).show()
+        requireContext().lagoonToast(resId, long = duration == Toast.LENGTH_LONG)
     }
 
     override fun toast(text: CharSequence, duration: Int) {
-        Toast.makeText(requireContext(), text, duration).show()
+        requireContext().lagoonToast(text, long = duration == Toast.LENGTH_LONG)
     }
 
     override fun onSeek(positionMs: Long) {
@@ -533,7 +533,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                                 )
                                 (requireActivity() as MainActivity).startVideo(video, 0, qualities = qualities)
                             } else {
-                                Toast.makeText(requireContext(), R.string.video_not_found, Toast.LENGTH_SHORT).show()
+                                requireContext().lagoonToast(R.string.video_not_found)
                             }
                             viewModel.unlistedVideoQualities.value = null
                         }
@@ -1285,8 +1285,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
 
     fun onSleepTimerChanged(durationMs: Long, hours: Int, minutes: Int, lockScreen: Boolean) {
         if (durationMs > 0L) {
-            Toast.makeText(
-                requireContext(),
+            requireContext().lagoonToast(
                 when {
                     hours == 0 -> getString(R.string.playback_will_stop, resources.getQuantityString(R.plurals.minutes, minutes, minutes))
                     minutes == 0 -> getString(R.string.playback_will_stop, resources.getQuantityString(R.plurals.hours, hours, hours))
@@ -1296,10 +1295,10 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                         resources.getQuantityString(R.plurals.minutes, minutes, minutes),
                     )
                 },
-                Toast.LENGTH_LONG,
-            ).show()
+                long = true,
+            )
         } else if (((activity as? MainActivity)?.getSleepTimerTimeLeft() ?: 0) > 0L) {
-            Toast.makeText(requireContext(), R.string.timer_canceled, Toast.LENGTH_LONG).show()
+            requireContext().lagoonToast(R.string.timer_canceled, long = true)
         }
         if (lockScreen != requireContext().prefs().getBoolean(C.SLEEP_TIMER_LOCK, false)) {
             requireContext().prefs().edit { putBoolean(C.SLEEP_TIMER_LOCK, lockScreen) }

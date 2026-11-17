@@ -270,7 +270,7 @@ def s_browse(d):
 def s_browse_filter(d):
     d.tap("Browse")
     time.sleep(1)
-    d.tap("Filter.*|Filters|Sort.*")
+    d.tap("Tags")
     d.shot("browse-filter")
     d.back()
 
@@ -334,8 +334,8 @@ def s_search(d):
             d.tap(tab)
             time.sleep(2)
             d.shot(f"search-{tab.lower()}")
-    if d.exists("Look up.*|Find user.*|User.*"):
-        d.tap("Look up.*|Find user.*|User.*")
+    if d.exists("Get user by.*"):
+        d.tap("Get user by.*")
         d.shot("search-user-lookup")
         d.back()
     d.back(2)
@@ -538,8 +538,8 @@ def s_text_selection(d):
     time.sleep(1.5)
     d.shot("selection-plain-field")
     d.back(3)
-    if d.exists("Look up.*|Find user.*|User.*"):
-        d.tap("Look up.*|Find user.*|User.*")
+    if d.exists("Get user by.*"):
+        d.tap("Get user by.*")
         d.text("selection")
         nodes = d.nodes()
         edits = [n for n in nodes if n.get("class") == "android.widget.EditText"]

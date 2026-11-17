@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.download
 
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonToast
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -10,7 +11,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.StatFs
 import android.provider.DocumentsContract
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ColumnScope
@@ -190,7 +190,7 @@ class DownloadDialog : ComposeSheetDialog(), IntegrityDialog.Listener {
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let {
                     when {
-                        it.authority?.startsWith("com.android.providers") == true -> Toast.makeText(requireActivity(), R.string.invalid_directory, Toast.LENGTH_LONG).show()
+                        it.authority?.startsWith("com.android.providers") == true -> requireActivity().lagoonToast(R.string.invalid_directory, long = true)
                         else -> {
                             requireContext().contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                             form.value = form.value.copy(sharedPath = it.toString())
@@ -234,7 +234,7 @@ class DownloadDialog : ComposeSheetDialog(), IntegrityDialog.Listener {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.dismiss.collectLatest {
                         if (it) {
-                            Toast.makeText(requireActivity(), R.string.video_subscribers_only, Toast.LENGTH_LONG).show()
+                            requireActivity().lagoonToast(R.string.video_subscribers_only, long = true)
                             dismissAllowingStateLoss()
                         }
                     }

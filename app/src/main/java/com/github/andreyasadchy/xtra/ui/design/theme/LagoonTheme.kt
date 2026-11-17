@@ -1,5 +1,8 @@
 package com.github.andreyasadchy.xtra.ui.design.theme
 
+import com.github.andreyasadchy.xtra.ui.design.components.findActivity
+import com.github.andreyasadchy.xtra.ui.design.components.LocalLagoonToasts
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
@@ -64,8 +67,11 @@ fun LagoonTheme(
         withFrameNanos { }
         glassDecor.value = true
     }
+    // the activity's toast queue (U9 B1), so every ComposeView of the window posts to and draws the same one
+    val toasts = remember(context) { (context.findActivity() as? LagoonToastsOwner)?.toasts }
     MaterialTheme(colorScheme = scheme, typography = typography) {
         CompositionLocalProvider(
+            LocalLagoonToasts provides toasts,
             LocalGlassDecor provides glassDecor,
             LocalLagoonColors provides colors,
             LocalLagoonType provides type,

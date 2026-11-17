@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.team
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
@@ -20,7 +21,6 @@ import com.github.andreyasadchy.xtra.ui.browse.PageBrowseActions
 import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
 import com.github.andreyasadchy.xtra.util.C
@@ -74,7 +74,7 @@ class TeamDestination(host: PageHost) : ComposePage(host) {
         val team by viewModel.team.collectAsState()
         val members = viewModel.flow.collectAsLazyPagingItems()
         val online by mainViewModel.isNetworkAvailable.collectAsState()
-        val toast = rememberToastHostState()
+        val toast = rememberLagoonToastState()
         refreshMembers = { members.refresh() }
         LaunchedEffect(Unit) {
             viewModel.integrity.collect { activity.getNewIntegrityToken(it, childFragmentManager) }

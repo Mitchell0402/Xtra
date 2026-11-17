@@ -75,9 +75,15 @@ class ToastHostState {
 @Composable
 fun rememberToastHostState() = remember { ToastHostState() }
 
-/** Shows the current toast as a floating pill at the bottom; place it above the navigation. */
+/**
+ * Shows the current toast as a floating pill at the bottom; place it above the navigation. For the activity's queue
+ * ([LagoonToasts]) a page's host stands back when the activity's overlay or an open sheet draws it ([owner] marks
+ * those two), so the toast is never drawn twice.
+ */
 @Composable
-fun ToastHost(state: ToastHostState, modifier: Modifier = Modifier) {
+fun ToastHost(state: ToastHostState, modifier: Modifier = Modifier, owner: Boolean = false) {
+    val toasts = LocalLagoonToasts.current
+    if (!owner && toasts != null && toasts.state === state && (toasts.hasOverlay || toasts.drawingSheet != null)) return
     val motion = Lagoon.motion
     var shown by remember { mutableStateOf<ToastData?>(null) }
     val current = state.current

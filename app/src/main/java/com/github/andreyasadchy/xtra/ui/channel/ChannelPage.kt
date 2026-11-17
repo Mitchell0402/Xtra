@@ -1,12 +1,12 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonToast
 import com.github.andreyasadchy.xtra.ui.main.nav.ChannelArgs
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -194,7 +194,7 @@ class ChannelPage(
         try {
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).apply { addCategory(Intent.CATEGORY_BROWSABLE) })
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, R.string.no_browser_found, Toast.LENGTH_LONG).show()
+            context.lagoonToast(R.string.no_browser_found, long = true)
         }
     }
 

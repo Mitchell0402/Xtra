@@ -1,5 +1,9 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.isSpecified
@@ -92,11 +96,28 @@ internal fun LagoonBottomSheet(
         // U9 C2: the sheet stops below the status bar and the camera cutout and rides above the keyboard; its
         // content sizes itself from LocalSheetMaxHeight, never from the screen height
         val maxHeight = windowSheetMaxHeight()
+        // U9 B1: while open, the top sheet draws the activity's toasts (the sheet window would cover any other)
+        val toasts = LocalLagoonToasts.current
+        var toastId by remember { mutableStateOf<Long?>(null) }
+        DisposableEffect(toasts) {
+            val id = toasts?.sheetOpened()
+            toastId = id
+            onDispose { if (id != null) toasts.sheetClosed(id) }
+        }
         CompositionLocalProvider(LocalSheetMaxHeight provides maxHeight) {
             GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, Modifier.fillMaxWidth().heightIn(max = maxHeight + imeHeight())) {
-                Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
-                    SheetHandle()
-                    SheetBody(title, content = content)
+                Box {
+                    Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
+                        SheetHandle()
+                        SheetBody(title, content = content)
+                    }
+                    if (toasts != null && toastId != null && toasts.drawingSheet == toastId) {
+                        ToastHost(
+                            toasts.state,
+                            Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+                            owner = true,
+                        )
+                    }
                 }
             }
         }

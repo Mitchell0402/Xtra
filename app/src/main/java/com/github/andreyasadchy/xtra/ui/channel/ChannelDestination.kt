@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import android.os.Bundle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,7 +35,6 @@ import com.github.andreyasadchy.xtra.ui.channel.videos.ChannelVideosViewModel
 import com.github.andreyasadchy.xtra.ui.chat.ChatFragment
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.following.FollowingListOptions
 import com.github.andreyasadchy.xtra.ui.following.displayName
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
@@ -152,7 +152,7 @@ class ChannelDestination(host: PageHost) : ComposePage(host) {
         val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
         val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
         val online by mainViewModel.isNetworkAvailable.collectAsState()
-        val toast = rememberToastHostState()
+        val toast = rememberLagoonToastState()
         page.refreshLists = { suggestions.refresh(); videos.refresh(); clips.refresh() }
 
         LaunchedEffect(Unit) {

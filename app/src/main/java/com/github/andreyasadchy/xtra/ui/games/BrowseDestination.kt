@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.games
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.GamesArgs
@@ -32,7 +33,6 @@ import com.github.andreyasadchy.xtra.ui.browse.hasValidatedNetwork
 import com.github.andreyasadchy.xtra.ui.common.SearchTagsViewModel
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.following.AccountSheet
 import com.github.andreyasadchy.xtra.ui.following.ConfirmSheet
 import com.github.andreyasadchy.xtra.ui.following.FollowingAccount
@@ -100,7 +100,7 @@ class BrowseDestination(host: PageHost) : ComposePage(host), GamesGridActions {
         val open by detail.open.collectAsState()
         val online by mainViewModel.isNetworkAvailable.collectAsState()
         val grid = rememberLazyGridState()
-        val toast = rememberToastHostState()
+        val toast = rememberLagoonToastState()
         var accountSheet by rememberSaveable { mutableStateOf(false) }
         var logOutSheet by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(accountRequests.intValue) { if (accountRequests.intValue > 0) accountSheet = true }

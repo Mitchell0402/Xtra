@@ -1,5 +1,16 @@
 package com.github.andreyasadchy.xtra.ui.main
 
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastOverlay
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonToast
 import android.app.ActivityOptions
 import android.app.PictureInPictureParams
 import android.app.admin.DevicePolicyManager
@@ -24,7 +35,6 @@ import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
 import android.view.View
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -91,7 +101,10 @@ import java.util.Timer
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.schedule
 
-class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
+class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, LagoonToastsOwner {
+
+    override val toasts by lazy { LagoonToasts(this, hasOverlay = true) }
+
 
     companion object {
         const val KEY_VIDEO = "video"
@@ -173,7 +186,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
                     && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             if (!isNetworkAvailable) {
                 initialized = true
-                Toast.makeText(this, R.string.no_connection, Toast.LENGTH_SHORT).show()
+                lagoonToast(R.string.no_connection)
             }
         }
         lifecycleScope.launch {
@@ -188,7 +201,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
                         if (viewModel.isNetworkAvailable.value != isNetworkAvailable) {
                             viewModel.isNetworkAvailable.value = isNetworkAvailable
                             if (initialized) {
-                                Toast.makeText(this@MainActivity, if (isNetworkAvailable) R.string.connection_restored else R.string.no_connection, Toast.LENGTH_SHORT).show()
+                                lagoonToast(if (isNetworkAvailable) R.string.connection_restored else R.string.no_connection)
                             } else {
                                 initialized = true
                             }
@@ -986,7 +999,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
                                     startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
                                     tokenPrefs().edit { putLong(C.UPDATE_LAST_CHECKED, System.currentTimeMillis()) }
                                 } catch (e: ActivityNotFoundException) {
-                                    Toast.makeText(this@MainActivity, R.string.no_browser_found, Toast.LENGTH_LONG).show()
+                                    lagoonToast(R.string.no_browser_found, long = true)
                                 }
                             } else {
                                 updatePrompt.startDownload(viewModel.updateSize)
@@ -1002,6 +1015,24 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener {
         addOnPictureInPictureModeChangedListener { info ->
             // the player fills the picture-in-picture window; keep the navigation out of it and away from screen readers
             state.inPictureInPicture = info.isInPictureInPictureMode
+        }
+        // U9 B1: the activity's toasts, above the player; under the navigation pill while the pages show, at the
+        // bottom safe area over the maximized player
+        binding.toastOverlay.consumeWindowInsets = false
+        binding.toastOverlay.setContent {
+            LagoonTheme {
+                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val bar = with(LocalDensity.current) { state.bottomBarHeightPx.toDp() }
+                val bottom = if (!state.playerMaximized && state.hasNavigation && !state.useRail && bar > 0.dp) bar else navBottom
+                LagoonToastOverlay(toasts, bottom)
+                // screen readers meet the layer only while it shows a toast
+                LaunchedEffect(Unit) {
+                    snapshotFlow { toasts.state.current != null && toasts.drawingSheet == null }.collect { showing ->
+                        binding.toastOverlay.importantForAccessibility =
+                            if (showing) View.IMPORTANT_FOR_ACCESSIBILITY_AUTO else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    }
+                }
+            }
         }
         applyShellLayout(resources.configuration)
     }

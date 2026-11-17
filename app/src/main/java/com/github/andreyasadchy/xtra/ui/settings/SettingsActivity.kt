@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
 import com.github.andreyasadchy.xtra.ui.settings.model.PageId
 import androidx.compose.runtime.remember
 import com.github.andreyasadchy.xtra.util.updateUrl
@@ -48,7 +50,10 @@ import org.chromium.net.CronetProvider
  * fragment and the three list editors. The activity stays the entry point the rest of the app starts for a result:
  * RESULT_OK asks the main screen to rebuild, [EXTRA_ACCOUNT_CHANGED] to restart (login or logout from here).
  */
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
+
+    override val toasts by lazy { LagoonToasts(this) }
+
 
     private val viewModel: SettingsViewModel by viewModels { SettingsViewModel.SettingsViewModelFactory }
     private val customProxyViewModel: CustomProxySettingsViewModel by viewModels { CustomProxySettingsViewModel.CustomProxySettingsViewModelFactory }

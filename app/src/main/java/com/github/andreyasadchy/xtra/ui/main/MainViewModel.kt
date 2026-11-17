@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.main
 
+import com.github.andreyasadchy.xtra.ui.design.components.lagoonToast
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.PendingIntent
@@ -10,7 +11,6 @@ import android.content.pm.PackageInstaller
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.http.HttpEngine
-import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
@@ -1022,7 +1022,7 @@ class MainViewModel(
                 }
             } catch (e: Exception) {
                 if (e is IllegalStateException && e.message == "401") {
-                    Toast.makeText(activity, R.string.token_expired, Toast.LENGTH_LONG).show()
+                    activity.lagoonToast(R.string.token_expired, long = true)
                     (activity as? MainActivity)?.logoutResultLauncher?.launch(Intent(activity, LoginActivity::class.java))
                 }
             }

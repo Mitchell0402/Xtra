@@ -7,10 +7,6 @@ color app/src/lab/  # debug-only lab and showcase screens use sample colours, ne
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/Glass.kt  # short-window check for blur, not a sheet height
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen.kt  # short-window header layout, not a sheet height
 legacy app/src/test/java/com/github/andreyasadchy/xtra/ui/design/DarkThemeAttributesTest.kt Theme_DeviceDefault  # reference: the dialog theme must behave as the device default did
+legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/GlobalToasts.kt Toast.makeText  # the one system toast: outside the window (background, picture-in-picture), U9 B1
 
 # --- temporary
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt Toast.makeText  # U9 step 8 (B1 global toasts)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainViewModel.kt Toast.makeText  # U9 step 8 (B1 global toasts)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/channel/ChannelPage.kt Toast.makeText  # U9 step 8 (B1 global toasts)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/download/DownloadDialog.kt Toast.makeText  # U9 step 8 (B1 global toasts)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt Toast.makeText  # U9 step 8 (B1 global toasts)

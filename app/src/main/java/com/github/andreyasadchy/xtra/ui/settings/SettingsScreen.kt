@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -74,7 +75,6 @@ import com.github.andreyasadchy.xtra.ui.design.components.SettingsGroup
 import com.github.andreyasadchy.xtra.ui.design.components.ToastHost
 import com.github.andreyasadchy.xtra.ui.design.components.ToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.pressable
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.rememberTopBarState
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
@@ -183,7 +183,7 @@ fun SettingsApp(
     store: SettingsStore,
     host: SettingsHost,
     nav: SettingsNav = rememberSettingsNav(),
-    toast: ToastHostState = rememberToastHostState(),
+    toast: ToastHostState = rememberLagoonToastState(),
 ) {
     val colors = Lagoon.colors
     val wide = LocalConfiguration.current.screenWidthDp >= SettingsTwoPaneDp

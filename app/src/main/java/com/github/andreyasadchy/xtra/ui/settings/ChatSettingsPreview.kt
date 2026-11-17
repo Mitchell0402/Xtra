@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.model.chat.ChatMessage
 import com.github.andreyasadchy.xtra.model.chat.Reply
-import com.github.andreyasadchy.xtra.model.chat.TwitchEmote
 import com.github.andreyasadchy.xtra.ui.chat.ChatAssets
 import com.github.andreyasadchy.xtra.ui.chat.ChatLineBuilder
 import com.github.andreyasadchy.xtra.ui.chat.ChatRow
@@ -27,8 +26,8 @@ import com.github.andreyasadchy.xtra.ui.settings.model.PrefStore
 import java.util.Random
 
 /**
- * Top of the chat settings page (plan 7.7): a few sample lines drawn by the chat's own row, following text size, emote
- * size, timestamps, bold names, colours and first-message highlighting as they change (U7).
+ * Top of the chat settings page (plan 7.7): a few sample lines drawn by the chat's own row, following text size,
+ * timestamps, bold names, colours and first-message highlighting as they change (U7).
  */
 @Composable
 fun ChatSettingsPreview(store: SettingsStore) {
@@ -40,6 +39,7 @@ fun ChatSettingsPreview(store: SettingsStore) {
         stringResource(R.string.cht_preview_m3), stringResource(R.string.cht_preview_m4),
     )
     val lines = remember(version, style, samples) {
+        // text only: a picture that loads in the background would make the settings screenshots flaky
         val builder = ChatLineBuilder(style, ChatStrings.from(context), ChatAssets(), loggedInUser = "you", random = Random(7))
         samples.map { builder.build(it) }
     }
@@ -54,16 +54,16 @@ fun ChatSettingsPreview(store: SettingsStore) {
     }
 }
 
-/** A plain line with an emote, a reply, a mention of the viewer and a first message; no network data apart from the emote picture. */
+/** A plain line, a reply, a mention of the viewer and a first message; nothing comes from the network. */
 private fun sampleMessages(m1: String, m2: String, m3: String, m4: String): List<ChatMessage> {
-    val now = System.currentTimeMillis()
-    val first = ChatMessage(type = ChatMessage.USER_MESSAGE, id = "p1", userId = "1", userLogin = "lagoonfan", userName = "LagoonFan", message = "$m1 Kappa", color = "#1E90FF", timestamp = now - 60_000,
-        emotes = listOf(TwitchEmote(id = "25", begin = m1.codePointCount(0, m1.length) + 1, end = m1.codePointCount(0, m1.length) + 5)))
+    // a fixed afternoon, so the timestamps in the preview do not change between screenshots
+    val now = 1_763_300_000_000L
+    val first = ChatMessage(type = ChatMessage.USER_MESSAGE, id = "p1", userId = "1", userLogin = "lagoonfan", userName = "LagoonFan", message = m1, color = "#1E90FF", timestamp = now - 60_000)
     return listOf(
         first,
-        ChatMessage(type = ChatMessage.REPLY_MESSAGE, reply = Reply("p1", "lagoonfan", "LagoonFan", "$m1 Kappa")),
+        ChatMessage(type = ChatMessage.REPLY_MESSAGE, reply = Reply("p1", "lagoonfan", "LagoonFan", m1)),
         ChatMessage(type = ChatMessage.USER_MESSAGE, id = "p2", userId = "2", userLogin = "tidepool", userName = "Tidepool", message = m2, color = "#8A2BE2", timestamp = now - 40_000,
-            reply = Reply("p1", "lagoonfan", "LagoonFan", "$m1 Kappa")),
+            reply = Reply("p1", "lagoonfan", "LagoonFan", m1)),
         ChatMessage(type = ChatMessage.USER_MESSAGE, id = "p3", userId = "3", userLogin = "seaglass", userName = "SeaGlass", message = "@you $m3", timestamp = now - 20_000),
         ChatMessage(type = ChatMessage.USER_MESSAGE, id = "p4", userId = "4", userLogin = "newwave", userName = "NewWave", message = m4, isFirst = true, color = "#FF7F50", timestamp = now),
     )

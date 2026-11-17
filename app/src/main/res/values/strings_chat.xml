@@ -79,4 +79,6 @@
     <string name="cht_preview_m2">Replaying that round right now</string>
     <string name="cht_preview_m3">nice, you called it</string>
     <string name="cht_preview_m4">Hi chat, first time here!</string>
+    <string name="cht_action_user_card">Open %s\'s user card</string>
+    <string name="cht_action_emote">View emote %s</string>
 </resources>

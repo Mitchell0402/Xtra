@@ -265,7 +265,10 @@ class ChatLineBuilder(
             message.type == ChatMessage.REPLY_MESSAGE -> {
                 val name = displayName(message.reply?.userName, message.reply?.userLogin)
                 b.withStyle(SpanStyle(color = Muted)) {
-                    append(strings.replyingTo.format(name, ""))
+                    val header = strings.replyingTo.format(name, "")
+                    // U9 C1: only the "@name" opens the replied-to user's card
+                    nameRange(header, name)?.let { (s, e) -> nameStart = b.length + s; nameEnd = b.length + e }
+                    append(header)
                     message.reply?.message?.let { appendBody(this, it, message, null, images) }
                     Unit
                 }
@@ -278,7 +281,9 @@ class ChatLineBuilder(
                         Unit
                     }
                 } else if (message.reward?.title != null) {
-                    val text = strings.redeemedNoMessage.format(displayName(message.userName, message.userLogin), message.reward.title)
+                    val who = displayName(message.userName, message.userLogin)
+                    val text = strings.redeemedNoMessage.format(who, message.reward.title)
+                    nameRange(text, who)?.let { (s, e) -> nameStart = b.length + s; nameEnd = b.length + e }
                     b.withStyle(SpanStyle(color = Muted)) {
                         if (style.systemMessageEmotes) appendBody(this, text, message, null, images) else append(text)
                         append(" ")
@@ -396,6 +401,15 @@ class ChatLineBuilder(
                 b.append(" ")
             }
         }
+    }
+
+    /** Where [name] (with an "@" in front, if there is one) sits in [text]: the tappable part of a line (U9 C1). */
+    private fun nameRange(text: String, name: String?): Pair<Int, Int>? {
+        if (name.isNullOrEmpty()) return null
+        val i = text.indexOf(name)
+        if (i < 0) return null
+        val start = if (i > 0 && text[i - 1] == '@') i - 1 else i
+        return start to i + name.length
     }
 
     private fun appendReward(b: AnnotatedString.Builder, message: ChatMessage, images: ArrayList<ChatImage>, color: Color?) {

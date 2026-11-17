@@ -76,4 +76,6 @@
     <string name="cht_preview_m2">正在回看刚才那一回合</string>
     <string name="cht_preview_m3">不错，被你说中了</string>
     <string name="cht_preview_m4">大家好，第一次来！</string>
+    <string name="cht_action_user_card">打开 %s 的用户卡片</string>
+    <string name="cht_action_emote">查看表情 %s</string>
 </resources>

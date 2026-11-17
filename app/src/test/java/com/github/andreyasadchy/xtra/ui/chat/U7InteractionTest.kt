@@ -150,21 +150,7 @@ class U7InteractionTest {
         compose.onNodeWithText("No emotes match").assertIsDisplayed()
     }
 
-    @Test
-    fun tappingALineOpensTheUserCard() {
-        val state = U7Fixtures.state()
-        val actions = show(state)
-        compose.onNodeWithText("Subscriber Riverbank: that was close", substring = true).performClick()
-        assertEquals(listOf("card:riverbank"), actions.calls)
-    }
-
-    @Test
-    fun tappingAReplyLineOpensTheReplysAuthor() {
-        val state = U7Fixtures.state()
-        val actions = show(state)
-        compose.onNodeWithText("Replying to", substring = true).performClick()
-        assertEquals(listOf("card:tidal"), actions.calls)
-    }
+    // tapping a line: see U9ChatTapTest (U9 C1 replaced the whole-row tap)
 
     @Test
     fun loggedOutHasNoInput() {

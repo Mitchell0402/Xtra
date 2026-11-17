@@ -249,11 +249,13 @@ private fun ThreadSheet(state: ChatState, message: ChatMessage, actions: ChatAct
         state.lines.filter { (it.message.reply?.threadParentId == parent || it.message.id == parent) && !it.isReplyHeader }
     }
     val maxHeight = currentSheetMaxHeight() * 0.6f
+    val onNameClick = remember(actions) { { line: ChatLine -> actions.openSheet(ChatSheet.UserCard(line.message)) } }
+    val onImageClick = remember(actions) { { img: ChatImage -> img.info?.let { actions.openSheet(ChatSheet.EmoteCard(it)) }; Unit } }
     LazyColumn(Modifier.fillMaxWidth().heightIn(max = maxHeight), reverseLayout = true) {
         items(lines.size, key = { lines[lines.size - 1 - it].key }) { i ->
             val line = lines[lines.size - 1 - i]
-            ChatRow(line, state.style, onClick = { actions.openSheet(ChatSheet.UserCard(line.message)) },
-                onImageClick = { img -> img.info?.let { actions.openSheet(ChatSheet.EmoteCard(it)) } }, selected = line.message === message)
+            // U9 C1: as in the chat, the name opens the user card, an emote its card, the rest nothing
+            ChatRow(line, state.style, onClick = null, onNameClick = onNameClick, onImageClick = onImageClick, selected = line.message === message)
         }
     }
 }

@@ -6,12 +6,10 @@ layout app/src/main/res/layout/activity_main.xml  # the main window: Compose she
 color app/src/lab/  # debug-only lab and showcase screens use sample colours, never shipped (no lab code in qa)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/Glass.kt  # short-window check for blur, not a sheet height
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen.kt  # short-window header layout, not a sheet height
+legacy app/src/test/java/com/github/andreyasadchy/xtra/ui/design/DarkThemeAttributesTest.kt Theme_DeviceDefault  # reference: the dialog theme must behave as the device default did
 
 # --- temporary
-legacy app/src/main/res/values/styles.xml Theme.Material3  # U9 step 4a (window theme parent)
 legacy app/src/main/baseline-prof.txt com/google/android/material  # U9 step 4b (MaterialComponentsViewInflater rules, removed with the library)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/common/ComposeSheetDialog.kt Theme_DeviceDefault  # U9 step 4a (A4 dialog theme)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt Theme_DeviceDefault  # U9 step 4a (A4 dialog theme)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/browse/FilterSheet.kt  # U9 step 5 (C2 sheet height)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatSheets.kt  # U9 step 5 (C2 sheet height)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ViewerList.kt  # U9 step 5 (C2 sheet height)

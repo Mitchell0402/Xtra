@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
+import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonBottomSheet
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import kotlinx.coroutines.launch
@@ -31,7 +32,7 @@ abstract class ComposeSheetDialog : DialogFragment() {
     private var closeSheet: (() -> Unit)? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar).apply {
+        return Dialog(requireContext(), R.style.Theme_Lagoon_Dialog).apply {
             window?.let {
                 WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))

@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Lagoon is dark only (plan section 4). Screens draw themselves in Compose (ui/design/theme); this window theme only
-     sets what shows before the first frame and what the remaining platform pieces read (the sleep timer's time picker,
-     dialogs, web views). The light, AMOLED, blue, compact and corner variants were deleted in U8. -->
+     sets what shows before the first frame and what the remaining platform pieces read (text selection handles and
+     highlight, links, web views, system bars). U9: the parent is AppCompat, not Material Components, and every colour
+     the platform pieces read points at a Lagoon value (DarkThemeAttributesTest records them). -->
 <resources>
 
-    <style name="BaseDarkTheme" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="BaseDarkTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/lagoonAccent</item>
-        <item name="colorOnPrimary">@color/lagoonOnAccent</item>
+        <item name="colorPrimaryDark">@color/lagoonPage</item>
+        <item name="colorAccent">@color/lagoonAccent</item>
+        <item name="colorControlActivated">@color/lagoonAccent</item>
+        <item name="colorControlNormal">@color/lagoonTextSecondary</item>
+        <item name="colorControlHighlight">@color/lagoonRipple</item>
+        <item name="android:colorAccent">@color/lagoonAccent</item>
+        <item name="android:colorControlActivated">@color/lagoonAccent</item>
+        <item name="android:colorControlNormal">@color/lagoonTextSecondary</item>
+        <item name="android:colorControlHighlight">@color/lagoonRipple</item>
+        <item name="android:textColorHighlight">@color/lagoonSelection</item>
+        <item name="android:textColorLink">@color/lagoonAccent</item>
+        <item name="android:textColorPrimary">@color/lagoonTextPrimary</item>
         <item name="android:colorBackground">@color/lagoonPage</item>
         <item name="android:windowBackground">@color/lagoonPage</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -14,5 +26,17 @@
     </style>
 
     <style name="DarkTheme" parent="BaseDarkTheme" />
+
+    <!-- U9 A4: the download sheet's and the integrity check's own windows (were the device default theme, so OEM
+         styles reached their text selection and web form controls). Transparent and undimmed: the sheet draws its
+         own scrim. Inherits DarkTheme on purpose, display cutout mode included, so the windows line up with the
+         main window. -->
+    <style name="Theme.Lagoon.Dialog" parent="DarkTheme">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 
 </resources>

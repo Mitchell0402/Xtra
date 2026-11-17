@@ -77,7 +77,7 @@ class IntegrityDialog : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar).apply {
+        return Dialog(requireContext(), R.style.Theme_Lagoon_Dialog).apply {
             window?.let {
                 WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))

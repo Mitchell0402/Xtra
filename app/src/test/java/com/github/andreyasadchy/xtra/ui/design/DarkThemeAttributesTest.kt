@@ -81,8 +81,28 @@ class DarkThemeAttributesTest {
     @Test
     fun darkTheme() = check("DarkTheme", R.style.DarkTheme, DARK_THEME)
 
+    /** U9 A4: the two dialog windows behave as with the device default theme (window shape, dim, animation)... */
+    @Test
+    fun dialogWindowBehavesAsBefore() {
+        val keys = listOf("windowIsFloating", "backgroundDimEnabled", "windowAnimationStyle", "windowNoTitle")
+        @Suppress("DEPRECATION")
+        val before = actual(android.R.style.Theme_DeviceDefault_NoActionBar).filterKeys { it in keys }
+        assertEquals(before.mapValues { (k, v) -> if (k == "backgroundDimEnabled" && v == "unset") "false" else v },
+            actual(R.style.Theme_Lagoon_Dialog).filterKeys { it in keys }.mapValues { (k, v) -> if (k == "backgroundDimEnabled" && v == "unset") "false" else v })
+    }
+
+    /** ...but take their colours from Lagoon: same as the main window except the transparent background. */
+    @Test
+    fun dialogWindowColoursAreLagoons() {
+        val expected = DARK_THEME + mapOf("windowBackground" to "#00000000", "backgroundDimEnabled" to "false")
+        check("Theme.Lagoon.Dialog", R.style.Theme_Lagoon_Dialog, expected)
+    }
+
     companion object {
-        /** Recorded on master after v0.2 (window theme Theme.Material3.Dark.NoActionBar), see the class comment. */
+        /**
+         * Recorded on master after v0.2 (window theme Theme.Material3.Dark.NoActionBar), see the class comment; the five
+         * values marked 4a changed on purpose when the parent became Theme.AppCompat.NoActionBar (U9 step 4a).
+         */
         val DARK_THEME = mapOf(
             "windowBackground" to "#FF111113",
             "colorBackground" to "#FF111113",
@@ -92,13 +112,13 @@ class DarkThemeAttributesTest {
             "windowLightNavigationBar" to "unset",
             "enforceStatusBarContrast" to "unset",
             "enforceNavigationBarContrast" to "unset",
-            "colorAccent" to "#FFCCC2DC",
-            "colorControlActivated" to "#FFCCC2DC",
-            "colorControlNormal" to "#FFCAC4D0",
+            "colorAccent" to "#FF5EE2C4", // 4a: was Material lavender #FFCCC2DC
+            "colorControlActivated" to "#FF5EE2C4", // 4a: was #FFCCC2DC (handles, cursor)
+            "colorControlNormal" to "#9EFFFFFF", // 4a: was #FFCAC4D0, now textSecondary
             "colorControlHighlight" to "#33FFFFFF",
-            "textColorHighlight" to "#99D0BCFF",
+            "textColorHighlight" to "#665EE2C4", // 4a: was purple #99D0BCFF, now accent 40 % as in Compose
             "textColorLink" to "#FF5EE2C4",
-            "textColorPrimary" to "#FFE6E0E9",
+            "textColorPrimary" to "#EBFFFFFF", // 4a: was Material #FFE6E0E9, now textPrimary
             "windowAnimationStyle" to "Animation.Material.Activity",
             "windowSplashScreenBackground" to "#00000000",
             "isLightTheme" to "false",

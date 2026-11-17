@@ -1,11 +1,11 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonProgressBar
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -83,21 +83,13 @@ fun UpdatePrompt(
         LagoonBottomSheet(onDismiss = { state.close(); onCancelDownload() }, title = stringResource(R.string.downloading_update)) {
             Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 4.dp)) {
                 if (size != null && size > 0) {
-                    LinearProgressIndicator(
-                        progress = { (state.downloaded.toFloat() / size).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(8.dp),
-                        color = Lagoon.colors.accent,
-                        trackColor = Lagoon.colors.control,
-                        strokeCap = StrokeCap.Round,
-                        gapSize = 0.dp,
-                        drawStopIndicator = {},
-                    )
+                    LagoonProgressBar({ (state.downloaded.toFloat() / size).coerceIn(0f, 1f) }, Modifier.fillMaxWidth().height(8.dp))
                     Text(
                         stringResource(R.string.downloading_update_progress, Formatter.formatFileSize(context, state.downloaded), Formatter.formatFileSize(context, size)),
                         style = Lagoon.type.label, color = Lagoon.colors.textSecondary, modifier = Modifier.padding(top = 10.dp),
                     )
                 } else {
-                    LinearProgressIndicator(Modifier.fillMaxWidth().height(8.dp), color = Lagoon.colors.accent, trackColor = Lagoon.colors.control)
+                    LagoonProgressBar(null, Modifier.fillMaxWidth().height(8.dp))
                 }
             }
             SheetButtons(secondary = null, primary = stringResource(R.string.st_cancel) to { state.close(); onCancelDownload() }, primaryStyle = ButtonStyle.Secondary)

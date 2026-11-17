@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import kotlin.math.roundToInt
+import androidx.core.content.res.ResourcesCompat
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.compose.animation.animateContentSize
@@ -856,11 +858,18 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, maxLines: Int 
     val colors = Lagoon.colors
     val text = colors.textSecondary.toArgb()
     val link = colors.accent.toArgb()
-    val size = Lagoon.type.body.fontSize.value
+    val selection = colors.accentSoft.toArgb()
+    val body = Lagoon.type.body
+    val size = body.fontSize.value
+    val lineHeightPx = with(LocalDensity.current) { body.lineHeight.toPx() }.roundToInt()
+    val letterSpacingEm = if (body.letterSpacing.isEm) body.letterSpacing.value else 0f
     AndroidView(
         factory = { context ->
             TextView(context).apply {
                 movementMethod = LinkMovementMethod.getInstance()
+                // U9 B8: Lagoon's body font, and nothing left to the window theme's default text appearance
+                typeface = ResourcesCompat.getFont(context, R.font.plus_jakarta_sans_regular)
+                includeFontPadding = false
                 tag = Markwon.builder(context)
                     .usePlugin(SoftBreakAddsNewLinePlugin.create())
                     .usePlugin(LinkifyPlugin.create())
@@ -871,7 +880,10 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier, maxLines: Int 
         update = { view ->
             view.setTextColor(text)
             view.setLinkTextColor(link)
+            view.highlightColor = selection
             view.textSize = size
+            view.letterSpacing = letterSpacingEm
+            if (lineHeightPx > 0) view.lineHeight = lineHeightPx
             view.maxLines = maxLines
             view.ellipsize = if (maxLines != Int.MAX_VALUE) android.text.TextUtils.TruncateAt.END else null
             (view.tag as Markwon).setMarkdown(view, markdown)

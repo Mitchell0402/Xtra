@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.login
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonSpinner
 import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -26,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -251,7 +251,7 @@ private fun StepLine(number: String, text: String) {
 private fun Busy() {
     Box(Modifier.fillMaxSize().background(Lagoon.colors.page), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = Lagoon.colors.accent, modifier = Modifier.size(40.dp))
+            LagoonSpinner(Modifier.size(40.dp))
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.login_checking), style = Lagoon.type.label, color = Lagoon.colors.textSecondary)
         }
@@ -289,7 +289,7 @@ private fun CodePanel(code: String?, onCopy: () -> Unit, onOpenActivate: () -> U
                         modifier = Modifier.testTag(LoginCodeTag).semantics { contentDescription = code.toCharArray().joinToString(" ") },
                     )
                 } else {
-                    CircularProgressIndicator(color = colors.accent, modifier = Modifier.size(32.dp))
+                    LagoonSpinner(Modifier.size(32.dp))
                 }
             }
             Spacer(Modifier.height(16.dp))

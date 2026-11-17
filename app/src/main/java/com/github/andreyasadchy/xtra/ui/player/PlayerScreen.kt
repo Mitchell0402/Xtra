@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.player
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonSpinner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -37,7 +38,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -622,11 +622,7 @@ private fun VideoLayer(
         }
 
         if (state.buffering && !state.showPlayButton) {
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 3.dp,
-                modifier = Modifier.align(Alignment.Center).size(44.dp),
-            )
+            LagoonSpinner(Modifier.align(Alignment.Center).size(44.dp), color = Color.White, strokeWidth = 3.dp)
         }
 
         AnimatedVisibility(visible, enter = fadeIn(tween(250)), exit = fadeOut(tween(250)), modifier = Modifier.fillMaxSize()) {
@@ -1275,7 +1271,7 @@ fun PlayerControlsPreview(options: PlayerOptions, modifier: Modifier = Modifier,
             .fillMaxWidth()
             .height(200.dp)
             .clip(LagoonShapes.cardMedia)
-            .background(Brush.linearGradient(listOf(Color(0xFF1E4D47), Color(0xFF14202B), Color(0xFF2B1E3D))))
+            .background(Brush.linearGradient(Lagoon.colors.previewGradient))
             .testTag("playerControlsPreview")
     ) {
         PlayerControls(state, options, NoPlayerActions, PlayerLayout.Landscape, onTouch = {}, onScrub = {}, now = now)

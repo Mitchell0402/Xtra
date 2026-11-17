@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import com.github.andreyasadchy.xtra.ui.design.theme.DarkLagoonColors
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Patterns
@@ -556,7 +557,8 @@ class ChatLineBuilder(
     }
 
     companion object {
-        val Muted = Color(0xFF9E9EA4)
-        val Link = Color(0xFF7FD8F5)
+        // the builder runs outside composition; Lagoon is dark only, so it reads the dark tokens (U9 B6)
+        val Muted = DarkLagoonColors.chatMuted
+        val Link = DarkLagoonColors.chatLink
     }
 }

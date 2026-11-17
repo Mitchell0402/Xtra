@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -127,6 +129,30 @@ private fun windowSheetMaxHeight(): Dp {
     val top = WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(density)
     return with(density) { sheetMaxHeight(window.height.toDp(), top.toDp(), imeHeight()) }
 }
+
+/** A sheet's state for hosts outside ui/design that slide the sheet away themselves (ComposeSheetDialog). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Stable
+class LagoonSheetState internal constructor(internal val state: SheetState) {
+    suspend fun hide() = state.hide()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rememberLagoonSheetState(): LagoonSheetState {
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    return remember(state) { LagoonSheetState(state) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LagoonBottomSheet(
+    onDismiss: () -> Unit,
+    state: LagoonSheetState,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) = LagoonBottomSheet(onDismiss, state.state, modifier, title, content)
 
 /** The grabber at the top of a sheet. */
 @Composable

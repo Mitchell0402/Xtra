@@ -9,16 +9,6 @@ screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen
 legacy app/src/test/java/com/github/andreyasadchy/xtra/ui/design/DarkThemeAttributesTest.kt Theme_DeviceDefault  # reference: the dialog theme must behave as the device default did
 
 # --- temporary
-color app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatLines.kt  # U9 step 7 (B6 chat colour tokens)
-color app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatScreen.kt  # U9 step 7 (B6 chat colour tokens)
-color app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/Media.kt  # U9 step 7 (B5 avatar tiles)
-color app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerScreen.kt  # U9 step 7 (B5 button preview)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/common/ComposeSheetDialog.kt  # U9 step 7 (wrap in ui/design)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/download/DownloadSheet.kt  # U9 step 7 (LagoonRangeSlider)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginScreen.kt  # U9 step 7 (LagoonSpinner)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerScreen.kt  # U9 step 7 (LagoonSpinner)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/saved/SavedScreen.kt  # U9 step 7 (SwipeToDelete)
-m3-import app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/UpdatePrompt.kt  # U9 step 7 (LagoonProgressBar)
 legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainActivity.kt Toast.makeText  # U9 step 8 (B1 global toasts)
 legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/main/MainViewModel.kt Toast.makeText  # U9 step 8 (B1 global toasts)
 legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/channel/ChannelPage.kt Toast.makeText  # U9 step 8 (B1 global toasts)

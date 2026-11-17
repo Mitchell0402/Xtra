@@ -29,6 +29,32 @@ class DesignTokensTest {
         return (maxOf(a, b) / minOf(a, b)).toDouble()
     }
 
+    /** U9 B6 / D1: chat highlight tokens. */
+    @Test
+    fun chatHighlightTokens() {
+        val c = DarkLagoonColors
+        assertEquals(c.accent, c.chatFirst)
+        assertEquals(c.danger, c.chatMention)
+        for (layer in listOf(c.page, c.card)) {
+            for (bar in listOf(c.chatFirst, c.chatReward, c.chatNotice, c.chatMention)) {
+                assertTrue("bar $bar on $layer", contrast(bar, layer) >= 3.0)
+            }
+        }
+        // the reward and mention bars differ in lightness, not only in hue
+        assertTrue("reward vs mention ${contrast(c.chatReward, c.chatMention)}", contrast(c.chatReward, c.chatMention) >= 1.5)
+        assertTrue("links readable", contrast(c.chatLink, c.page) >= 4.5)
+    }
+
+    /** U9 B5: no purple or magenta avatar tile, and the empty-name tile is neutral. */
+    @Test
+    fun avatarTilesStayInTheTealGreyFamily() {
+        for (tile in DarkLagoonColors.avatarTiles) {
+            assertFalse("purple-ish tile $tile", tile.blue > tile.green && tile.red > tile.green)
+        }
+        val e = DarkLagoonColors.avatarEmpty
+        assertTrue(kotlin.math.abs(e.red - e.green) < 0.02f && kotlin.math.abs(e.green - e.blue) < 0.03f)
+    }
+
     @Test
     fun textReachesContrastOnEveryLayer() {
         val c = DarkLagoonColors

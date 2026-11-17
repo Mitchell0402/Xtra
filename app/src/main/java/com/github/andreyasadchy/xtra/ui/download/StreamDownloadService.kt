@@ -2217,6 +2217,7 @@ class StreamDownloadService : LifecycleService() {
             }))
             setContentText(offlineVideo.channelName)
             setSmallIcon(android.R.drawable.stat_sys_download)
+            setColor(ContextCompat.getColor(this@StreamDownloadService, R.color.lagoonAccent)) // U9 B2: Lagoon accent
             setGroup(GROUP_KEY)
             setOngoing(true)
             setOnlyAlertOnce(true)

@@ -9,8 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ComposeView
@@ -41,13 +40,12 @@ abstract class ComposeSheetDialog : DialogFragment() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 LagoonTheme {
-                    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    val state = rememberLagoonSheetState()
                     val scope = rememberCoroutineScope()
                     closeSheet = {
                         scope.launch { state.hide() }.invokeOnCompletion { if (isAdded) dismissAllowingStateLoss() }

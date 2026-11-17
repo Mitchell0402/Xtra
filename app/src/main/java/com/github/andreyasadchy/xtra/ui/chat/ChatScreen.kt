@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonColors
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.TextLayoutResult
@@ -208,17 +209,12 @@ interface ChatActions {
     fun openSheet(sheet: ChatSheet)
 }
 
-private val FirstTint = Color(0xFF5EE2C4)
-private val RewardTint = Color(0xFFB18CFF)
-private val NoticeTint = Color(0xFF8E8E96)
-private val MentionTint = Color(0xFFFF6B6E)
-
-fun ChatHighlight.tint(): Color? = when (this) {
+fun ChatHighlight.tint(colors: LagoonColors): Color? = when (this) {
     ChatHighlight.None -> null
-    ChatHighlight.First -> FirstTint
-    ChatHighlight.Reward -> RewardTint
-    ChatHighlight.Notice -> NoticeTint
-    ChatHighlight.Mention -> MentionTint
+    ChatHighlight.First -> colors.chatFirst
+    ChatHighlight.Reward -> colors.chatReward
+    ChatHighlight.Notice -> colors.chatNotice
+    ChatHighlight.Mention -> colors.chatMention
 }
 
 /** The chat page. [sheets] off draws no sheet windows (tests draw the sheets in place). */
@@ -341,8 +337,8 @@ fun ChatRow(
     selected: Boolean = false,
     onNameClick: ((ChatLine) -> Unit)? = null,
 ) {
-    val tint = line.highlight.tint()
     val colors = Lagoon.colors
+    val tint = line.highlight.tint(colors)
     val rowModifier = modifier
         .fillMaxWidth()
         .then(

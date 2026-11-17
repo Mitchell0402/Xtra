@@ -1023,7 +1023,9 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             LagoonTheme {
                 val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 val bar = with(LocalDensity.current) { state.bottomBarHeightPx.toDp() }
-                val bottom = if (!state.playerMaximized && state.hasNavigation && !state.useRail && bar > 0.dp) bar else navBottom
+                val base = if (!state.playerMaximized && state.hasNavigation && !state.useRail && bar > 0.dp) bar else navBottom
+                // above the mini player card (its 16:9 thumbnail 112 dp wide, 8 dp padding, 12 dp margin)
+                val bottom = if (state.miniPlayer && !state.playerMaximized) base + 92.dp else base
                 LagoonToastOverlay(toasts, bottom)
                 // screen readers meet the layer only while it shows a toast
                 LaunchedEffect(Unit) {

@@ -70,7 +70,7 @@ def main():
         "theme_settings": None, "ui_settings": "appearance", "chat_settings": "chat", "player_settings": "playback",
         "player_button_settings": "playerButtons", "buffer_settings": "buffer", "ad_block_settings": "adBlock",
         "playback_settings": "advanced", "api_token_settings": "apiTokens", "download_settings": "downloads",
-        "update_settings": "about", "debug_settings": "debug", "player_menu_settings": "playerMenu",
+        "update_settings": "about", "debug_settings": "debug", "player_menu_settings": None,
         "ad_block_advanced": "adBlock", "ad_block_stats": "adBlock",
     }
     tab_dialogs = {k + "_dialog": k for k in ["ui_navigation_tab_list", "ui_following_tabs", "ui_saved_tabs", "ui_channel_tabs", "ui_game_tabs", "ui_search_tabs"]}
@@ -83,15 +83,21 @@ def main():
                 continue
             key, tag = a["key"], m.group(1).split(".")[-1]
             title = s.get(a.get("title", "").replace("@string/", ""), "")
-            if key in removed:
-                where, state = "removed: " + removed[key], "removed"
-            elif tag in ("Preference", "PreferenceCategory") and key in links:
+            # a page link is a row of its own even when a switch shares its key (v0.1 "player_settings")
+            if tag in ("Preference", "PreferenceCategory") and key in links:
                 p = links[key]
-                where, state = ("page link, now the page " + page_titles.get(p, p)) if p else "removed (theme page)", "moved"
+                if p:
+                    where, state = "page link, now the page " + page_titles.get(p, p), "moved"
+                elif key == "player_menu_settings":
+                    where, state = "removed: the player menu page; its actions are all in the player's settings sheet (U6 decision, option 1)", "removed"
+                else:
+                    where, state = "removed (theme page)", "removed"
                 if key == "ad_block_stats":
                     where, state = "the status card at the top of Ad blocking", "moved"
                 if key == "ad_block_advanced":
                     where, state = "group Advanced on Ad blocking", "moved"
+            elif key in removed:
+                where, state = "removed: " + removed[key], "removed"
             elif key in tab_dialogs:
                 p, g = location[tab_dialogs[key]]
                 where, state = f"{page_titles[p]} › {g} (sheet, key {tab_dialogs[key]})", "moved"

@@ -95,8 +95,10 @@ U9 计划第 5 节。代码里能列出的界面（弹层调用点、播放菜�
 | `PlayerSheet.Aspect` | 画面比例 | L |  |  |  |  |
 | `PlayerSheet.Chapters` | 章节 | L | 回放 |  |  |  |
 | `PlayerSheet.Quality` | 画质 | L |  | player-menu-quality |  |  |
+| `PlayerSheet.PlaylistTags` | 播放清单标签（调试，U9 新增，替代 A2） | L | 设置 › 调试打开后才有 | player-menu-playlist-tags |  |  |
 | `PlayerSheet.Settings` | 播放设置首页（直播/回放/剪辑/离线各不同） | L |  | player-menu |  |  |
 | `PlayerSheet.Sleep` | 睡眠定时 | L |  | player-menu-sleep-timer |  |  |
+| `PlayerSheet.SleepAt` | 在指定时间（U9 新增，替代 A1） | L | 睡眠定时 › 在指定时间 | player-menu-sleep-at |  |  |
 | `PlayerSheet.Speed` | 倍速 | L | 回放 |  |  |  |
 | `PlayerSheet.Volume` | 音量 | L |  | player-menu-volume |  |  |
 

@@ -29,9 +29,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.trackPipAnimationHintView
@@ -58,8 +56,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isVisible
-import androidx.core.widget.NestedScrollView
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -91,11 +87,8 @@ import com.github.andreyasadchy.xtra.ui.player.PlayerViewModel.Companion.PlayerV
 import com.github.andreyasadchy.xtra.ui.settings.SettingsActivity
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
-import com.github.andreyasadchy.xtra.util.getAlertDialogBuilder
 import com.github.andreyasadchy.xtra.util.prefs
 import com.github.andreyasadchy.xtra.util.tokenPrefs
-import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -830,8 +823,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             MenuEntry.SleepTimer -> {
                 val running = ((activity as? MainActivity)?.getSleepTimerTimeLeft() ?: 0) > 0L
                 if (requireContext().prefs().getBoolean(C.SLEEP_TIMER_USE_TIME_PICKER, false) && !running) {
-                    state.sheet = null
-                    pickSleepTime()
+                    state.sheet = PlayerSheet.SleepAt
                 } else {
                     state.sheet = PlayerSheet.Sleep
                 }
@@ -897,21 +889,18 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         }
     }
 
-    /** v0.1's clock picker for the sleep timer (sleep_timer_use_time_picker), kept as a second way in. */
-    override fun pickSleepTime() {
-        val savedValue = requireContext().prefs().getInt(C.SLEEP_TIMER_TIME, 15)
-        val picker = MaterialTimePicker.Builder()
-            .setTimeFormat(if (DateFormat.is24HourFormat(requireContext())) TimeFormat.CLOCK_24H else TimeFormat.CLOCK_12H)
-            .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
-            .setHour(savedValue / 60)
-            .setMinute(savedValue % 60)
-            .build()
-        picker.addOnPositiveButtonClickListener {
-            val minutes = TwitchApiHelper.getMinutesLeft(picker.hour, picker.minute)
+    /** "At a set time" (U9 A1): v0.1's arithmetic (TwitchApiHelper.getMinutesLeft) and keys, picked on a sheet page. */
+    override fun setSleepTimerAt(minuteOfDay: Int) {
+        val minutes = TwitchApiHelper.getMinutesLeft(minuteOfDay / 60, minuteOfDay % 60)
+        requireContext().prefs().edit { putInt(C.SLEEP_TIMER_TIME, minuteOfDay) }
+        if (minutes > 0) {
             onSleepTimerChanged(minutes * 60_000L, minutes / 60, minutes % 60, requireContext().prefs().getBoolean(C.SLEEP_TIMER_LOCK, false))
-            requireContext().prefs().edit { putInt(C.SLEEP_TIMER_TIME, picker.hour * 60 + picker.minute) }
         }
-        picker.show(childFragmentManager, "closeOnPip")
+    }
+
+    override fun copyText(text: String) {
+        val clipboard = ContextCompat.getSystemService(requireContext(), ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("label", text))
     }
 
     override fun requestSleepLockPermission() {
@@ -964,6 +953,14 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     override fun playerVolume() = backend?.getCurrentVolume() ?: 1f
 
     override fun sleepMinutes() = requireContext().prefs().getInt(C.SLEEP_TIMER_MINUTES, 15)
+
+    override fun sleepAtTime() = requireContext().prefs().getInt(C.SLEEP_TIMER_TIME, 15)
+
+    override fun is24HourClock() = DateFormat.is24HourFormat(requireContext())
+
+    override fun nowMinuteOfDay() = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) * 60 + it.get(java.util.Calendar.MINUTE) }
+
+    override fun playlistTags() = playlistTagsText
 
     override fun sleepLock() = requireContext().prefs().getBoolean(C.SLEEP_TIMER_LOCK, false)
 
@@ -1228,25 +1225,14 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         )
     }
 
+    private var playlistTagsText = ""
+
+    /** Debug: the current media or multivariant playlist on a sheet page (U9 A2, was a Material dialog). */
     private fun showPlaylistTags(mediaPlaylist: Boolean) {
         val tags = backend?.getPlaylistTags(mediaPlaylist)
         if (!tags.isNullOrBlank()) {
-            requireContext().getAlertDialogBuilder().apply {
-                setView(NestedScrollView(context).apply {
-                    addView(HorizontalScrollView(context).apply {
-                        addView(TextView(context).apply {
-                            text = tags
-                            textSize = 12F
-                            setTextIsSelectable(true)
-                        })
-                    })
-                })
-                setNegativeButton(R.string.copy_clip) { _, _ ->
-                    val clipboard = ContextCompat.getSystemService(requireContext(), ClipboardManager::class.java)
-                    clipboard?.setPrimaryClip(ClipData.newPlainText("label", tags))
-                }
-                setPositiveButton(android.R.string.ok, null)
-            }.show()
+            playlistTagsText = tags
+            state.sheet = PlayerSheet.PlaylistTags
         }
     }
 
@@ -1413,8 +1399,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             state.controlsVisible = false
             state.sheet = null
             confirmUnfollow = false
-            // player dialogs and the chat's sheets
-            (childFragmentManager.findFragmentByTag("closeOnPip") as? DialogFragment)?.dismiss()
+            // the chat's sheets (the player's own pages close with state.sheet above)
             state.viewerListOpen = false
             chatFragment?.closeSheets()
         }

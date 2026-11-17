@@ -24,6 +24,13 @@
     <string name="pl_sleep_set">开始计时</string>
     <string name="pl_sleep_stop">停止计时</string>
     <string name="pl_sleep_at">到指定时间</string>
+    <string name="pl_sleep_at_hours">小时</string>
+    <string name="pl_sleep_at_minutes">分钟</string>
+    <string name="pl_sleep_at_in">将在 %s 后停止播放</string>
+    <string name="pl_sleep_at_later">请选一个之后的时间</string>
+    <string name="pl_wheel_increase">增加</string>
+    <string name="pl_wheel_decrease">减少</string>
+    <string name="pl_playlist_tags">播放清单标签</string>
     <string name="pl_sleep_minutes">%d 分钟</string>
     <string name="pl_record">录制</string>
     <string name="pl_ad_block_active">正在屏蔽广告</string>

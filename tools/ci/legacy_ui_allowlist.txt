@@ -8,9 +8,6 @@ screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/design/componen
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen.kt  # short-window header layout, not a sheet height
 
 # --- temporary
-legacy app/src/main/java/com/github/andreyasadchy/xtra/util/ContextExtensions.kt  # U9 step 3 (A2 playlist tags dialog)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt com.google.android.material  # U9 step 3 (A1 time picker)
-legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerFragment.kt MaterialTimePicker  # U9 step 3 (A1 time picker)
 legacy app/src/main/res/values/styles.xml Theme.Material3  # U9 step 4a (window theme parent)
 legacy app/src/main/baseline-prof.txt com/google/android/material  # U9 step 4b (MaterialComponentsViewInflater rules, removed with the library)
 legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/common/ComposeSheetDialog.kt Theme_DeviceDefault  # U9 step 4a (A4 dialog theme)

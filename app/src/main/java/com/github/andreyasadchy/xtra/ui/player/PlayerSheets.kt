@@ -31,8 +31,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.andreyasadchy.xtra.R
@@ -47,6 +56,8 @@ import com.github.andreyasadchy.xtra.ui.design.components.LagoonButton
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonIconButton
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonImage
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonSlider
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonTimeWheel
+import com.github.andreyasadchy.xtra.ui.design.components.TimeWheelLogic
 import com.github.andreyasadchy.xtra.ui.design.components.SettingRow
 import com.github.andreyasadchy.xtra.ui.design.components.SettingTrailing
 import com.github.andreyasadchy.xtra.ui.design.components.SettingsGroup
@@ -58,7 +69,7 @@ import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import kotlin.math.roundToInt
 
 /** The pages of the player's sheet: the settings list and the choices it opens in place (plan 7.4). */
-enum class PlayerSheet { Settings, Quality, Speed, Sleep, Volume, Chapters, AdBlock, Aspect }
+enum class PlayerSheet { Settings, Quality, Speed, Sleep, SleepAt, Volume, Chapters, AdBlock, Aspect, PlaylistTags }
 
 /** What the sheet reads when it opens. */
 interface PlayerSheetSource {
@@ -72,6 +83,14 @@ interface PlayerSheetSource {
     fun sleepLock(): Boolean
     /** Locking the screen needs the device admin permission. */
     fun sleepLockAllowed(): Boolean
+    /** v0.1 sleep_timer_time: the last time of day picked for "at a set time", minutes since midnight. */
+    fun sleepAtTime(): Int
+    /** The system's 12/24-hour setting. */
+    fun is24HourClock(): Boolean
+    /** The current time of day, minutes since midnight. */
+    fun nowMinuteOfDay(): Int
+    /** The playlist text shown by the debug "playlist tags" page (U9 A2). */
+    fun playlistTags(): String
     fun adBlockPreset(): String
     fun adBlockSummary(): String?
     fun adLog(): List<String>
@@ -85,6 +104,10 @@ fun PlayerSheetHost(state: PlayerUiState, source: PlayerSheetSource, actions: Pl
     val fromMenu = remember { mutableStateOf(page == PlayerSheet.Settings) }
     if (page == PlayerSheet.Settings) fromMenu.value = true
     val back = { if (fromMenu.value) state.sheet = PlayerSheet.Settings else state.sheet = null }
+    // "at a set time" goes back to the sleep timer page when opened from it, else like any other page
+    val sleepAtFromSleep = remember { mutableStateOf(false) }
+    if (page == PlayerSheet.Sleep) sleepAtFromSleep.value = true
+    if (page != PlayerSheet.Sleep && page != PlayerSheet.SleepAt) sleepAtFromSleep.value = false
     val motion = Lagoon.motion
     LagoonBottomSheet(onDismiss = { state.sheet = null }, skipHalfHeight = true) {
         AnimatedContent(
@@ -92,7 +115,9 @@ fun PlayerSheetHost(state: PlayerUiState, source: PlayerSheetSource, actions: Pl
             transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fadeExit()) },
             label = "playerSheet",
         ) { current ->
-            PlayerSheetPage(current, state, source, actions, layout, back)
+            PlayerSheetPage(current, state, source, actions, layout, if (current == PlayerSheet.SleepAt && sleepAtFromSleep.value) {
+                { state.sheet = PlayerSheet.Sleep }
+            } else back)
         }
     }
 }
@@ -112,10 +137,12 @@ fun PlayerSheetPage(page: PlayerSheet, state: PlayerUiState, source: PlayerSheet
             PlayerSheet.Quality -> SubPage(stringResource(R.string.pl_quality), back) { QualityPage(state, source, actions) }
             PlayerSheet.Speed -> SubPage(stringResource(R.string.pl_speed), back) { SpeedPage(state, source, actions) }
             PlayerSheet.Sleep -> SubPage(stringResource(R.string.pl_sleep), back) { SleepPage(state, source, actions) }
+            PlayerSheet.SleepAt -> SubPage(stringResource(R.string.pl_sleep_at), back) { SleepAtPage(state, source, actions) }
             PlayerSheet.Volume -> SubPage(stringResource(R.string.pl_volume), back) { VolumePage(source, actions) }
             PlayerSheet.Chapters -> SubPage(stringResource(R.string.pl_chapters), back) { ChaptersPage(state.chapters, state, actions) }
             PlayerSheet.AdBlock -> SubPage(stringResource(R.string.ad_block_settings), back) { AdBlockPage(state, source, actions) }
             PlayerSheet.Aspect -> SubPage(stringResource(R.string.pl_aspect), back) { AspectPage(state, actions) }
+            PlayerSheet.PlaylistTags -> SubPage(stringResource(R.string.pl_playlist_tags), back) { PlaylistTagsPage(state, source, actions) }
         }
     }
 }
@@ -337,10 +364,80 @@ private fun SleepPage(state: PlayerUiState, source: PlayerSheetSource, actions: 
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             LagoonButton(
-                stringResource(R.string.pl_sleep_at), onClick = { state.sheet = null; actions.pickSleepTime() },
+                stringResource(R.string.pl_sleep_at), onClick = { state.sheet = PlayerSheet.SleepAt },
                 style = ButtonStyle.Secondary, icon = LucideIcons.Clock,
             )
         }
+    }
+}
+
+/**
+ * "At a set time" (U9 A1, replaces Material's clock picker): two wheels pick the time of day, the line under them says
+ * how long until then, and the timer starts on the button. The current minute would give 0, which the timer reads as
+ * "cancel", so the button waits for a later time.
+ */
+@Composable
+private fun SleepAtPage(state: PlayerUiState, source: PlayerSheetSource, actions: PlayerActions) {
+    var minuteOfDay by remember { mutableIntStateOf(source.sleepAtTime().coerceIn(0, 1439)) }
+    val now by produceState(source.nowMinuteOfDay()) {
+        while (true) {
+            delay(5_000)
+            value = source.nowMinuteOfDay()
+        }
+    }
+    val left = TimeWheelLogic.minutesUntil(now, minuteOfDay)
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val amPm = remember { java.text.DateFormatSymbols.getInstance().amPmStrings.let { it[0] to it[1] } }
+    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LagoonTimeWheel(
+            minuteOfDay = minuteOfDay,
+            onChange = { minuteOfDay = it },
+            is24Hour = source.is24HourClock(),
+            amPm = amPm,
+            visibleRows = if (windowHeight < 480.dp) 3 else 5,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            if (left == 0) stringResource(R.string.pl_sleep_at_later)
+            else stringResource(R.string.pl_sleep_at_in, PlayerLogic.time(left * 60_000L).removeSuffix(":00").let {
+                if (left < 60) stringResource(R.string.pl_sleep_minutes, left) else it
+            }),
+            style = Lagoon.type.body,
+            color = if (left == 0) Lagoon.colors.textHint else Lagoon.colors.textSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).testTag("sleepAtSummary"),
+        )
+        LagoonButton(
+            stringResource(R.string.pl_sleep_set),
+            onClick = { state.sheet = null; actions.setSleepTimerAt(minuteOfDay) },
+            enabled = left > 0,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp).testTag("sleepAtStart"),
+        )
+    }
+}
+
+/** The debug playlist text (U9 A2, was a Material dialog): monospace, selectable, scrolls sideways; copy below. */
+@Composable
+private fun PlaylistTagsPage(state: PlayerUiState, source: PlayerSheetSource, actions: PlayerActions) {
+    val text = remember { source.playlistTags() }
+    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SelectionContainer(
+            Modifier
+                .fillMaxWidth()
+                .background(Lagoon.colors.card, LagoonShapes.row)
+                .horizontalScroll(rememberScrollState())
+                .padding(12.dp)
+                .testTag("playlistTags"),
+        ) {
+            Text(text, style = Lagoon.type.caption.copy(fontFamily = FontFamily.Monospace), color = Lagoon.colors.textPrimary, softWrap = false)
+        }
+        LagoonButton(
+            stringResource(R.string.copy_clip),
+            onClick = { state.sheet = null; actions.copyText(text) },
+            style = ButtonStyle.Secondary,
+            icon = LucideIcons.Copy,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+        )
     }
 }
 

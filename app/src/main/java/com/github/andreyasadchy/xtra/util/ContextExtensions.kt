@@ -4,13 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.res.use
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.andreyasadchy.xtra.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.Locale
 
 /** The app settings: the same file PreferenceManager.getDefaultSharedPreferences used (U8 dropped androidx.preference). */
@@ -47,8 +45,6 @@ fun Activity.applyTheme() {
     }
 }
 
-/** The one plain dialog left (the player's debug playlist tags). */
-fun Context.getAlertDialogBuilder(): AlertDialog.Builder = MaterialAlertDialogBuilder(this)
 /** Lagoon's own releases: the in-app update check reads the latest one (needs an .apk asset). */
 const val DEFAULT_UPDATE_URL = "https://api.github.com/repos/Mitchell0402/Xtra/releases/latest"
 

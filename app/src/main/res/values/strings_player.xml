@@ -24,6 +24,13 @@
     <string name="pl_sleep_set">Start timer</string>
     <string name="pl_sleep_stop">Stop timer</string>
     <string name="pl_sleep_at">At a set time</string>
+    <string name="pl_sleep_at_hours">Hours</string>
+    <string name="pl_sleep_at_minutes">Minutes</string>
+    <string name="pl_sleep_at_in">Playback stops in %s</string>
+    <string name="pl_sleep_at_later">Pick a later time</string>
+    <string name="pl_wheel_increase">Increase</string>
+    <string name="pl_wheel_decrease">Decrease</string>
+    <string name="pl_playlist_tags">Playlist tags</string>
     <string name="pl_sleep_minutes">%d min</string>
     <string name="pl_record">Record</string>
     <string name="pl_ad_block_active">Blocking ads</string>

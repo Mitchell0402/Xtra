@@ -166,7 +166,10 @@ interface PlayerActions {
     fun setPlayerVolume(volume: Float, done: Boolean)
     /** Starts the sleep timer, or stops it when [minutes] is 0. */
     fun setSleepTimer(minutes: Int, lockScreen: Boolean)
-    fun pickSleepTime()
+    /** Starts the sleep timer for the next [minuteOfDay] ("at a set time") and remembers that time. */
+    fun setSleepTimerAt(minuteOfDay: Int)
+    /** Copies [text] to the clipboard (playlist tags). */
+    fun copyText(text: String)
     /** Asks for the device admin permission that locking the screen after the sleep timer needs (v0.1). */
     fun requestSleepLockPermission()
     fun seekToChapter(positionMs: Long)
@@ -1236,7 +1239,8 @@ object NoPlayerActions : PlayerActions {
     override fun selectSpeed(speed: Float) = Unit
     override fun setPlayerVolume(volume: Float, done: Boolean) = Unit
     override fun setSleepTimer(minutes: Int, lockScreen: Boolean) = Unit
-    override fun pickSleepTime() = Unit
+    override fun setSleepTimerAt(minuteOfDay: Int) = Unit
+    override fun copyText(text: String) = Unit
     override fun requestSleepLockPermission() = Unit
     override fun seekToChapter(positionMs: Long) = Unit
     override fun setChatOverlay(overlay: Boolean) = Unit

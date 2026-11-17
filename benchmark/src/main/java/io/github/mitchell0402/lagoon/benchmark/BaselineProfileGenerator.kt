@@ -22,7 +22,7 @@ class BaselineProfileGenerator {
     @Test
     fun startupAndNavigation() = rule.collect(packageName = TARGET_PACKAGE, includeInStartupProfile = true) {
         pressHome()
-        startActivityAndWait()
+        startMainActivity()
         device.waitForIdle()
         // the shell's navigation: Browse, a game, back, Me, back to Following (unselected items show only their
         // icon, so look them up by text or by description)

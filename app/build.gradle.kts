@@ -80,6 +80,13 @@ android {
             initWith(getByName("qa"))
             applicationIdSuffix = ".bench"
             versionNameSuffix = "-BENCH"
+            // -Plagoon.profiling: the same build without R8, so a baseline profile recorded on it names the source
+            // classes and methods (a profile recorded on the R8 build names merged and inlined classes that the
+            // release build's R8 cannot map back, U8)
+            if (providers.gradleProperty("lagoon.profiling").isPresent) {
+                isMinifyEnabled = false
+                isShrinkResources = false
+            }
         }
     }
     buildFeatures {

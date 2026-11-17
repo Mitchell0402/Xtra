@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.browse
 
+import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -250,7 +250,7 @@ private fun MainPage(
     onApply: () -> Unit,
 ) {
     val kind = config.kind
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.62f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.62f
     Column {
         Text(
             stringResource(R.string.browse_filter_title), style = Lagoon.type.headline, color = Lagoon.colors.textPrimary,
@@ -392,7 +392,7 @@ private fun SubPageHeader(title: String, onBack: () -> Unit, trailing: (@Composa
 private fun LanguagesPage(selected: List<String>, onChange: (List<String>) -> Unit, onBack: () -> Unit) {
     val names = stringArrayResource(R.array.gqlUserLanguageEntries)
     val codes = stringArrayResource(R.array.gqlUserLanguageValues)
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.7f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.7f
     Column {
         SubPageHeader(stringResource(R.string.languages), onBack) {
             if (selected.isNotEmpty()) {
@@ -429,7 +429,7 @@ private fun TagsPage(
         if (query.isNotBlank()) delay(300)
         onQuery(query)
     }
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.5f
     Column(Modifier.imePadding()) {
         SubPageHeader(stringResource(R.string.browse_filter_tags), onBack)
         LagoonTextField(

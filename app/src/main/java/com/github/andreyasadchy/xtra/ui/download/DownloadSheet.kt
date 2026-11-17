@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.download
 
+import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -128,7 +128,7 @@ fun DownloadSheetContent(
     folderLabel: String? = null,
 ) {
     val colors = Lagoon.colors
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.75f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.75f
     Column(modifier.testTag(DownloadSheetTag)) {
         Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
             ItemHeader(item)

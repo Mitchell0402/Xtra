@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +34,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -199,7 +199,7 @@ private fun ColumnScope.UserCard(state: ChatState, opened: ChatMessage, actions:
             stringResource(R.string.cht_user_messages), style = Lagoon.type.labelStrong, color = colors.textSecondary,
             modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
         )
-        val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.4f).dp
+        val maxHeight = currentSheetMaxHeight() * 0.4f
         val listState = rememberLazyListState()
         LazyColumn(Modifier.fillMaxWidth().heightIn(max = maxHeight).testTag("userMessages"), state = listState, reverseLayout = true) {
             items(lines.size, key = { lines[lines.size - 1 - it].key }) { i ->
@@ -248,7 +248,7 @@ private fun ThreadSheet(state: ChatState, message: ChatMessage, actions: ChatAct
     val lines = remember(message, state.lines.size) {
         state.lines.filter { (it.message.reply?.threadParentId == parent || it.message.id == parent) && !it.isReplyHeader }
     }
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.6f
     LazyColumn(Modifier.fillMaxWidth().heightIn(max = maxHeight), reverseLayout = true) {
         items(lines.size, key = { lines[lines.size - 1 - it].key }) { i ->
             val line = lines[lines.size - 1 - i]

@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -16,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -63,7 +63,7 @@ fun ViewerListContent(list: ChannelViewerList?, compactCount: Boolean, onOpen: (
         )
     }
     LagoonTextField(query, { query = it }, stringResource(R.string.cht_viewer_search), Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("viewerSearch"))
-    val height = (LocalConfiguration.current.screenHeightDp * 0.7f).dp
+    val height = currentSheetMaxHeight() * 0.7f
     if (list == null) {
         repeat(5) { SkeletonRow(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) }
         return

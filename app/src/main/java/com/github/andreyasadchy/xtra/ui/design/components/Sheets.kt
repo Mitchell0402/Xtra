@@ -1,5 +1,15 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,13 +87,45 @@ internal fun LagoonBottomSheet(
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
-        GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, Modifier.fillMaxWidth()) {
-            Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) {
-                SheetHandle()
-                SheetBody(title, content = content)
+        // U9 C2: the sheet stops below the status bar and the camera cutout and rides above the keyboard; its
+        // content sizes itself from LocalSheetMaxHeight, never from the screen height
+        val maxHeight = windowSheetMaxHeight()
+        CompositionLocalProvider(LocalSheetMaxHeight provides maxHeight) {
+            GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, Modifier.fillMaxWidth().heightIn(max = maxHeight + imeHeight())) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
+                    SheetHandle()
+                    SheetBody(title, content = content)
+                }
             }
         }
     }
+}
+
+/**
+ * Height a sheet may take: the window minus the top safe area (status bar or camera cutout, whichever is lower),
+ * the keyboard and an 8 dp gap. Sheet contents size their lists as a share of this (U9 C2).
+ */
+fun sheetMaxHeight(windowHeight: Dp, topInset: Dp, imeInset: Dp): Dp =
+    (windowHeight - topInset - imeInset - 8.dp).coerceAtLeast(MinSheetHeight)
+
+private val MinSheetHeight = 120.dp
+
+/** Set by [LagoonBottomSheet] for its content; outside a sheet window [currentSheetMaxHeight] works it out. */
+val LocalSheetMaxHeight = compositionLocalOf { Dp.Unspecified }
+
+/** The height the current sheet's content may use (see [sheetMaxHeight]). */
+@Composable
+fun currentSheetMaxHeight(): Dp = LocalSheetMaxHeight.current.takeIf { it.isSpecified } ?: windowSheetMaxHeight()
+
+@Composable
+private fun imeHeight(): Dp = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
+
+@Composable
+private fun windowSheetMaxHeight(): Dp {
+    val density = LocalDensity.current
+    val window = LocalWindowInfo.current.containerSize
+    val top = WindowInsets.statusBars.union(WindowInsets.displayCutout).getTop(density)
+    return with(density) { sheetMaxHeight(window.height.toDp(), top.toDp(), imeHeight()) }
 }
 
 /** The grabber at the top of a sheet. */

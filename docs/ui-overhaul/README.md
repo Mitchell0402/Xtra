@@ -6,7 +6,7 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
 | --- | --- |
 | `u0-report.md` | U0 validation report: toolchain, CI, baselines, the three technical spikes and their numbers |
 | `u1-report.md` | U1 report: design tokens, icons, the 14 components, showcase, dark-only theme, languages, size |
-| `u9-plan.md` | U9 plan draft (2026-11-17): audit of every sub-screen still in the old Material style after v0.2, and the remediation plan; under review, not approved |
+| `u9-plan.md` | U9 plan (2026-11-17): audit of every sub-screen still in the old Material style after v0.2, and the remediation plan; revision 2 after two reviews, D1–D3 decided, awaiting approval |
 | `feature-inventory.md` | App-wide feature list generated from the code (`tools/ui-inventory/inventory.py`); each stage claims and ticks its rows |
 
 ## How the guardrails work

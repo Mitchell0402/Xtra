@@ -9,7 +9,6 @@ screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen
 legacy app/src/test/java/com/github/andreyasadchy/xtra/ui/design/DarkThemeAttributesTest.kt Theme_DeviceDefault  # reference: the dialog theme must behave as the device default did
 
 # --- temporary
-legacy app/src/main/baseline-prof.txt com/google/android/material  # U9 step 4b (MaterialComponentsViewInflater rules, removed with the library)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/browse/FilterSheet.kt  # U9 step 5 (C2 sheet height)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatSheets.kt  # U9 step 5 (C2 sheet height)
 screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ViewerList.kt  # U9 step 5 (C2 sheet height)

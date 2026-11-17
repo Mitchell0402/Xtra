@@ -50,8 +50,8 @@ android {
         minSdk = 29
         targetSdk = 37
         // bumped once per UI-overhaul stage so any stage can be rolled back by reinstalling the previous one
-        versionCode = 9
-        versionName = "0.1"
+        versionCode = 10
+        versionName = "0.2"
     }
 
     buildTypes {
@@ -130,8 +130,6 @@ dependencies {
 
     implementation(libs.activity)
     implementation(libs.appcompat)
-    implementation(libs.constraintlayout)
-    implementation(libs.coordinatorlayout)
     implementation(libs.core)
     implementation(libs.fragment)
     implementation(libs.lifecycle.service)
@@ -139,13 +137,9 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.fragment.compose)
     implementation(libs.paging.runtime)
-    implementation(libs.preference.ktx)
-    implementation(libs.recyclerview)
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     implementation(libs.room.paging)
-    implementation(libs.swiperefreshlayout)
-    implementation(libs.viewpager2)
     implementation(libs.webkit)
     implementation(libs.work.runtime)
 

@@ -358,7 +358,7 @@ Built in code (list editor or search page); see the class.
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ReplyClickedDialog.kt` | BottomSheetDialogFragment; 1 alert dialog(s) | U7: conversation sheet (ChatSheets.kt), file deleted |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/ClipsAdapter.kt` | 1 popup menu(s) | U5: deleted; clip menu is the long-press action sheet |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/IntegrityDialog.kt` | DialogFragment; 1 alert dialog(s) | U3 |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/RadioButtonDialogFragment.kt` | BottomSheetDialogFragment | U8 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/RadioButtonDialogFragment.kt` | BottomSheetDialogFragment | U6: quality and speed pages of the player settings sheet (PlayerSheets.kt), file deleted; ticked in U8 |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/SearchTagsDialog.kt` | DialogFragment; 1 alert dialog(s) | U4: removed, tag search is a page of the filter sheet |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/SelectLanguagesDialog.kt` | BottomSheetDialogFragment | U4: languages are a page of the filter sheet; the class stays only for the channel sort dialog (which hides it) until U5 |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/common/StreamsSortDialog.kt` | BottomSheetDialogFragment | U4: removed, the filter sheet (sort, languages, tags, remember for the game, save as default, save filters) |
@@ -397,7 +397,7 @@ Built in code (list editor or search page); see the class.
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/VideoSwapSettingsFragment.kt` | 2 alert dialog(s) | U3 |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/team/TeamFragment.kt` | 1 alert dialog(s) | U5: log-out confirmation is a sheet (the page has search and share in its bar) |
 | [x] | `app/src/main/java/com/github/andreyasadchy/xtra/ui/top/TopStreamsFragment.kt` | 1 alert dialog(s) | U4: no log-out menu left on this page |
-| [ ] | `app/src/main/java/com/github/andreyasadchy/xtra/util/ContextExtensions.kt` | 1 alert dialog(s) | U8 |
+| [x] | `app/src/main/java/com/github/andreyasadchy/xtra/util/ContextExtensions.kt` | 1 alert dialog(s) | U8: kept for the one plain dialog left (the player's debug playlist tags) |
 
 ## 4. Menus (8 menu resources)
 
@@ -416,15 +416,15 @@ Built in code (list editor or search page); see the class.
 
 | Done | Kind | Component |
 |---|---|---|
-| [ ] | activity | `.ui.main.MainActivity` |
+| [x] | activity | `.ui.main.MainActivity` (U8: one ComposeView with Compose navigation, player container kept) |
 | [x] | activity | `.ui.settings.SettingsActivity` |
 | [x] | activity | `.ui.login.LoginActivity` |
-| [ ] | service | `.ui.player.ExoPlayerService` |
-| [ ] | service | `.ui.download.VideoDownloadService` |
-| [ ] | service | `.ui.download.StreamDownloadService` |
-| [ ] | service | `androidx.appcompat.app.AppLocalesMetadataHolderService` |
-| [ ] | service | `com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService` |
-| [ ] | receiver | `.util.MediaButtonReceiver` |
-| [ ] | receiver | `android.app.admin.DeviceAdminReceiver` |
-| [ ] | worker | `LiveNotificationWorker` |
-| [ ] | feature | Background audio, picture-in-picture, sleep timer and its screen lock (device admin), media buttons, live notifications, channel points collection |
+| [x] | service | `.ui.player.ExoPlayerService` (unchanged; U8 ad regression logged in and out) |
+| [x] | service | `.ui.download.VideoDownloadService` (U8 smoke: 30 s download played offline) |
+| [x] | service | `.ui.download.StreamDownloadService` (U8: 6 min recording, no splice) |
+| [x] | service | `androidx.appcompat.app.AppLocalesMetadataHolderService` (language setting, U3) |
+| [x] | service | `com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService` (not a feature: ML Kit's removal rule, deleted with ML Kit in U7) |
+| [x] | receiver | `.util.MediaButtonReceiver` (U8: media play, pause and play/pause keys) |
+| [x] | receiver | `android.app.admin.DeviceAdminReceiver` (sleep timer screen lock, U6) |
+| [x] | worker | `LiveNotificationWorker` (unchanged; enqueued as in v0.1) |
+| [x] | feature | Background audio, picture-in-picture, sleep timer and its screen lock (device admin), media buttons, live notifications, channel points collection (U6, U7; U8 smoke: picture-in-picture, media keys) |

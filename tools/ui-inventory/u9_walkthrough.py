@@ -537,7 +537,10 @@ def s_text_selection(d):
     d.sh(f"input swipe {x1 + 80} {(y1 + y2) // 2} {x1 + 80} {(y1 + y2) // 2} 1000")
     time.sleep(1.5)
     d.shot("selection-plain-field")
-    d.back(3)
+    d.back()  # the selection toolbar
+    d.back()  # the keyboard
+    if not d.exists("Get user by.*"):
+        d.tap("Search")
     if d.exists("Get user by.*"):
         d.tap("Get user by.*")
         d.text("selection")
@@ -589,12 +592,14 @@ def main():
     d = Driver(args.out, args.package)
     form = "phone-portrait"
     if args.tablet:
-        d.sh("wm size 2560x1600")
+        d.sh("wm size 1600x2560")  # natural portrait; rotated to landscape below
         d.sh("wm density 320")
         form = "tablet"
     if args.landscape or args.tablet:
+        # Android 14+ ignores settings user_rotation for apps; lock the display rotation instead
         d.sh("settings put system accelerometer_rotation 0")
-        d.sh("settings put system user_rotation 1")
+        d.sh("wm user-rotation lock 1")
+        time.sleep(2)
         form = "tablet" if args.tablet else "phone-landscape"
     d.prefix = form + "_"
     log_path = os.path.join(args.out, f"logcat-{form}.txt")
@@ -616,7 +621,7 @@ def main():
             d.sh("wm size reset")
             d.sh("wm density reset")
         if args.landscape or args.tablet:
-            d.sh("settings put system user_rotation 0")
+            d.sh("wm user-rotation lock 0")
     with open(log_path, encoding="utf-8", errors="replace") as f:
         crashes = [line.rstrip() for line in f if any(p in line for p in CRASH_PATTERNS)]
     with open(os.path.join(args.out, f"result-{form}.txt"), "w", encoding="utf-8") as f:

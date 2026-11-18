@@ -11,7 +11,6 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -104,12 +103,13 @@ class BoxArtShare(val transition: SharedTransitionScope, val visibility: Animate
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.sharedBoxArt(share: BoxArtShare?, key: String): Modifier {
-    if (share == null || Lagoon.motion.reduced) return this
+    val motion = Lagoon.motion
+    if (share == null || motion.reduced) return this
     return with(share.transition) {
         this@sharedBoxArt.sharedElement(
             sharedContentState = rememberSharedContentState("boxArt:$key"),
             animatedVisibilityScope = share.visibility,
-            boundsTransform = { _, _ -> tween(LagoonMotion.LONG, easing = LagoonMotion.Standard) },
+            boundsTransform = { _, _ -> motion.sharedBounds() },
         )
     }
 }
@@ -133,7 +133,7 @@ fun BrowseDetailHost(
 ) {
     val seekable = remember { SeekableTransitionState(open) }
     val scope = rememberCoroutineScope()
-    val fade = LagoonMotion.MEDIUM
+    val motion = Lagoon.motion
     LaunchedEffect(open) {
         if (seekable.currentState != open || seekable.targetState != open) seekable.animateTo(open)
         onSettled(open)
@@ -153,11 +153,11 @@ fun BrowseDetailHost(
             transitionSpec = {
                 if (targetState != null) {
                     // the page fades in over the grid, which stays as it is underneath
-                    (fadeIn(tween(fade, easing = LagoonMotion.Standard)) togetherWith ExitTransition.KeepUntilTransitionsFinished)
+                    (fadeIn(motion.fade(LagoonMotion.MEDIUM)) togetherWith ExitTransition.KeepUntilTransitionsFinished)
                         .apply { targetContentZIndex = 1f }
                 } else {
                     // back: the grid is already there underneath, the page fades away over it
-                    (EnterTransition.None togetherWith fadeOut(tween(fade, easing = LagoonMotion.Exit)))
+                    (EnterTransition.None togetherWith fadeOut(motion.fadeExit(LagoonMotion.MEDIUM)))
                         .apply { targetContentZIndex = -1f }
                 }
             },

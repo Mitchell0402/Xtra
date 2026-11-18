@@ -191,7 +191,7 @@ internal fun FilterSheetContent(
     BackHandler(enabled = page != FilterPage.Main) { page = FilterPage.Main }
     AnimatedContent(
         targetState = page,
-        transitionSpec = { if (targetState == FilterPage.Main) motion.back() else motion.forward() },
+        transitionSpec = { if (targetState == FilterPage.Main) motion.sheetBack() else motion.sheetForward() },
         label = "filterPage",
     ) { shown ->
         when (shown) {

@@ -1,12 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +24,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +49,8 @@ import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonSpacing
+import com.github.andreyasadchy.xtra.ui.design.theme.ContinuousMotion
+import com.github.andreyasadchy.xtra.ui.design.theme.continuousTransition
 import kotlinx.coroutines.delay
 
 /**
@@ -64,17 +60,11 @@ import kotlinx.coroutines.delay
 fun Modifier.shimmer(shape: Shape = LagoonShapes.row): Modifier = composed {
     val colors = Lagoon.colors
     val motion = Lagoon.motion
-    val progress = if (motion.reduced) {
-        -1f
-    } else {
-        val sweep = rememberInfiniteTransition(label = "shimmer")
-        val value by sweep.animateFloat(
-            initialValue = 0f, targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(1300, easing = LinearEasing), RepeatMode.Restart),
-            label = "shimmerProgress",
-        )
-        value
-    }
+    val progress = continuousTransition("shimmer", ContinuousMotion.Progress)?.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = motion.loop(LagoonMotion.ShimmerMs),
+        label = "shimmerProgress",
+    )?.value ?: -1f
     this
         .background(colors.skeleton, shape)
         .drawWithContent {
@@ -255,10 +245,9 @@ fun LagoonPullToRefresh(
 fun RefreshIndicator(state: PullToRefreshState, isRefreshing: Boolean, modifier: Modifier = Modifier) {
     val colors = Lagoon.colors
     val motion = Lagoon.motion
-    val spin = if (isRefreshing && !motion.reduced) {
-        val t = rememberInfiniteTransition(label = "refreshSpin")
-        val r by t.animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "refreshAngle")
-        r
+    val spin = if (isRefreshing) {
+        continuousTransition("refreshSpin", ContinuousMotion.Progress)
+            ?.animateFloat(0f, 360f, motion.loop(LagoonMotion.RefreshSpinMs), label = "refreshAngle")?.value ?: 0f
     } else 0f
     val label = stringResource(R.string.design_pull_to_refresh)
     Box(

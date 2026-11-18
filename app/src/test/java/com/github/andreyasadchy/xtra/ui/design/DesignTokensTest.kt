@@ -147,6 +147,36 @@ class DesignTokensTest {
         assertFalse(reduced.fade<Float>() is SnapSpec)
     }
 
+    /** Motion plan M0 item 1. */
+    @Test
+    fun motionPlanM0Tokens() {
+        val motion = LagoonMotion(reduced = false)
+        val player = motion.playerSpring<Float>() as SpringSpec<Float>
+        assertEquals(1f, player.dampingRatio) // no overshoot past 0 or 1
+        assertEquals(LagoonMotion.SteadyStiffness, player.stiffness)
+        assertTrue(motion.layout<Float>() is SpringSpec)
+        assertTrue(motion.listItemPlacement<Float>() is SpringSpec)
+        assertEquals(0.25f, LagoonMotion.SheetShift)
+        assertEquals(listOf(1200, 1400, 1300, 900),
+            listOf(LagoonMotion.LiveDotMs, LagoonMotion.RingSpinMs, LagoonMotion.ShimmerMs, LagoonMotion.RefreshSpinMs))
+
+        val reduced = LagoonMotion(reduced = true)
+        assertTrue(reduced.playerSpring<Float>() is SnapSpec)
+        assertTrue(reduced.layout<Float>() is SnapSpec)
+        assertTrue(reduced.sharedBounds<Float>() is SnapSpec)
+        assertFalse(reduced.contentSwap<Float>() is SnapSpec) // a cross-fade survives reduced motion
+        assertFalse(reduced.listItemFadeIn<Float>() is SnapSpec)
+    }
+
+    @Test
+    fun playerRisesFromBelowTheWindow() {
+        val target = androidx.compose.ui.geometry.Rect(0f, 120f, 1080f, 728f)
+        val start = LagoonMotion.playerRiseStart(target, windowHeight = 2400f)
+        assertEquals(2400f, start.top)
+        assertEquals(target.width, start.width)
+        assertEquals(target.left, start.left)
+    }
+
     @Test
     fun widthClassBreakpoints() {
         assertEquals(WidthClass.Compact, WidthClass.of(411))

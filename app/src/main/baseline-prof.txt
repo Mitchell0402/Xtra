@@ -24284,7 +24284,7 @@ SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt;->LiveDot-rAjV9yQ(
 SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt;->LiveDot_rAjV9yQ$lambda$0$0(Landroidx/compose/runtime/State;Landroidx/compose/ui/graphics/GraphicsLayerScope;)Lkotlin/Unit;
 SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt;->OverlayChip(Ljava/lang/String;Landroidx/compose/ui/Modifier;ZZLandroidx/compose/runtime/Composer;II)V
 SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt;->access$LagoonImage$lambda$3(Landroidx/compose/runtime/MutableState;)Ljava/lang/Boolean;
-SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt;->getLocalLiveDotBreathing()Landroidx/compose/runtime/ProvidableCompositionLocal;
+SPLcom/github/andreyasadchy/xtra/ui/design/theme/LagoonLoopsKt;->getLocalAmbientMotion()Landroidx/compose/runtime/ProvidableCompositionLocal;
 Lcom/github/andreyasadchy/xtra/ui/design/components/MediaKt$$ExternalSyntheticLambda1;
 SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt$$ExternalSyntheticLambda1;-><init>(Landroidx/compose/runtime/MutableState;)V
 SPLcom/github/andreyasadchy/xtra/ui/design/components/MediaKt$$ExternalSyntheticLambda1;->invoke(Ljava/lang/Object;)Ljava/lang/Object;

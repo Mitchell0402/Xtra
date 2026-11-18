@@ -37,6 +37,7 @@ import com.github.andreyasadchy.xtra.ui.design.theme.GlassLevel
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonGlass
 import com.github.andreyasadchy.xtra.ui.design.theme.LocalLagoonColors
+import com.github.andreyasadchy.xtra.ui.design.theme.LocalAmbientMotion
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazePerformanceMode
 import dev.chrisbanes.haze.HazeState
@@ -164,8 +165,8 @@ fun GlassBackdrop(modifier: Modifier = Modifier, content: @Composable BoxScope.(
                 }
             },
     ) {
-        // decision 4a: nothing under real glass moves on its own (see LocalLiveDotBreathing)
-        CompositionLocalProvider(LocalLiveDotBreathing provides !glass.canBlur) { content() }
+        // decision 4a: nothing under real glass moves on its own (see LocalAmbientMotion)
+        CompositionLocalProvider(LocalAmbientMotion provides !glass.canBlur) { content() }
     }
 }
 

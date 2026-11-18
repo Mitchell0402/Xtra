@@ -39,3 +39,32 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
   `python tools/icons/lucide_to_compose.py`.
 - Showcase: debug builds have a second launcher icon, "Lagoon 组件" (`app/src/lab/.../showcase`). Its specimen sheets are
   also what `ComponentScreenshotTest` captures.
+
+### Which motion for which change (motion plan section 7)
+
+Every value comes from `Lagoon.motion`; `tools/ci/motion_guard.py` (CI, lint job) fails on a hard-coded `tween`,
+`spring` or `keyframes`, an `animateTo` / `AnimatedVisibility` / `AnimatedContent` / `animateItem` /
+`animateContentSize` without a spec, and any `rememberInfiniteTransition` outside `ui/design/theme`. Known exceptions
+are counted in `tools/ci/motion_allowlist.txt`.
+
+| Change | Use |
+| --- | --- |
+| Sibling switch (bottom tabs, segments, groups, settings wide right pane) | `sibling`; where it can be swiped, content follows the finger and settles on `steady` |
+| One level deeper (page; sub-page inside a sheet) | `forward` / `sheetForward` |
+| Back | `back` / `sheetBack`, with predictive back everywhere |
+| Card to detail (the same image on both pages) | shared element, `sharedBounds` (`LONG`, standard curve) |
+| Open the player (no player yet) | grows from the tapped card on `playerSpring`, starting at the fragment's first frame, poster underneath; rises from the bottom (`playerRiseStart`) when there is no card |
+| Replace content inside the player (raid, full video, new card while mini) | cross-fade in place (`contentSwap`), keep the mode; while mini, swap and expand together |
+| Cold start restoring playback | no animation |
+| Player expand / collapse, mini card | `playerSpring` (no overshoot), follows the finger, release keeps the speed |
+| Video not on screen yet (open, back to foreground with video on) | poster from the image cache, fades out on the first frame (`SHORT`), 3 s at most |
+| Sheets, toasts | `steady` slide, scrim fade |
+| A block appearing or disappearing in a page | `expand` / `collapse` |
+| Items the user adds or removes | `listItemFadeIn` / `listItemPlacement` / `listItemFadeOut`; paged lists appending or reordering get none |
+| Geometry (widths, video and chat rectangles) | `layout` (`steady`); never resize a SurfaceView every frame, scale it and set the size at the end |
+| Values and colours | `fade`, rolling numbers |
+| Press | `pressable` (97 %, `bouncy` release) |
+| First load | the first 12 items fade in one after another, once per list |
+| Across activities (settings, login) | the `forward` / `back` look on Android 14+; restarting the main screen cross-fades |
+| Continuous (live dot, spinners, skeleton) | `continuousTransition(label, Ambient or Progress)` with `motion.loop(...)`; `Ambient` stops over a glass backdrop |
+

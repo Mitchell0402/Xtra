@@ -177,7 +177,15 @@ class ChatState {
     var reply by mutableStateOf<ReplyTarget?>(null)
     var emotePanel by mutableStateOf(false)
     var sheet by mutableStateOf<ChatSheet?>(null)
+    /** The keyboard's full height (px above the navigation bar) the last time it was up; the emote panel takes it. */
     var keyboardHeight by mutableIntStateOf(0)
+    /** How much of the keyboard is up right now (px above the navigation bar), every frame while it moves. */
+    var imeNow by mutableIntStateOf(0)
+    /**
+     * The keyboard is rising to take the emote panel's place (motion plan M4 item 2): the panel's space shrinks as the
+     * keyboard grows, so the input stays where it is.
+     */
+    var panelHandOff by mutableStateOf(false)
     var suggestions by mutableStateOf<List<Suggestion>>(emptyList())
     var emoteSections by mutableStateOf<List<EmoteSection>>(emptyList())
     /** Many messages a second: new lines appear without the slide-in (plan 5). */
@@ -446,41 +454,60 @@ fun ChatText(
 /** The slim bars under the video (plan 7.4): raid, poll and prediction, each one line; polls and predictions open a sheet. */
 @Composable
 fun ChatEventStrip(state: ChatState, actions: ChatActions) {
-    val raid = state.raid
-    val poll = state.poll
-    val prediction = state.prediction
-    if (raid == null && poll == null && prediction == null) return
-    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (raid != null) {
-            val name = remember(raid, state.nameDisplay) { ChatEvents.displayName(raid.targetName, raid.targetLogin, state.nameDisplay) }
-            EventBar(
-                leading = { Avatar(state.raidImage, raid.targetName ?: raid.targetLogin ?: "", size = 26.dp) },
-                title = stringResource(R.string.cht_raid_title, name ?: ""),
-                detail = pluralStringResource(R.plurals.cht_raid_viewers, raid.viewerCount ?: 0, raid.viewerCount ?: 0),
-                onClick = actions::openRaid,
-                onClose = actions::closeRaid,
-                trailingIcon = LucideIcons.ArrowRight,
-            )
+    val motion = Lagoon.motion
+    // each bar opens and closes instead of popping in and out (motion plan M4 item 1); while it closes it keeps showing
+    // what it showed. No continuous animation in them: the countdowns are text that changes once a second
+    val raid = rememberLast(state.raid)
+    val poll = rememberLast(state.poll)
+    val prediction = rememberLast(state.prediction)
+    Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp)) {
+        AnimatedVisibility(state.raid != null, enter = motion.expand(), exit = motion.collapse()) {
+            if (raid != null) {
+                val name = remember(raid, state.nameDisplay) { ChatEvents.displayName(raid.targetName, raid.targetLogin, state.nameDisplay) }
+                EventBar(
+                    leading = { Avatar(state.raidImage, raid.targetName ?: raid.targetLogin ?: "", size = 26.dp) },
+                    title = stringResource(R.string.cht_raid_title, name ?: ""),
+                    detail = pluralStringResource(R.plurals.cht_raid_viewers, raid.viewerCount ?: 0, raid.viewerCount ?: 0),
+                    onClick = actions::openRaid,
+                    onClose = actions::closeRaid,
+                    trailingIcon = LucideIcons.ArrowRight,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
         }
-        if (poll != null) {
-            EventBar(
-                leading = { EventIcon(LucideIcons.ChartColumn) },
-                title = poll.title ?: stringResource(R.string.cht_poll),
-                detail = ChatEvents.pollStatus(poll, state.pollSecondsLeft),
-                onClick = { actions.openSheet(ChatSheet.Poll) },
-                onClose = actions::closePoll,
-            )
+        AnimatedVisibility(state.poll != null, enter = motion.expand(), exit = motion.collapse()) {
+            if (poll != null) {
+                EventBar(
+                    leading = { EventIcon(LucideIcons.ChartColumn) },
+                    title = poll.title ?: stringResource(R.string.cht_poll),
+                    detail = ChatEvents.pollStatus(poll, state.pollSecondsLeft),
+                    onClick = { actions.openSheet(ChatSheet.Poll) },
+                    onClose = actions::closePoll,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
         }
-        if (prediction != null) {
-            EventBar(
-                leading = { EventIcon(LucideIcons.Trophy) },
-                title = prediction.title ?: stringResource(R.string.cht_prediction),
-                detail = ChatEvents.predictionStatus(prediction, state.predictionSecondsLeft),
-                onClick = { actions.openSheet(ChatSheet.Prediction) },
-                onClose = actions::closePrediction,
-            )
+        AnimatedVisibility(state.prediction != null, enter = motion.expand(), exit = motion.collapse()) {
+            if (prediction != null) {
+                EventBar(
+                    leading = { EventIcon(LucideIcons.Trophy) },
+                    title = prediction.title ?: stringResource(R.string.cht_prediction),
+                    detail = ChatEvents.predictionStatus(prediction, state.predictionSecondsLeft),
+                    onClick = { actions.openSheet(ChatSheet.Prediction) },
+                    onClose = actions::closePrediction,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
         }
     }
+}
+
+/** [value], or the last non-null one while something that showed it animates away. */
+@Composable
+private fun <T : Any> rememberLast(value: T?): T? {
+    val last = remember { mutableStateOf(value) }
+    if (value != null) last.value = value
+    return value ?: last.value
 }
 
 @Composable
@@ -499,10 +526,11 @@ private fun EventBar(
     onClick: () -> Unit,
     onClose: () -> Unit,
     trailingIcon: ImageVector = LucideIcons.ChevronRight,
+    modifier: Modifier = Modifier,
 ) {
     val colors = Lagoon.colors
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
             .clip(LagoonShapes.row)
@@ -526,19 +554,53 @@ private fun EventBar(
 
 @Composable
 fun ChatBottom(state: ChatState, actions: ChatActions) {
+    val motion = Lagoon.motion
     val showInput = state.messagingEnabled && state.chatBarVisible
-    if (state.modes.any) RoomModesRow(state.modes)
+    // room modes and the @ suggestions open and close too (motion plan M4 item 1, C4 and C5)
+    val modes = rememberLast(state.modes.takeIf { it.any })
+    AnimatedVisibility(state.modes.any, enter = motion.expand(), exit = motion.collapse()) {
+        modes?.let { RoomModesRow(it) }
+    }
     if (!showInput) return
-    AnimatedVisibility(state.reply != null, enter = Lagoon.motion.expand(), exit = Lagoon.motion.collapse()) {
+    AnimatedVisibility(state.reply != null, enter = motion.expand(), exit = motion.collapse()) {
         state.reply?.let { ReplyBar(it, state.nameDisplay, actions) }
     }
-    if (state.suggestions.isNotEmpty()) SuggestionRow(state, actions)
-    InputBar(state, actions)
-    if (state.emotePanel) {
-        val minHeight = 260.dp
-        val keyboard = with(LocalDensity.current) { state.keyboardHeight.toDp() }
-        EmotePicker(state, actions, Modifier.fillMaxWidth().height(maxOf(minHeight, keyboard).coerceAtMost(360.dp)))
+    val suggestions = rememberLast(state.suggestions.takeIf { it.isNotEmpty() })
+    AnimatedVisibility(state.suggestions.isNotEmpty(), enter = motion.expand(), exit = motion.collapse()) {
+        suggestions?.let { SuggestionRow(it, actions) }
     }
+    InputBar(state, actions)
+    // the emote panel is as tall as the keyboard was, and the two hand over the same space (motion plan M4 item 2):
+    // while the keyboard goes down the panel grows by what it leaves, while it comes up the panel's space shrinks
+    val density = LocalDensity.current
+    val panelPx = EmotePanelRules.panelHeight(state.keyboardHeight, with(density) { EmotePanelRules.FallbackHeight.roundToPx() })
+    if (state.emotePanel) {
+        val height = with(density) { EmotePanelRules.space(panelPx, state.imeNow).toDp() }
+        EmotePicker(state, actions, Modifier.fillMaxWidth().height(height))
+    } else if (state.panelHandOff) {
+        Spacer(Modifier.fillMaxWidth().height(with(density) { EmotePanelRules.space(panelPx, state.imeNow).toDp() }))
+    }
+}
+
+/** The emote panel's size next to the keyboard (pure, ChatMotionTest). */
+object EmotePanelRules {
+    /** Before the keyboard has been up once. */
+    val FallbackHeight = 260.dp
+
+    /** The panel takes the keyboard's last full height, or the fallback before the keyboard has been seen. */
+    fun panelHeight(keyboardPx: Int, fallbackPx: Int): Int = if (keyboardPx > 0) keyboardPx else fallbackPx
+
+    /** What the panel (or its place) takes while [imeNowPx] of the keyboard is up: together always the panel's height. */
+    fun space(panelPx: Int, imeNowPx: Int): Int = (panelPx - imeNowPx).coerceAtLeast(0)
+
+    /**
+     * The keyboard's full height from successive readings while it is up: the tallest of this showing, so the readings
+     * on its way down do not shrink it. [startOfShowing] is the first reading after it was hidden.
+     */
+    fun keyboardHeight(previous: Int, reading: Int, startOfShowing: Boolean): Int = if (startOfShowing) reading else maxOf(previous, reading)
+
+    /** The hand-over ends once the keyboard is (nearly) all the way up, or went away again. */
+    fun handOffDone(imeNowPx: Int, keyboardPx: Int): Boolean = imeNowPx <= 0 || imeNowPx >= keyboardPx - 2
 }
 
 /** Slow mode, followers-only and the other room modes as small chips that stay while they apply. */
@@ -590,14 +652,14 @@ private fun ReplyBar(reply: ReplyTarget, nameDisplay: String?, actions: ChatActi
 }
 
 @Composable
-private fun SuggestionRow(state: ChatState, actions: ChatActions) {
+private fun SuggestionRow(suggestions: List<Suggestion>, actions: ChatActions) {
     val colors = Lagoon.colors
     LazyRow(
         Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("chatSuggestions"),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        items(state.suggestions, key = { it.text }) { s ->
+        items(suggestions, key = { it.text }) { s ->
             Row(
                 Modifier
                     .minimumInteractiveComponentSize()

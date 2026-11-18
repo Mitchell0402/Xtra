@@ -1,7 +1,12 @@
 package com.github.andreyasadchy.xtra.ui.browse
 
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.activity.compose.PredictiveBackHandler
 import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -187,12 +192,28 @@ internal fun FilterSheetContent(
     var saveDefault by remember { mutableStateOf(false) }
     var saveFilters by remember { mutableStateOf(false) }
     val motion = Lagoon.motion
-    // inside the sheet's own window, so back returns to the first page before it closes the sheet
-    BackHandler(enabled = page != FilterPage.Main) { page = FilterPage.Main }
-    AnimatedContent(
-        targetState = page,
+    // inside the sheet's own window, so back returns to the first page before it closes the sheet; the system back
+    // gesture moves the page under the finger and only goes back once let go (motion plan M5 item 4, T3)
+    val seekable = remember { SeekableTransitionState(page) }
+    val scope = rememberCoroutineScope()
+    var seeking by remember { mutableStateOf(false) }
+    LaunchedEffect(page) {
+        if (!seeking && (seekable.currentState != page || seekable.targetState != page)) seekable.animateTo(page)
+    }
+    PredictiveBackHandler(enabled = page != FilterPage.Main) { progress ->
+        val from = page
+        seeking = true
+        try {
+            progress.collect { event -> seekable.seekTo(event.progress, targetState = FilterPage.Main) }
+            seeking = false
+            page = FilterPage.Main
+        } catch (e: CancellationException) {
+            seeking = false
+            scope.launch { seekable.animateTo(from) }
+        }
+    }
+    rememberTransition(seekable, label = "filterPage").AnimatedContent(
         transitionSpec = { if (targetState == FilterPage.Main) motion.sheetBack() else motion.sheetForward() },
-        label = "filterPage",
     ) { shown ->
         when (shown) {
             FilterPage.Main -> MainPage(

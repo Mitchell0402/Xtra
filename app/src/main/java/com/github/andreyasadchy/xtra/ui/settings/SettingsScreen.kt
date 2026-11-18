@@ -1,5 +1,10 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import kotlin.coroutines.cancellation.CancellationException
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.activity.compose.PredictiveBackHandler
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -143,11 +148,21 @@ class SettingsNav(initial: List<String>) {
     var exitAtHome = false
 
     fun back(): Boolean {
-        if (stack.size <= 1) return false
-        if (exitAtHome && stack.size == 2) return false
+        if (!canGoBack()) return false
         forward = false
         stack.removeAt(stack.lastIndex)
         return true
+    }
+
+    /** Back stays inside settings: there is a page under this one, and this is not a page opened from elsewhere. */
+    fun canGoBack(): Boolean = stack.size > 1 && !(exitAtHome && stack.size == 2)
+
+    /** The page back goes to, while a back gesture previews it (motion plan M5 item 4). */
+    fun previous(): String? = if (canGoBack()) stack[stack.lastIndex - 1] else null
+
+    /** A back gesture started: the page transition runs the "back" way while the finger moves. */
+    fun previewBack() {
+        forward = false
     }
 
     companion object {
@@ -191,8 +206,9 @@ fun SettingsApp(
     val context = LocalContext.current
     val searchIndex = remember(host.environment) { SettingsSearch.index(context, host.environment) }
     LaunchedEffect(host) { host.messages.collect { toast.show(it) } }
-    // on a wide window the first page is always on the right, so back from it leaves settings
-    BackHandler(enabled = if (wide) nav.stack.size > 2 else nav.stack.size > 1) { if (!nav.back()) host.close() }
+    // on a wide window the first page is always on the right, so back from it leaves settings. On phones a back that
+    // stays inside settings follows the finger (below); this one only leaves from a page opened from elsewhere
+    BackHandler(enabled = if (wide) nav.stack.size > 2 else nav.stack.size > 1 && !nav.canGoBack()) { if (!nav.back()) host.close() }
     BackHandler(enabled = nav.query.isNotEmpty() && (nav.top == SettingsNav.HOME || wide)) { nav.query = "" }
 
     val actions = remember(store, host, nav) {
@@ -228,16 +244,54 @@ fun SettingsApp(
                 )
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     val route = nav.top.takeIf { it != SettingsNav.HOME } ?: SettingsCatalog.categories.first().id.name
-                    // each page keeps its own scroll position
-                    key(route) { PageHost(route, store, host, nav, actions, showBack = nav.stack.size > 2) }
+                    val motion = Lagoon.motion
+                    val density = LocalDensity.current
+                    // another category slides over like a tab switch; a sub-page goes one level deeper and back (T2)
+                    AnimatedContent(
+                        targetState = route,
+                        transitionSpec = {
+                            val from = SettingsPaneRules.depth(initialState)
+                            val to = SettingsPaneRules.depth(targetState)
+                            when {
+                                to > from -> motion.forward()
+                                to < from -> motion.back()
+                                else -> motion.sibling(density, SettingsPaneRules.categoryIndex(targetState) >= SettingsPaneRules.categoryIndex(initialState))
+                            }
+                        },
+                        label = "settingsPane",
+                    ) { shown ->
+                        // each page keeps its own scroll position
+                        key(shown) { PageHost(shown, store, host, nav, actions, showBack = nav.stack.size > 2) }
+                    }
                 }
             }
         } else {
             val motion = Lagoon.motion
-            AnimatedContent(
-                targetState = nav.top,
+            // back follows the system gesture (motion plan M5 item 4, T3): the page slides away under the finger and
+            // only goes once the gesture is let go; a cancelled gesture brings it back
+            val seekable = remember { SeekableTransitionState(nav.top) }
+            val scope = rememberCoroutineScope()
+            var seeking by remember { mutableStateOf(false) }
+            LaunchedEffect(nav.top) {
+                if (!seeking && (seekable.currentState != nav.top || seekable.targetState != nav.top)) seekable.animateTo(nav.top)
+            }
+            PredictiveBackHandler(enabled = nav.canGoBack()) { progress ->
+                val from = nav.top
+                val to = nav.previous() ?: return@PredictiveBackHandler
+                seeking = true
+                nav.previewBack()
+                try {
+                    progress.collect { event -> seekable.seekTo(event.progress, targetState = to) }
+                    seeking = false
+                    nav.back()
+                } catch (e: CancellationException) {
+                    seeking = false
+                    scope.launch { seekable.animateTo(from) }
+                }
+            }
+            val transition = rememberTransition(seekable, label = "settingsPage")
+            transition.AnimatedContent(
                 transitionSpec = { if (nav.forward) motion.forward() else motion.back() },
-                label = "settingsPage",
             ) { route ->
                 if (route == SettingsNav.HOME) {
                     HomeScreen(store, host, nav, searchIndex, actions, selected = null, onAccount = { sheet = SheetRequest.Account })
@@ -660,4 +714,18 @@ internal fun AccountSheet(account: AccountInfo, host: SettingsHost, onDismiss: (
         listOf(ActionItem(stringResource(R.string.log_in), LucideIcons.LogIn) { host.login() })
     }
     ActionSheet(actions, onDismiss, title = account.name?.takeIf { account.loggedIn } ?: stringResource(R.string.st_account_signed_out))
+}
+
+/** Where a settings page sits, for the wide layout's page transitions (pure, SettingsNavTest). */
+object SettingsPaneRules {
+    private fun page(route: String) = runCatching { PageId.valueOf(route) }.getOrNull()?.let { SettingsCatalog.page(it) }
+
+    /** 1 for a category, 2 for a page inside it, and so on; 0 for anything else. */
+    fun depth(route: String): Int = page(route)?.let { p -> generateSequence(p) { it.parent?.let(SettingsCatalog::page) }.count() } ?: 0
+
+    /** The position of the route's category in the home list, -1 when it has none. */
+    fun categoryIndex(route: String): Int {
+        val root = page(route)?.let { p -> generateSequence(p) { it.parent?.let(SettingsCatalog::page) }.last() } ?: return -1
+        return SettingsCatalog.categories.indexOfFirst { it.id == root.id }
+    }
 }

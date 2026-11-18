@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -107,7 +109,8 @@ internal fun LagoonBottomSheet(
         CompositionLocalProvider(LocalSheetMaxHeight provides maxHeight) {
             GlassSurface(GlassLevel.Thick, LagoonShapes.sheet, Modifier.fillMaxWidth().heightIn(max = maxHeight + imeHeight())) {
                 Box {
-                    Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
+                    // capped below the status bar, the content scrolls when it is taller (landscape phones: 448 dp)
+                    Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)).verticalScroll(rememberScrollState())) {
                         SheetHandle()
                         SheetBody(title, content = content)
                     }

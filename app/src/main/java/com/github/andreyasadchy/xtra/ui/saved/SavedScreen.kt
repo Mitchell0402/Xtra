@@ -28,8 +28,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -754,7 +752,7 @@ private fun BookmarkSortSheet(current: BookmarkSortChoice, onApply: (BookmarkSor
     var sort by rememberSaveable { mutableStateOf(current.sort) }
     var order by rememberSaveable { mutableStateOf(current.order) }
     LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.sort), skipHalfHeight = true) {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column { // the sheet scrolls (U9 C2)
             SheetSection(stringResource(R.string.sort))
             SingleChoiceList(sorts.map { ChoiceOption(stringResource(bookmarkSortLabel(it))) }, selected = sorts.indexOf(sort).coerceAtLeast(0), onSelect = { sort = sorts[it] })
             SheetSection(stringResource(R.string.order))

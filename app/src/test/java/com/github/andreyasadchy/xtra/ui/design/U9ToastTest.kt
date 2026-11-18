@@ -17,6 +17,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonBottomSheet
@@ -123,5 +125,21 @@ class U9ToastTest {
         compose.onNodeWithText("Timer canceled").assertExists()
         compose.onNodeWithText("Under").performClick()
         assertEquals(1, taps)
+    }
+
+    /** U9 C2: a sheet capped under the status bar scrolls when its content is taller (phone landscape). */
+    @Test
+    @Config(qualifiers = "w997dp-h448dp")
+    fun tallSheetContentScrollsToItsButtons() {
+        compose.setContent {
+            LagoonTheme(reducedMotion = true) {
+                LagoonBottomSheet(onDismiss = {}) {
+                    repeat(12) { Text("Row $it", Modifier.fillMaxWidth().height(56.dp)) }
+                    Text("Apply")
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Apply").performScrollTo().assertIsDisplayed()
     }
 }

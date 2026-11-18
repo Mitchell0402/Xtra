@@ -430,8 +430,9 @@ private fun GameSegmentGrid(
             columns = GridCells.Fixed(columns),
             state = grid,
             modifier = Modifier.fillMaxSize().testTag(GameListTag),
+            // the gap under the tabs that the single grid had between its tabs row and the chips
             contentPadding = PaddingValues(
-                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide,
+                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = LagoonSpacing.cardGap,
                 bottom = bottomPadding + LagoonSpacing.m,
             ),
             verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),

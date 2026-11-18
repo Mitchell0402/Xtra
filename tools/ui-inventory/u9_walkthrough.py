@@ -582,7 +582,7 @@ def main():
     ap.add_argument("--package", default="io.github.mitchell0402.lagoon.qa")
     ap.add_argument("--only")
     ap.add_argument("--landscape", action="store_true")
-    ap.add_argument("--tablet", action="store_true", help="wm size 2560x1600 + density 320, landscape")
+    ap.add_argument("--tablet", action="store_true", help="wm size 2560x1600 + density 320 (tablet landscape)")
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args()
     if args.list:
@@ -591,16 +591,17 @@ def main():
         return
     d = Driver(args.out, args.package)
     form = "phone-portrait"
+    # Rotation: the emulator snapshot has the orientation sensor off, and Android 14+ ignores user_rotation for apps,
+    # so landscape is a landscape-shaped display instead (same dp as the phone rotated: 997 x 448 at 480 dpi; the
+    # status bar stays on the long edge and the cutout is not on a side - check those on a phone).
     if args.tablet:
-        d.sh("wm size 1600x2560")  # natural portrait; rotated to landscape below
+        d.sh("wm size 2560x1600")
         d.sh("wm density 320")
         form = "tablet"
-    if args.landscape or args.tablet:
-        # Android 14+ ignores settings user_rotation for apps; lock the display rotation instead
-        d.sh("settings put system accelerometer_rotation 0")
-        d.sh("wm user-rotation lock 1")
-        time.sleep(2)
-        form = "tablet" if args.tablet else "phone-landscape"
+    elif args.landscape:
+        d.sh("wm size 2992x1344")
+        form = "phone-landscape"
+    time.sleep(2)
     d.prefix = form + "_"
     log_path = os.path.join(args.out, f"logcat-{form}.txt")
     d.adb("logcat", "-c")
@@ -617,11 +618,9 @@ def main():
     finally:
         logcat.terminate()
         log.close()
-        if args.tablet:
+        if args.tablet or args.landscape:
             d.sh("wm size reset")
             d.sh("wm density reset")
-        if args.landscape or args.tablet:
-            d.sh("wm user-rotation lock 0")
     with open(log_path, encoding="utf-8", errors="replace") as f:
         crashes = [line.rstrip() for line in f if any(p in line for p in CRASH_PATTERNS)]
     with open(os.path.join(args.out, f"result-{form}.txt"), "w", encoding="utf-8") as f:

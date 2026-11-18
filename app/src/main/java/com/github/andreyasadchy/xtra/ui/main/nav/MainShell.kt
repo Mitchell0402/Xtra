@@ -1,5 +1,9 @@
 package com.github.andreyasadchy.xtra.ui.main.nav
 
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -70,10 +74,17 @@ fun MainShell(
         ShellTabs.indexOf(state.tabs, destination).takeIf { it != -1 }?.let { state.selectedIndex = it }
     }
     val sides = (if (ignoreCutouts) WindowInsets.systemBars else WindowInsets.systemBars.union(WindowInsets.displayCutout))
-    val hidden = if (state.inPictureInPicture) 0f else 1f
+    val motion = Lagoon.motion
+    // the navigation fades out as the window becomes the picture in picture, and back in after (motion plan M5, N13)
+    val hidden by animateFloatAsState(
+        if (state.inPictureInPicture) 0f else 1f,
+        if (state.inPictureInPicture) motion.fadeExit() else motion.fade(),
+        label = "navigationInPip",
+    )
     Box(Modifier.fillMaxSize().background(Lagoon.colors.page)) {
         Row(Modifier.fillMaxSize()) {
-            if (state.useRail && state.hasNavigation) {
+            // rail and pill cross-fade when the window gets wider or narrower (N14)
+            AnimatedVisibility(state.useRail && state.hasNavigation, enter = fadeIn(motion.fade()), exit = fadeOut(motion.fadeExit())) {
                 ShellRail(state, onSelectTab, Modifier.fillMaxHeight().windowInsetsPadding(sides.only(WindowInsetsSides.Start)).alpha(hidden))
             }
             AppNavHost(
@@ -89,7 +100,9 @@ fun MainShell(
             )
         }
         if (state.hasNavigation) {
-            // invisible, not gone, in picture-in-picture: the mini player keeps its place above the pill
+            // invisible, not gone, in picture-in-picture: the mini player keeps its place above the pill. With the
+            // rail on (wide windows) the bar draws nothing itself; it fades with the rail's change too
+            val pill by animateFloatAsState(if (state.useRail) 0f else 1f, if (state.useRail) motion.fadeExit() else motion.fade(), label = "pillToRail")
             ShellBottomBar(
                 state,
                 onSelectTab,
@@ -98,7 +111,7 @@ fun MainShell(
                     .fillMaxWidth()
                     .onSizeChanged { state.bottomBarHeightPx = it.height }
                     .windowInsetsPadding(sides.only(WindowInsetsSides.Horizontal))
-                    .alpha(hidden),
+                    .alpha(hidden * pill),
             )
         } else {
             LaunchedEffect(Unit) { state.bottomBarHeightPx = 0 }

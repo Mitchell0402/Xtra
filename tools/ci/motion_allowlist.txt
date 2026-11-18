@@ -4,3 +4,5 @@
 # --- permanent
 animate-to app/src/main/java/com/github/andreyasadchy/xtra/ui/games/BrowseDetail.kt 2  # SeekableTransitionState.animateTo(state): no spec means "run the transitionSpec", which is LagoonMotion
 
+animate-to app/src/main/java/com/github/andreyasadchy/xtra/ui/settings/SettingsScreen.kt 2  # M5: SeekableTransitionState.animateTo(page) for settings' predictive back, same as BrowseDetail
+animate-to app/src/main/java/com/github/andreyasadchy/xtra/ui/browse/FilterSheet.kt 2  # M5: SeekableTransitionState.animateTo(page) for the filter sheet's predictive back, same as BrowseDetail

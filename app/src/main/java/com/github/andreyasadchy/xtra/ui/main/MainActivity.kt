@@ -541,13 +541,12 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
         handleIntent(intent)
     }
 
+    /** After logging in or out: the main screen starts again, cross-fading instead of cutting (motion plan M5 item 2). */
     private fun restartActivity() {
         finish()
         startActivity(
-            Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-            },
-            ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+            Intent(this, MainActivity::class.java),
+            ActivityOptions.makeCustomAnimation(this, R.anim.lagoon_fade_in, R.anim.lagoon_fade_out).toBundle()
         )
     }
 

@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonViewMotion
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
 import com.github.andreyasadchy.xtra.ui.settings.model.PageId
@@ -108,6 +109,7 @@ class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LagoonViewMotion.pageTransitions(this)
         wasLoggedIn = savedInstanceState?.getBoolean(KEY_WAS_LOGGED_IN) == true
         accountChanged = savedInstanceState?.getBoolean(KEY_ACCOUNT_CHANGED) == true
         if (savedInstanceState?.getBoolean(KEY_CHANGED) == true || accountChanged) {

@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.login
 
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonViewMotion
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
 import android.annotation.SuppressLint
@@ -88,6 +89,7 @@ class LoginActivity : AppCompatActivity(), LagoonToastsOwner {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LagoonViewMotion.pageTransitions(this)
         xtraModule = (application as XtraApp).xtraModule
         applyTheme()
         enableEdgeToEdge()

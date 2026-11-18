@@ -72,6 +72,11 @@ jobs:
     - uses: gradle/actions/setup-gradle@v6
       with:
         cache-provider: 'basic'
+    # U9 plan gate 1: no legacy Material / platform UI, every sub-screen registered in docs/ui-overhaul/u9/surfaces.md
+    - name: Legacy UI guard
+      run: |
+        python3 tools/ci/test_legacy_ui_guard.py
+        python3 tools/ci/legacy_ui_guard.py
     - name: Lint (fails on new errors; existing ones are in app/lint-baseline.xml)
       run: ./gradlew :app:lintDebug
     - name: Upload lint report
@@ -103,6 +108,15 @@ jobs:
           echo "lab classes found in the qa build:"; grep "com.github.andreyasadchy.xtra.lab\." app/build/outputs/mapping/qa/mapping.txt | head; exit 1
         fi
         echo "qa build has no lab classes" | tee -a "$GITHUB_STEP_SUMMARY"
+    # U9 plan 4.5 items 2 and 4: the Material Components library stays out (no transitive way back, nothing left
+    # in the APK)
+    - name: No Material Components library
+      run: |
+        for c in qaRuntimeClasspath releaseRuntimeClasspath debugRuntimeClasspath; do
+          out=$(./gradlew -q :app:dependencyInsight --dependency com.google.android.material --configuration $c)
+          if ! echo "$out" | grep -q "No dependencies matching"; then echo "$c pulls in Material Components:"; echo "$out"; exit 1; fi
+        done
+        python3 tools/ci/qa_apk_scan.py app/build/outputs/apk/qa/app-qa.apk app/build/outputs/mapping/qa/mapping.txt | tee -a "$GITHUB_STEP_SUMMARY"
     - name: APK size
       run: |
         size=$(stat -c %s app/build/outputs/apk/qa/app-qa.apk)

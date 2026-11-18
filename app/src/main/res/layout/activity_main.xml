@@ -17,4 +17,11 @@
         android:clipChildren="false"
         android:focusable="true" />
 
+    <!-- U9 B1: the toast layer, above the player; it draws only the toast pill and lets every other touch through -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/toastOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="noHideDescendants" />
+
 </FrameLayout>

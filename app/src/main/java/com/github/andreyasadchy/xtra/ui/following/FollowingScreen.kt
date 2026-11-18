@@ -25,8 +25,6 @@ import com.github.andreyasadchy.xtra.ui.design.components.TopBarExpanded
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -728,7 +726,7 @@ private fun VideoSortSheet(current: VideoSortChoice, onApply: (VideoSortChoice, 
     var sort by rememberSaveable { mutableStateOf(current.sort) }
     var type by rememberSaveable { mutableStateOf(current.type) }
     LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.sort), skipHalfHeight = true) {
-      Column(Modifier.verticalScroll(rememberScrollState())) {
+      Column { // the sheet scrolls (U9 C2)
         SheetSection(stringResource(R.string.sort))
         SingleChoiceList(
             listOf(ChoiceOption(stringResource(R.string.upload_date)), ChoiceOption(stringResource(R.string.view_count))),
@@ -862,7 +860,7 @@ private fun ChannelSortSheet(current: ChannelSortChoice, onApply: (ChannelSortCh
     var sort by rememberSaveable { mutableStateOf(current.sort) }
     var order by rememberSaveable { mutableStateOf(current.order) }
     LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.sort), skipHalfHeight = true) {
-      Column(Modifier.verticalScroll(rememberScrollState())) {
+      Column { // the sheet scrolls (U9 C2)
         SheetSection(stringResource(R.string.sort))
         SingleChoiceList(
             sorts.map { ChoiceOption(stringResource(channelSortLabel(it))) },

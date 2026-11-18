@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.design.components
 
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonColors
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -88,10 +89,9 @@ fun LagoonImage(
     )
 }
 
-/** Muted tile colours for avatars without a picture, picked by name so a channel always gets the same one. */
-private val AvatarTiles = listOf(
-    Color(0xFF5B4BB7), Color(0xFF2F7A6E), Color(0xFF3D5A99), Color(0xFF7A3D78), Color(0xFF2E6B7A), Color(0xFF6B5A2E),
-)
+/** Tile behind an avatar's initial, picked by name so a channel always gets the same one; neutral without a name. */
+fun avatarTile(colors: LagoonColors, name: String?): Color =
+    if (name.isNullOrBlank()) colors.avatarEmpty else colors.avatarTiles[Math.floorMod(name.hashCode(), colors.avatarTiles.size)]
 
 /**
  * A channel avatar: a soft square, or its initial on a muted tile until the picture loads. [live] draws the teal ring
@@ -120,7 +120,7 @@ fun Avatar(
             Modifier
                 .size(size)
                 .clip(shape)
-                .background(AvatarTiles[Math.floorMod(name.hashCode(), AvatarTiles.size)]),
+                .background(avatarTile(Lagoon.colors, name)),
             contentAlignment = Alignment.Center,
         ) {
             Text(

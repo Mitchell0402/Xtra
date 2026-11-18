@@ -40,6 +40,19 @@ data class LagoonColors(
     /** Skeleton blocks and the shimmer highlight that sweeps across them. */
     val skeleton: Color,
     val skeletonHighlight: Color,
+    /** Chat line highlights (U9 B6): the bar and tint of a first message, a reward, a notice and a mention. */
+    val chatFirst: Color,
+    val chatReward: Color,
+    val chatNotice: Color,
+    val chatMention: Color,
+    /** Chat text that steps back (reply headers, system lines) and links in messages. */
+    val chatMuted: Color,
+    val chatLink: Color,
+    /** Tiles behind the initial of an avatar without a picture (U9 B5); [avatarEmpty] when there is no name. */
+    val avatarTiles: List<Color>,
+    val avatarEmpty: Color,
+    /** The stand-in picture behind the player buttons preview in settings. */
+    val previewGradient: List<Color>,
 )
 
 val DarkLagoonColors = LagoonColors(
@@ -62,4 +75,18 @@ val DarkLagoonColors = LagoonColors(
     scrim = Color(0x99000000),
     skeleton = Color(0xFF222227),
     skeletonHighlight = Color(0xFF2E2E34),
+    chatFirst = Color(0xFF5EE2C4), // = accent
+    // D1 (Mitchell 2026-11-17): warm gold instead of the old lavender #B18CFF; 10:1 on a card, and clearly lighter
+    // than chatMention, so the two differ by more than hue (DesignTokensTest)
+    chatReward = Color(0xFFF2C14E),
+    chatNotice = Color(0xFF8E8E96),
+    chatMention = Color(0xFFFF6B6E), // = danger
+    chatMuted = Color(0xFF9E9EA4),
+    chatLink = Color(0xFF7FD8F5),
+    // teal, blue-grey and warm-grey family; the purple and magenta tiles of v0.2 are gone
+    avatarTiles = listOf(
+        Color(0xFF2F7A6E), Color(0xFF3D5A99), Color(0xFF2E6B7A), Color(0xFF6B5A2E), Color(0xFF4A5868), Color(0xFF6E5F55),
+    ),
+    avatarEmpty = Color(0xFF3A3A40),
+    previewGradient = listOf(Color(0xFF1E4D47), Color(0xFF14202B), Color(0xFF1B2733)),
 )

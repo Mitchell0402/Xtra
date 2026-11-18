@@ -1,0 +1,12 @@
+# Exceptions to tools/ci/legacy_ui_guard.py (U9 plan gate 1). Format:  <rule> <path> [<token>]  # reason
+# Entries tagged "U9 step N" are temporary: that step of the U9 plan removes the code and the entry with it.
+
+# --- permanent
+layout app/src/main/res/layout/activity_main.xml  # the main window: Compose shell + player container (plan 4.5)
+color app/src/lab/  # debug-only lab and showcase screens use sample colours, never shipped (no lab code in qa)
+screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/Glass.kt  # short-window check for blur, not a sheet height
+screen-height app/src/main/java/com/github/andreyasadchy/xtra/ui/game/GameScreen.kt  # short-window header layout, not a sheet height
+legacy app/src/test/java/com/github/andreyasadchy/xtra/ui/design/DarkThemeAttributesTest.kt Theme_DeviceDefault  # reference: the dialog theme must behave as the device default did
+legacy app/src/main/java/com/github/andreyasadchy/xtra/ui/design/components/GlobalToasts.kt Toast.makeText  # the one system toast: outside the window (background, picture-in-picture), U9 B1
+
+# --- temporary

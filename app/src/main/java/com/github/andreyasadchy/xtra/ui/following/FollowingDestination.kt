@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
@@ -23,7 +24,6 @@ import com.github.andreyasadchy.xtra.model.ui.ChannelSort
 import com.github.andreyasadchy.xtra.model.ui.Stream
 import com.github.andreyasadchy.xtra.model.ui.Tag
 import com.github.andreyasadchy.xtra.model.ui.Video
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
@@ -103,7 +103,7 @@ class FollowingDestination(host: PageHost) : ComposePage(host), FollowingActions
         val recentlyLive = viewModel.recentlyLive.collectAsLazyPagingItems()
         val positions by remember { videosViewModel.positions }.collectAsState(emptyList())
         val bookmarks by remember { videosViewModel.bookmarks }.collectAsState(emptyList())
-        val toast = rememberToastHostState()
+        val toast = rememberLagoonToastState()
         val online by mainViewModel.isNetworkAvailable.collectAsState()
         LaunchedEffect(refreshRequests.intValue) {
             if (refreshRequests.intValue > 0) {

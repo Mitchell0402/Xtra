@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.saved
 
+import com.github.andreyasadchy.xtra.ui.design.components.SwipeToDelete
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
@@ -27,13 +28,8 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -362,26 +358,7 @@ private fun SavedGrid(
 @Composable
 private fun SwipeToRemove(itemKey: String, label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
     key(itemKey) {
-        val state = rememberSwipeToDismissBoxState(
-            confirmValueChange = { value ->
-                if (value == SwipeToDismissBoxValue.EndToStart) {
-                    onRemove()
-                    true
-                } else false
-            },
-        )
-        SwipeToDismissBox(
-            state = state,
-            enableDismissFromStartToEnd = false,
-            backgroundContent = {
-                Box(
-                    Modifier.fillMaxSize().background(Lagoon.colors.dangerSoft, LagoonShapes.card).padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    Icon(LucideIcons.Trash2, contentDescription = label, tint = Lagoon.colors.danger)
-                }
-            },
-        ) { content() }
+        SwipeToDelete(label, onRemove, content)
     }
 }
 
@@ -775,7 +752,7 @@ private fun BookmarkSortSheet(current: BookmarkSortChoice, onApply: (BookmarkSor
     var sort by rememberSaveable { mutableStateOf(current.sort) }
     var order by rememberSaveable { mutableStateOf(current.order) }
     LagoonBottomSheet(onDismiss = onDismiss, title = stringResource(R.string.sort), skipHalfHeight = true) {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column { // the sheet scrolls (U9 C2)
             SheetSection(stringResource(R.string.sort))
             SingleChoiceList(sorts.map { ChoiceOption(stringResource(bookmarkSortLabel(it))) }, selected = sorts.indexOf(sort).coerceAtLeast(0), onSelect = { sort = sorts[it] })
             SheetSection(stringResource(R.string.order))

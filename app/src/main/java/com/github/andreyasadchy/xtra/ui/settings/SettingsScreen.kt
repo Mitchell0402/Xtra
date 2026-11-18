@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -74,7 +75,6 @@ import com.github.andreyasadchy.xtra.ui.design.components.SettingsGroup
 import com.github.andreyasadchy.xtra.ui.design.components.ToastHost
 import com.github.andreyasadchy.xtra.ui.design.components.ToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.pressable
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.design.components.rememberTopBarState
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
@@ -139,8 +139,12 @@ class SettingsNav(initial: List<String>) {
         stack.addAll(chain)
     }
 
+    /** Opened on one page from elsewhere (the player's ad blocking page, U9 C4): back from that page leaves settings. */
+    var exitAtHome = false
+
     fun back(): Boolean {
         if (stack.size <= 1) return false
+        if (exitAtHome && stack.size == 2) return false
         forward = false
         stack.removeAt(stack.lastIndex)
         return true
@@ -179,7 +183,7 @@ fun SettingsApp(
     store: SettingsStore,
     host: SettingsHost,
     nav: SettingsNav = rememberSettingsNav(),
-    toast: ToastHostState = rememberToastHostState(),
+    toast: ToastHostState = rememberLagoonToastState(),
 ) {
     val colors = Lagoon.colors
     val wide = LocalConfiguration.current.screenWidthDp >= SettingsTwoPaneDp
@@ -188,7 +192,7 @@ fun SettingsApp(
     val searchIndex = remember(host.environment) { SettingsSearch.index(context, host.environment) }
     LaunchedEffect(host) { host.messages.collect { toast.show(it) } }
     // on a wide window the first page is always on the right, so back from it leaves settings
-    BackHandler(enabled = if (wide) nav.stack.size > 2 else nav.stack.size > 1) { nav.back() }
+    BackHandler(enabled = if (wide) nav.stack.size > 2 else nav.stack.size > 1) { if (!nav.back()) host.close() }
     BackHandler(enabled = nav.query.isNotEmpty() && (nav.top == SettingsNav.HOME || wide)) { nav.query = "" }
 
     val actions = remember(store, host, nav) {

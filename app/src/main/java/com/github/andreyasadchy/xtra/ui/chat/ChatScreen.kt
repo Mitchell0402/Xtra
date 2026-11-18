@@ -1,5 +1,11 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonColors
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -203,17 +209,12 @@ interface ChatActions {
     fun openSheet(sheet: ChatSheet)
 }
 
-private val FirstTint = Color(0xFF5EE2C4)
-private val RewardTint = Color(0xFFB18CFF)
-private val NoticeTint = Color(0xFF8E8E96)
-private val MentionTint = Color(0xFFFF6B6E)
-
-fun ChatHighlight.tint(): Color? = when (this) {
+fun ChatHighlight.tint(colors: LagoonColors): Color? = when (this) {
     ChatHighlight.None -> null
-    ChatHighlight.First -> FirstTint
-    ChatHighlight.Reward -> RewardTint
-    ChatHighlight.Notice -> NoticeTint
-    ChatHighlight.Mention -> MentionTint
+    ChatHighlight.First -> colors.chatFirst
+    ChatHighlight.Reward -> colors.chatReward
+    ChatHighlight.Notice -> colors.chatNotice
+    ChatHighlight.Mention -> colors.chatMention
 }
 
 /** The chat page. [sheets] off draws no sheet windows (tests draw the sheets in place). */
@@ -259,6 +260,11 @@ fun ChatList(state: ChatState, actions: ChatActions, modifier: Modifier = Modifi
     }
     LaunchedEffect(atBottom) { if (atBottom) unseen = 0 }
     val reduced = Lagoon.motion.reduced
+    // U9 C1 (D2): the name opens the user card (a reply header's "@name": the replied-to user), an emote or a badge
+    // with details opens its card, the rest of a line does nothing. One remembered callback each, taking the line,
+    // so rows do not rebuild their picture maps on every recomposition.
+    val onNameClick = remember(actions, lines) { { line: ChatLine -> actions.openUserCard(if (line.isReplyHeader) repliedTo(line.message, lines) else line.message) } }
+    val onImageClick = remember(actions) { { image: ChatImage -> image.info?.let { actions.openSheet(ChatSheet.EmoteCard(it)) }; Unit } }
     Box(modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -271,7 +277,9 @@ fun ChatList(state: ChatState, actions: ChatActions, modifier: Modifier = Modifi
                 val animate = !state.fast && !reduced
                 ChatRow(
                     line, state.style,
-                    onClick = { actions.openUserCard(line.message.replyParent?.takeIf { line.isReplyHeader } ?: line.message) },
+                    onClick = null,
+                    onNameClick = onNameClick,
+                    onImageClick = onImageClick,
                     modifier = if (animate) Modifier.animateItem(fadeInSpec = tween(200), placementSpec = tween(200), fadeOutSpec = null) else Modifier,
                 )
             }
@@ -308,6 +316,16 @@ private fun JumpToLatest(unseen: Int, onClick: () -> Unit) {
     }
 }
 
+/**
+ * The message a reply header's "@name" stands for: that user's latest line still in the chat, or one made from the
+ * reply data when it scrolled away (the user card only needs the login).
+ */
+internal fun repliedTo(header: ChatMessage, lines: List<ChatLine>): ChatMessage {
+    val reply = header.reply ?: return header.replyParent ?: header
+    return lines.lastOrNull { !it.isReplyHeader && it.message.userLogin != null && it.message.userLogin.equals(reply.userLogin, ignoreCase = true) }?.message
+        ?: ChatMessage(id = reply.threadParentId, userLogin = reply.userLogin, userName = reply.userName, message = reply.message, type = ChatMessage.USER_MESSAGE)
+}
+
 /** One chat line: no avatar, even spacing, a soft tint and a bar on the left for mentions, first messages, rewards and notices (plan 7.5). */
 @Composable
 fun ChatRow(
@@ -317,9 +335,10 @@ fun ChatRow(
     modifier: Modifier = Modifier,
     onImageClick: ((ChatImage) -> Unit)? = null,
     selected: Boolean = false,
+    onNameClick: ((ChatLine) -> Unit)? = null,
 ) {
-    val tint = line.highlight.tint()
     val colors = Lagoon.colors
+    val tint = line.highlight.tint(colors)
     val rowModifier = modifier
         .fillMaxWidth()
         .then(
@@ -333,19 +352,46 @@ fun ChatRow(
             }
         )
         .then(if (onClick != null) Modifier.clickable(interactionSource = null, indication = ripple(), onClick = onClick) else Modifier)
+        .then(if (onNameClick != null || onImageClick != null) Modifier.chatRowActions(line, onNameClick, onImageClick) else Modifier)
         .padding(start = 12.dp, end = 12.dp, top = 3.dp, bottom = 3.dp)
     if (line.isReplyHeader) {
         Row(rowModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(LucideIcons.Reply, null, tint = ChatLineBuilder.Muted, modifier = Modifier.size(13.dp))
-            ChatText(line, style, onImageClick, maxLines = 1, scale = 0.86f)
+            ChatText(line, style, onImageClick, maxLines = 1, scale = 0.86f, onNameClick = onNameClick)
         }
     } else {
-        Box(rowModifier) { ChatText(line, style, onImageClick) }
+        Box(rowModifier) { ChatText(line, style, onImageClick, onNameClick = onNameClick) }
+    }
+}
+
+/**
+ * Screen-reader way in now that a line has no row tap (U9 C1): "Open X's user card" for a line with a name, "View
+ * emote Y" for its emotes and detailed badges (five at most, so the actions menu stays short).
+ */
+@Composable
+private fun Modifier.chatRowActions(line: ChatLine, onNameClick: ((ChatLine) -> Unit)?, onImageClick: ((ChatImage) -> Unit)?): Modifier {
+    val name = if (onNameClick != null && line.nameStart >= 0 && line.nameEnd <= line.text.length) line.text.text.substring(line.nameStart, line.nameEnd).removePrefix("@") else null
+    val userLabel = name?.let { stringResource(R.string.cht_action_user_card, it) }
+    val images = if (onImageClick != null) line.images.filter { it.info != null }.take(5) else emptyList()
+    val emoteLabels = images.map { stringResource(R.string.cht_action_emote, it.info?.name ?: "") }
+    if (userLabel == null && images.isEmpty()) return this
+    return semantics {
+        customActions = buildList {
+            if (userLabel != null) add(CustomAccessibilityAction(userLabel) { onNameClick?.invoke(line); true })
+            images.forEachIndexed { i, image -> add(CustomAccessibilityAction(emoteLabels[i]) { onImageClick?.invoke(image); true }) }
+        }
     }
 }
 
 @Composable
-fun ChatText(line: ChatLine, style: ChatStyle, onImageClick: ((ChatImage) -> Unit)?, maxLines: Int = Int.MAX_VALUE, scale: Float = 1f) {
+fun ChatText(
+    line: ChatLine,
+    style: ChatStyle,
+    onImageClick: ((ChatImage) -> Unit)?,
+    maxLines: Int = Int.MAX_VALUE,
+    scale: Float = 1f,
+    onNameClick: ((ChatLine) -> Unit)? = null,
+) {
     val density = LocalDensity.current
     // the learned picture ratios are read here, so a line only rebuilds its placeholders when one of its own pictures widens
     val ratios = line.images.map { ChatImageRatios.of(it.model) + (it.overlays.maxOfOrNull { o -> ChatImageRatios.of(o.model) } ?: 0f) }
@@ -356,12 +402,39 @@ fun ChatText(line: ChatLine, style: ChatStyle, onImageClick: ((ChatImage) -> Uni
         val size = style.textSize * scale
         TextStyle(fontSize = size.sp, lineHeight = (size * 1.45f).sp, color = primary)
     }
+    val nameClickable = onNameClick != null && line.nameStart >= 0 && line.nameEnd > line.nameStart && line.nameEnd <= line.text.length
+    // the last layout, for turning a tap position into a character (kept out of state: it only feeds the tap)
+    val layout = remember { arrayOfNulls<TextLayoutResult>(1) }
+    var namePressed by remember { mutableStateOf(false) }
+    val pressColor = Lagoon.colors.accentSoft
     Text(
         text = text,
         inlineContent = inline,
         style = textStyle,
         maxLines = maxLines,
         overflow = if (maxLines == Int.MAX_VALUE) TextOverflow.Clip else TextOverflow.Ellipsis,
+        onTextLayout = { layout[0] = it },
+        modifier = if (!nameClickable) Modifier else Modifier
+            .drawBehind {
+                if (namePressed) layout[0]?.let { drawPath(it.getPathForRange(line.nameStart, line.nameEnd), pressColor) }
+            }
+            .pointerInput(line.key, onNameClick) {
+                fun onName(p: Offset): Boolean {
+                    val l = layout[0] ?: return false
+                    val box = l.getBoundingBox(l.getOffsetForPosition(p).coerceIn(line.nameStart, line.nameEnd - 1))
+                    return l.getOffsetForPosition(p) in line.nameStart until line.nameEnd && box.inflate(4f).contains(p)
+                }
+                detectTapGestures(
+                    onPress = { p ->
+                        if (onName(p)) {
+                            namePressed = true
+                            tryAwaitRelease()
+                            namePressed = false
+                        }
+                    },
+                    onTap = { p -> if (onName(p)) onNameClick?.invoke(line) },
+                )
+            },
     )
 }
 

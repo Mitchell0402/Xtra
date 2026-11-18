@@ -100,6 +100,9 @@ android {
     lint {
         disable += "ContentDescription"
         error += "MissingTranslation"
+        // U9 plan 4.5 item 6: a manifest or layout naming a class that is not there (the one place a removed
+        // library would only show up at run time)
+        error += "MissingClass"
         // existing issues are recorded here; CI fails only on new ones
         baseline = file("lint-baseline.xml")
         checkReleaseBuilds = false
@@ -130,8 +133,13 @@ if (project.hasProperty("leakcanary")) {
 
 dependencies {
     compileOnly("com.google.j2objc:j2objc-annotations:3.0.0") // OkHttpDataSource SettableFuture
+    // U9 4b: the Material Components library used to lift these two (it came with appcompat's older ones); keep the
+    // versions the app shipped with so nothing that was built against them misses a method at run time
+    constraints {
+        implementation("androidx.customview:customview:1.2.0")
+        implementation("androidx.drawerlayout:drawerlayout:1.1.1")
+    }
 
-    implementation(libs.material)
     implementation(libs.markwon.core)
     implementation(libs.markwon.linkify)
 

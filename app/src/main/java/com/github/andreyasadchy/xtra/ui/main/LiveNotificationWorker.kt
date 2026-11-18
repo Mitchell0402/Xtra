@@ -62,6 +62,7 @@ class LiveNotificationWorker(
                     ))
                     setContentText(it.title)
                     setSmallIcon(R.drawable.notification_icon)
+                    setColor(ContextCompat.getColor(context, R.color.lagoonAccent)) // U9 B2: Lagoon accent
                     setAutoCancel(true)
                     setContentIntent(
                         PendingIntent.getActivity(
@@ -81,6 +82,7 @@ class LiveNotificationWorker(
             val notification = NotificationCompat.Builder(context, channelId).apply {
                 setGroup(GROUP_KEY)
                 setSmallIcon(R.drawable.notification_icon)
+                setColor(ContextCompat.getColor(context, R.color.lagoonAccent)) // U9 B2: Lagoon accent
                 setGroupSummary(true)
             }.build()
             notificationManager.notify(0, notification)

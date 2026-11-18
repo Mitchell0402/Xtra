@@ -9,14 +9,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
+import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonBottomSheet
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import kotlinx.coroutines.launch
@@ -31,7 +31,7 @@ abstract class ComposeSheetDialog : DialogFragment() {
     private var closeSheet: (() -> Unit)? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar).apply {
+        return Dialog(requireContext(), R.style.Theme_Lagoon_Dialog).apply {
             window?.let {
                 WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -40,13 +40,12 @@ abstract class ComposeSheetDialog : DialogFragment() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 LagoonTheme {
-                    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                    val state = rememberLagoonSheetState()
                     val scope = rememberCoroutineScope()
                     closeSheet = {
                         scope.launch { state.hide() }.invokeOnCompletion { if (isAdded) dismissAllowingStateLoss() }

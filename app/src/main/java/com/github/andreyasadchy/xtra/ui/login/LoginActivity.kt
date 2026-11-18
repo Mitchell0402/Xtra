@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.login
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -37,7 +39,6 @@ import androidx.webkit.WebViewFeature
 import com.github.andreyasadchy.xtra.R
 import com.github.andreyasadchy.xtra.XtraApp
 import com.github.andreyasadchy.xtra.XtraModule
-import com.github.andreyasadchy.xtra.ui.design.components.ToastHostState
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.util.C
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
@@ -55,7 +56,10 @@ import java.util.regex.Pattern
  * only the screen around the web views is new (LoginScreen, Compose). Starting this activity logs out first, as
  * before: it clears and revokes the old tokens.
  */
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity(), LagoonToastsOwner {
+
+    override val toasts by lazy { LagoonToasts(this) }
+
 
     lateinit var xtraModule: XtraModule
 
@@ -74,7 +78,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var secondaryWebView: WebView
     private val ui = LoginUiState()
-    private val toast = ToastHostState()
+    private val toast get() = toasts.state
 
     /** What the bottom button does in the second web view step ("Next"); set when that step starts. */
     private var onTvNext: () -> Unit = {}

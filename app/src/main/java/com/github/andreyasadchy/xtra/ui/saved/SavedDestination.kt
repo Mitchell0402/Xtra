@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.saved
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
@@ -45,7 +46,6 @@ import com.github.andreyasadchy.xtra.model.ui.SavedFilter
 import com.github.andreyasadchy.xtra.model.ui.Video
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
 import com.github.andreyasadchy.xtra.ui.download.StorageOption
 import com.github.andreyasadchy.xtra.ui.download.StreamDownloadService
@@ -197,7 +197,7 @@ class SavedDestination(host: PageHost) : ComposePage(host), SavedActions {
         val bookmarkList by remember { bookmarksViewModel.flow }.collectAsState(null)
         val positions by remember { bookmarksViewModel.positions }.collectAsState(emptyList())
         val ignored by remember { bookmarksViewModel.ignoredUsers }.collectAsState(emptyList())
-        val toast = rememberToastHostState()
+        val toast = rememberLagoonToastState()
         LaunchedEffect(Unit) {
             bookmarksViewModel.integrity.collect { activity.getNewIntegrityToken(it, childFragmentManager) }
         }

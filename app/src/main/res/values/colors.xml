@@ -4,4 +4,11 @@
     <color name="lagoonPage">#FF111113</color>
     <color name="lagoonAccent">#FF5EE2C4</color>
     <color name="lagoonOnAccent">#FF111113</color>
+    <!-- textPrimary / textSecondary (92 % and 62 % white) -->
+    <color name="lagoonTextPrimary">#EBFFFFFF</color>
+    <color name="lagoonTextSecondary">#9EFFFFFF</color>
+    <!-- selected text behind the handles: accent at 40 %, as Compose's text selection -->
+    <color name="lagoonSelection">#665EE2C4</color>
+    <!-- pressed state ripple, as before (white 20 %) -->
+    <color name="lagoonRipple">#33FFFFFF</color>
 </resources>

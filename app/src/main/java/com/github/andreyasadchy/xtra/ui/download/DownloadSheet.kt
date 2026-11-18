@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.download
 
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonRangeSlider
+import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +23,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.RangeSlider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -36,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -128,7 +127,7 @@ fun DownloadSheetContent(
     folderLabel: String? = null,
 ) {
     val colors = Lagoon.colors
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.75f).dp
+    val maxHeight = currentSheetMaxHeight() * 0.75f
     Column(modifier.testTag(DownloadSheetTag)) {
         Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
             ItemHeader(item)
@@ -332,7 +331,7 @@ private fun RangePicker(
             FramePreview(storyboard, from, thumbnail, DownloadSheetLogic.formatTime(from), Modifier.weight(1f))
             FramePreview(storyboard, to, thumbnail, DownloadSheetLogic.formatTime(to), Modifier.weight(1f))
         }
-        RangeSlider(
+        LagoonRangeSlider(
             value = from.toFloat()..maxOf(from, to).toFloat(),
             onValueChange = { range ->
                 onForm(
@@ -343,11 +342,6 @@ private fun RangePicker(
                 )
             },
             valueRange = 0f..total.toFloat(),
-            colors = SliderDefaults.colors(
-                thumbColor = colors.accent,
-                activeTrackColor = colors.accent,
-                inactiveTrackColor = colors.control,
-            ),
             modifier = Modifier.fillMaxWidth().testTag("downloadRange"),
         )
         Text(

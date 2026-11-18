@@ -180,6 +180,7 @@ class VideoDownloadService : LifecycleService() {
                                 setContentTitle(ContextCompat.getString(this@VideoDownloadService, R.string.downloaded))
                                 setContentText(offlineVideo.name)
                                 setSmallIcon(android.R.drawable.stat_sys_download_done)
+                                setColor(ContextCompat.getColor(this@VideoDownloadService, R.color.lagoonAccent)) // U9 B2: Lagoon accent
                                 setGroup(GROUP_KEY)
                                 setAutoCancel(true)
                                 setContentIntent(
@@ -1811,6 +1812,7 @@ class VideoDownloadService : LifecycleService() {
             setContentTitle(ContextCompat.getString(this@VideoDownloadService, R.string.downloading))
             setContentText(offlineVideo.name)
             setSmallIcon(android.R.drawable.stat_sys_download)
+            setColor(ContextCompat.getColor(this@VideoDownloadService, R.color.lagoonAccent)) // U9 B2: Lagoon accent
             setGroup(GROUP_KEY)
             setOngoing(true)
             setOnlyAlertOnce(true)

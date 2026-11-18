@@ -1,6 +1,10 @@
 package com.github.andreyasadchy.xtra.ui.design.theme
 
+import com.github.andreyasadchy.xtra.ui.design.components.findActivity
+import com.github.andreyasadchy.xtra.ui.design.components.LocalLagoonToasts
+import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -48,32 +52,7 @@ fun LagoonTheme(
     val reduced = reducedMotion ?: remember(context) { LagoonMotion.isReduced(context) }
     val motion = remember(reduced) { LagoonMotion(reduced) }
     val type = DefaultLagoonType
-    val scheme = remember(colors) {
-        darkColorScheme(
-            primary = colors.accent,
-            onPrimary = colors.onAccent,
-            primaryContainer = colors.accentSoft,
-            onPrimaryContainer = colors.accent,
-            secondary = colors.accent,
-            onSecondary = colors.onAccent,
-            background = colors.page,
-            onBackground = colors.textPrimary,
-            surface = colors.card,
-            onSurface = colors.textPrimary,
-            surfaceVariant = colors.control,
-            onSurfaceVariant = colors.textSecondary,
-            surfaceContainerLowest = colors.page,
-            surfaceContainerLow = colors.card,
-            surfaceContainer = colors.card,
-            surfaceContainerHigh = colors.control,
-            surfaceContainerHighest = colors.pressed,
-            outline = colors.pressed,
-            outlineVariant = colors.control,
-            error = colors.danger,
-            onError = colors.onAccent,
-            scrim = colors.scrim,
-        )
-    }
+    val scheme = remember(colors) { lagoonColorScheme(colors) }
     val typography = remember(type) {
         Typography(
             displaySmall = type.display, headlineSmall = type.title, titleLarge = type.title,
@@ -88,8 +67,11 @@ fun LagoonTheme(
         withFrameNanos { }
         glassDecor.value = true
     }
+    // the activity's toast queue (U9 B1), so every ComposeView of the window posts to and draws the same one
+    val toasts = remember(context) { (context.findActivity() as? LagoonToastsOwner)?.toasts }
     MaterialTheme(colorScheme = scheme, typography = typography) {
         CompositionLocalProvider(
+            LocalLagoonToasts provides toasts,
             LocalGlassDecor provides glassDecor,
             LocalLagoonColors provides colors,
             LocalLagoonType provides type,
@@ -100,6 +82,63 @@ fun LagoonTheme(
         )
     }
 }
+
+/**
+ * Every Material 3 colour slot mapped to a Lagoon token (U9 A3), so a Material piece we did not restyle can never
+ * fall back to Material's default purple. LagoonThemeContractTest checks each slot by reflection, so a slot added
+ * by a future Material version fails the build until it is mapped here.
+ */
+fun lagoonColorScheme(colors: LagoonColors): ColorScheme = darkColorScheme(
+    primary = colors.accent,
+    onPrimary = colors.onAccent,
+    primaryContainer = colors.accentSoft,
+    onPrimaryContainer = colors.accent,
+    inversePrimary = colors.accent,
+    secondary = colors.accent,
+    onSecondary = colors.onAccent,
+    secondaryContainer = colors.accentSoft,
+    onSecondaryContainer = colors.accent,
+    tertiary = colors.accent,
+    onTertiary = colors.onAccent,
+    tertiaryContainer = colors.accentSoft,
+    onTertiaryContainer = colors.accent,
+    background = colors.page,
+    onBackground = colors.textPrimary,
+    surface = colors.card,
+    onSurface = colors.textPrimary,
+    surfaceVariant = colors.control,
+    onSurfaceVariant = colors.textSecondary,
+    // Material's default tint is the primary colour; kept so tonal elevation looks exactly as before
+    surfaceTint = colors.accent,
+    inverseSurface = colors.textPrimary,
+    inverseOnSurface = colors.page,
+    error = colors.danger,
+    onError = colors.onAccent,
+    errorContainer = colors.dangerSoft,
+    onErrorContainer = colors.danger,
+    outline = colors.pressed,
+    outlineVariant = colors.control,
+    scrim = colors.scrim,
+    surfaceBright = colors.pressed,
+    surfaceContainer = colors.card,
+    surfaceContainerHigh = colors.control,
+    surfaceContainerHighest = colors.pressed,
+    surfaceContainerLow = colors.card,
+    surfaceContainerLowest = colors.page,
+    surfaceDim = colors.page,
+    primaryFixed = colors.accent,
+    primaryFixedDim = colors.accent,
+    onPrimaryFixed = colors.onAccent,
+    onPrimaryFixedVariant = colors.onAccent,
+    secondaryFixed = colors.accent,
+    secondaryFixedDim = colors.accent,
+    onSecondaryFixed = colors.onAccent,
+    onSecondaryFixedVariant = colors.onAccent,
+    tertiaryFixed = colors.accent,
+    tertiaryFixedDim = colors.accent,
+    onTertiaryFixed = colors.onAccent,
+    onTertiaryFixedVariant = colors.onAccent,
+)
 
 /** Convenience for text that should take the current content colour. */
 @Composable

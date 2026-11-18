@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.game
 
+import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -9,7 +10,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalDensity
 import com.github.andreyasadchy.xtra.ui.design.components.GlassContext
 import com.github.andreyasadchy.xtra.ui.design.components.LocalGlass
-import com.github.andreyasadchy.xtra.ui.design.components.rememberToastHostState
 import com.github.andreyasadchy.xtra.ui.main.MainViewModel
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.GameArgs
@@ -40,7 +40,7 @@ class GameDestination(host: PageHost) : ComposePage(host) {
                 bottomPadding = bottom,
                 navScroll = shell?.hideOnScroll?.nestedScrollConnection,
                 scrollToTopRequests = scrollToTopRequests.intValue,
-                toast = rememberToastHostState(),
+                toast = rememberLagoonToastState(),
             )
         }
     }

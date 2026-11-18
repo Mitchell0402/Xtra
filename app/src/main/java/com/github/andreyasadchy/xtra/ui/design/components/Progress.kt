@@ -68,7 +68,7 @@ fun LagoonRangeSlider(
 
 /** A swipe to the left reveals the red delete tint and calls [onRemove] (the host shows the undo). */
 @Composable
-fun SwipeToDelete(label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
+fun SwipeToDelete(label: String, onRemove: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -79,6 +79,7 @@ fun SwipeToDelete(label: String, onRemove: () -> Unit, content: @Composable () -
     )
     SwipeToDismissBox(
         state = state,
+        modifier = modifier,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
             Box(

@@ -1,9 +1,10 @@
 package com.github.andreyasadchy.xtra.ui.player
 
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonSpinner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -367,7 +368,9 @@ fun PlayerScreen(
         )
 
         // 0 = maximized, 1 = mini player; follows the mode, and the finger while the video is dragged down
-        val progress = remember { Animatable(if (state.mode == PlayerMode.Minimized) 1f else 0f) }
+        val progress = remember { Animatable(if (state.mode == PlayerMode.Minimized) 1f else 0f).apply { updateBounds(0f, 1f) } }
+        // the finger's speed when a drag down let go (progress per second), handed to the spring that finishes it
+        val release = remember { mutableFloatStateOf(0f) }
         val dismiss = remember { Animatable(0f) }
         var dragging by remember { mutableStateOf(false) }
         val motion = Lagoon.motion
@@ -377,7 +380,8 @@ fun PlayerScreen(
                 miniOffset = Offset.Zero
                 dismiss.snapTo(0f)
             }
-            if (motion.reduced) progress.snapTo(target) else progress.animateTo(target, tween(250))
+            val velocity = release.floatValue.also { release.floatValue = 0f }
+            if (motion.reduced) progress.snapTo(target) else progress.animateTo(target, motion.playerSpring(), initialVelocity = velocity)
         }
         val p = if (state.inPictureInPicture) 0f else progress.value
         val maximized = p == 0f && state.mode == PlayerMode.Maximized && !dragging
@@ -441,6 +445,7 @@ fun PlayerScreen(
                 progress = p,
                 setDragging = { dragging = it },
                 progressAnim = progress,
+                onRelease = { release.floatValue = it },
                 now = now,
             )
         }
@@ -474,9 +479,11 @@ private fun VideoLayer(
     progress: Float,
     setDragging: (Boolean) -> Unit,
     progressAnim: Animatable<Float, *>,
+    onRelease: (Float) -> Unit,
     now: () -> Long,
 ) {
     val density = LocalDensity.current
+    val motion = Lagoon.motion
     val slot = geometry.slot
     val scope = rememberCoroutineScope()
     var touchStamp by remember { mutableLongStateOf(0L) }
@@ -543,10 +550,12 @@ private fun VideoLayer(
                         var startX = 0f
                         var total = 0f
                         var kind = 0 // 1 minimize/fullscreen, 2 brightness, 3 volume
+                        val tracker = VelocityTracker()
                         detectVerticalDragGestures(
                             onDragStart = { start ->
                                 startX = start.x
                                 total = 0f
+                                tracker.resetTracking()
                                 kind = when {
                                     // v0.1 statusBarSwipe: in landscape the bars are hidden and come back with a swipe
                                     // from the top edge, which the page still receives; leave that swipe alone
@@ -563,9 +572,12 @@ private fun VideoLayer(
                             },
                             onDragEnd = {
                                 if (kind == 1) {
+                                    // progress per second; launched after the queued snapTo calls, so it continues from the last one
+                                    val velocity = tracker.calculateVelocity().y / dragRange
                                     when {
                                         // decided on the distance: the snapTo calls below are still queued after a fast flick
                                         total / dragRange > 0.15f -> scope.launch {
+                                            onRelease(velocity.coerceAtLeast(0f))
                                             setDragging(false)
                                             actions.minimize()
                                         }
@@ -574,7 +586,7 @@ private fun VideoLayer(
                                             actions.toggleFullscreen()
                                         }
                                         else -> scope.launch {
-                                            progressAnim.animateTo(0f, tween(200))
+                                            progressAnim.animateTo(0f, motion.playerSpring(), initialVelocity = velocity.coerceAtMost(0f))
                                             setDragging(false)
                                         }
                                     }
@@ -586,6 +598,7 @@ private fun VideoLayer(
                             onVerticalDrag = { change, amount ->
                                 change.consume()
                                 total += amount
+                                tracker.addPosition(change.uptimeMillis, Offset(0f, total))
                                 when (kind) {
                                     1 -> if (total > 0f) scope.launch { progressAnim.snapTo((total / dragRange).coerceIn(0f, 1f)) }
                                     2 -> level = LevelHint(LucideIcons.SunMoon, actions.adjustBrightness(-amount / size.height))
@@ -625,7 +638,7 @@ private fun VideoLayer(
             LagoonSpinner(Modifier.align(Alignment.Center).size(44.dp), color = Color.White, strokeWidth = 3.dp)
         }
 
-        AnimatedVisibility(visible, enter = fadeIn(tween(250)), exit = fadeOut(tween(250)), modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible, enter = fadeIn(motion.fade()), exit = fadeOut(motion.fadeExit()), modifier = Modifier.fillMaxSize()) {
             PlayerControls(
                 state = state,
                 options = options,
@@ -638,15 +651,29 @@ private fun VideoLayer(
         }
 
         state.adStatus?.let { status ->
-            val top = if (visible) 56.dp else 8.dp
+            // moves below the controls' top row instead of jumping there (P13)
+            val top by animateDpAsState(if (visible) 56.dp else 8.dp, motion.layout(Dp.VisibilityThreshold), label = "adStatusTop")
             OverlayChip(
                 text = status.toString(),
                 modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = top).testTag("adStatus"),
             )
         }
 
-        seekHint?.let { hint -> SeekIndicator(hint, Modifier.align(if (hint.forward) Alignment.CenterEnd else Alignment.CenterStart)) }
-        level?.let { hint -> LevelIndicator(hint, Modifier.align(Alignment.Center)) }
+        // the hints fade in and out (P12); while one shows, a new tap or swipe only changes its text
+        FadingHint(seekHint, { Modifier.align(if (it.forward) Alignment.CenterEnd else Alignment.CenterStart) }) { SeekIndicator(it, Modifier) }
+        FadingHint(level, { Modifier.align(Alignment.Center) }) { LevelIndicator(it, Modifier) }
+    }
+}
+
+/** Shows [value] while it is not null, fading in and out; the last value stays on screen while it fades out. */
+@Composable
+private fun <T : Any> FadingHint(value: T?, place: (T) -> Modifier, content: @Composable (T) -> Unit) {
+    val motion = Lagoon.motion
+    var last by remember { mutableStateOf<T?>(null) }
+    if (value != null) SideEffect { last = value }
+    val shown = value ?: last ?: return
+    AnimatedVisibility(value != null, modifier = place(shown), enter = fadeIn(motion.fade()), exit = fadeOut(motion.fadeExit())) {
+        content(shown)
     }
 }
 
@@ -1141,6 +1168,7 @@ private fun MiniPlayer(
     val colors = Lagoon.colors
     val cardColor = colors.card
     val name = PlayerLogic.displayName(state.channelName, state.channelLogin, options.nameDisplay)
+    val motion = Lagoon.motion
     Box(
         Modifier
             .offset { IntOffset((card.left + dismiss.value).roundToInt(), card.top.roundToInt()) }
@@ -1156,17 +1184,17 @@ private fun MiniPlayer(
                         scope.launch {
                             if (abs(velocity) > 1500f || (!options.moveFreely && abs(dx) > card.width * 0.4f)) {
                                 val target = if ((velocity.takeIf { abs(it) > 1500f } ?: dx) > 0) card.width * 1.2f else -card.width * 1.2f
-                                dismiss.animateTo(target, tween(200))
+                                dismiss.animateTo(target, motion.playerSpring(), initialVelocity = velocity)
                                 actions.dismiss()
                             } else if (options.moveFreely) {
                                 onMove(Offset(dx, 0f))
                                 dismiss.snapTo(0f)
                             } else {
-                                dismiss.animateTo(0f, tween(200))
+                                dismiss.animateTo(0f, motion.playerSpring(), initialVelocity = velocity)
                             }
                         }
                     },
-                    onDragCancel = { scope.launch { dismiss.animateTo(0f) } },
+                    onDragCancel = { scope.launch { dismiss.animateTo(0f, motion.playerSpring()) } },
                     onDrag = { change, amount ->
                         change.consume()
                         dx += amount.x
@@ -1205,7 +1233,12 @@ private fun MiniPlayer(
                 size = 40.dp,
                 modifier = Modifier.testTag("miniPlayPause"),
             )
-            LagoonIconButton(LucideIcons.X, stringResource(R.string.pl_close), onClick = { actions.dismiss() }, filled = false, size = 40.dp, modifier = Modifier.testTag("miniClose"))
+            LagoonIconButton(
+                LucideIcons.X, stringResource(R.string.pl_close),
+                // the same exit as a swipe (motion plan M1 item 5): slide out and fade, then close
+                onClick = { scope.launch { dismiss.animateTo(card.width * 1.2f, motion.playerSpring()); actions.dismiss() } },
+                filled = false, size = 40.dp, modifier = Modifier.testTag("miniClose"),
+            )
         }
     }
 }

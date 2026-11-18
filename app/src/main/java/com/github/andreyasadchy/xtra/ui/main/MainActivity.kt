@@ -1,5 +1,10 @@
 package com.github.andreyasadchy.xtra.ui.main
 
+import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.Dp
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
@@ -48,7 +53,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -870,9 +874,10 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
 
     fun closePlayer() {
         // the fragment can already be gone when a twitch.tv link replaces a restored player
+        // no fragment transition: the mini player has already slid out and faded on the motion system's spring
+        // (motion plan M1 item 5), and a View fade here would run on its own, unmanaged timing
         supportFragmentManager.findFragmentById(R.id.playerContainer)?.let {
             supportFragmentManager.beginTransaction()
-                .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
                 .remove(it)
                 .commit()
         }
@@ -1025,7 +1030,11 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
                 val bar = with(LocalDensity.current) { state.bottomBarHeightPx.toDp() }
                 val base = if (!state.playerMaximized && state.hasNavigation && !state.useRail && bar > 0.dp) bar else navBottom
                 // above the mini player card (its 16:9 thumbnail 112 dp wide, 8 dp padding, 12 dp margin)
-                val bottom = if (state.miniPlayer && !state.playerMaximized) base + 92.dp else base
+                // follows the mini player coming and going instead of jumping 92 dp (P8)
+                val bottom by animateDpAsState(
+                    if (state.miniPlayer && !state.playerMaximized) base + 92.dp else base,
+                    Lagoon.motion.layout(Dp.VisibilityThreshold), label = "toastBottom",
+                )
                 LagoonToastOverlay(toasts, bottom)
                 // screen readers meet the layer only while it shows a toast
                 LaunchedEffect(Unit) {

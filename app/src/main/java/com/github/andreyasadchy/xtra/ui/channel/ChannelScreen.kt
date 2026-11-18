@@ -104,6 +104,7 @@ import com.github.andreyasadchy.xtra.ui.browse.rememberCoverColor
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
 import com.github.andreyasadchy.xtra.ui.browse.uptime
 import com.github.andreyasadchy.xtra.ui.browse.videoMenu
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionItem
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.Avatar
@@ -462,63 +463,65 @@ private fun SegmentList(
         modifier = Modifier.fillMaxSize(),
         indicatorTop = top,
     ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            state = grid,
-            modifier = Modifier.fillMaxSize().testTag(ChannelListTag),
-            contentPadding = PaddingValues(
-                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = top,
-                bottom = bottom + LagoonSpacing.m,
-            ),
-            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-        ) {
-            header?.invoke(this)
-            when (selected) {
-                ChannelSegment.Videos -> {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                        FilterChipRow(
-                            filterChips(FilterKind.Videos, filters.videos, filters.videosConfig, onOpen = onOpenFilter, onRemoveTag = {}),
-                            contentPadding = PaddingValues(0.dp),
-                        )
+        StaggerGate("channel:${selected.name}", hasItems = (current?.itemCount ?: 0) > 0) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                state = grid,
+                modifier = Modifier.fillMaxSize().testTag(ChannelListTag),
+                contentPadding = PaddingValues(
+                    start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = top,
+                    bottom = bottom + LagoonSpacing.m,
+                ),
+                verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+            ) {
+                header?.invoke(this)
+                when (selected) {
+                    ChannelSegment.Videos -> {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                            FilterChipRow(
+                                filterChips(FilterKind.Videos, filters.videos, filters.videosConfig, onOpen = onOpenFilter, onRemoveTag = {}),
+                                contentPadding = PaddingValues(0.dp),
+                            )
+                        }
+                        val videos = lists.videos
+                        if (videos == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
+                            videos, offline, "video",
+                            skeleton = { SkeletonLiveCard() },
+                            empty = { EmptyState(stringResource(R.string.channel_empty_videos), icon = LucideIcons.Film) },
+                        ) { index, video ->
+                            ChannelVideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
+                        }
                     }
-                    val videos = lists.videos
-                    if (videos == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
-                        videos, offline, "video",
-                        skeleton = { SkeletonLiveCard() },
-                        empty = { EmptyState(stringResource(R.string.channel_empty_videos), icon = LucideIcons.Film) },
-                    ) { index, video ->
-                        ChannelVideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
+                    ChannelSegment.Clips -> {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                            FilterChipRow(
+                                filterChips(FilterKind.Clips, filters.clips, filters.clipsConfig, onOpen = onOpenFilter, onRemoveTag = {}),
+                                contentPadding = PaddingValues(0.dp),
+                            )
+                        }
+                        val clips = lists.clips
+                        if (clips == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
+                            clips, offline, "clip",
+                            skeleton = { SkeletonLiveCard() },
+                            empty = { EmptyState(stringResource(R.string.channel_empty_clips), icon = LucideIcons.Scissors) },
+                        ) { index, clip ->
+                            ChannelClipCell(clip, index, options, actions)
+                        }
                     }
+                    ChannelSegment.Suggestions -> {
+                        val suggestions = lists.suggestions
+                        if (suggestions == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
+                            suggestions, offline, "stream",
+                            skeleton = { SkeletonLiveCard() },
+                            empty = { EmptyState(stringResource(R.string.channel_empty_suggestions), icon = LucideIcons.Radio) },
+                        ) { index, stream ->
+                            SuggestionCell(stream, index, options, actions)
+                        }
+                    }
+                    ChannelSegment.About -> aboutItems(about, options, actions, offline)
+                    ChannelSegment.Chat -> Unit
                 }
-                ChannelSegment.Clips -> {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                        FilterChipRow(
-                            filterChips(FilterKind.Clips, filters.clips, filters.clipsConfig, onOpen = onOpenFilter, onRemoveTag = {}),
-                            contentPadding = PaddingValues(0.dp),
-                        )
-                    }
-                    val clips = lists.clips
-                    if (clips == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
-                        clips, offline, "clip",
-                        skeleton = { SkeletonLiveCard() },
-                        empty = { EmptyState(stringResource(R.string.channel_empty_clips), icon = LucideIcons.Scissors) },
-                    ) { index, clip ->
-                        ChannelClipCell(clip, index, options, actions)
-                    }
-                }
-                ChannelSegment.Suggestions -> {
-                    val suggestions = lists.suggestions
-                    if (suggestions == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else pagedItems(
-                        suggestions, offline, "stream",
-                        skeleton = { SkeletonLiveCard() },
-                        empty = { EmptyState(stringResource(R.string.channel_empty_suggestions), icon = LucideIcons.Radio) },
-                    ) { index, stream ->
-                        SuggestionCell(stream, index, options, actions)
-                    }
-                }
-                ChannelSegment.About -> aboutItems(about, options, actions, offline)
-                ChannelSegment.Chat -> Unit
             }
         }
     }

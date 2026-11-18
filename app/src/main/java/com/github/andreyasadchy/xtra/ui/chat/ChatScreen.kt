@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.chat
 
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.ui.unit.IntOffset
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonColors
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -7,7 +9,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -260,6 +261,8 @@ fun ChatList(state: ChatState, actions: ChatActions, modifier: Modifier = Modifi
     }
     LaunchedEffect(atBottom) { if (atBottom) unseen = 0 }
     val reduced = Lagoon.motion.reduced
+    val listFade = Lagoon.motion.listItemFadeIn<Float>()
+    val listPlacement = Lagoon.motion.listItemPlacement(IntOffset.VisibilityThreshold)
     // U9 C1 (D2): the name opens the user card (a reply header's "@name": the replied-to user), an emote or a badge
     // with details opens its card, the rest of a line does nothing. One remembered callback each, taking the line,
     // so rows do not rebuild their picture maps on every recomposition.
@@ -280,7 +283,7 @@ fun ChatList(state: ChatState, actions: ChatActions, modifier: Modifier = Modifi
                     onClick = null,
                     onNameClick = onNameClick,
                     onImageClick = onImageClick,
-                    modifier = if (animate) Modifier.animateItem(fadeInSpec = tween(200), placementSpec = tween(200), fadeOutSpec = null) else Modifier,
+                    modifier = if (animate) Modifier.animateItem(fadeInSpec = listFade, placementSpec = listPlacement, fadeOutSpec = null) else Modifier,
                 )
             }
         }

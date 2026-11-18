@@ -145,4 +145,64 @@ class NavigationTest {
             assertTrue(controller().currentBackStackEntry!!.destination.hasRoute(GameRoute::class))
         }
     }
+
+    // --- motion plan M1 item 3: the tab-switch marker is one-shot
+
+    @Test
+    fun aPageDeeperAndBackAfterATabSwitchAreNotSiblings() {
+        val nav = AppNavigator()
+        val controller = host(nav)
+        rule.runOnIdle { nav.selectTab(BrowseRoute, forward = true) }
+        val browse = rule.runOnIdle { controller().currentBackStackEntry!! }
+        rule.runOnIdle { assertTrue(nav.isSibling(browse)) }
+        rule.runOnIdle { nav.openGame(name = "Chess") }
+        rule.runOnIdle { assertNull(nav.siblingTargetId) }
+        // back to Browse: the entry the tab switch marked, but this is a back, not a tab switch
+        rule.runOnIdle { nav.back() }
+        rule.runOnIdle {
+            assertEquals(browse.id, controller().currentBackStackEntry!!.id)
+            assertFalse(nav.isSibling(browse))
+        }
+    }
+
+    @Test
+    fun switchingBackToTheStartTabIsASiblingOnBothSides() {
+        val nav = AppNavigator()
+        val controller = host(nav)
+        val following = rule.runOnIdle { controller().currentBackStackEntry!! }
+        rule.runOnIdle { nav.selectTab(BrowseRoute, forward = true) }
+        // a pop to the start destination: the pop transitions read the marker for the entry coming back
+        rule.runOnIdle { nav.selectTab(FollowingRoute, forward = false) }
+        rule.runOnIdle {
+            assertEquals(following.id, controller().currentBackStackEntry!!.id)
+            assertTrue(nav.isSibling(controller().currentBackStackEntry!!))
+            assertFalse(nav.siblingForward)
+        }
+    }
+
+    @Test
+    fun twoTabSwitchesInARowMarkEachOnce() {
+        val nav = AppNavigator()
+        val controller = host(nav)
+        rule.runOnIdle { nav.selectTab(BrowseRoute, forward = true) }
+        val browse = rule.runOnIdle { controller().currentBackStackEntry!! }
+        rule.runOnIdle { nav.selectTab(SavedRoute, forward = true) }
+        rule.runOnIdle {
+            assertFalse(nav.isSibling(browse))
+            assertTrue(nav.isSibling(controller().currentBackStackEntry!!))
+        }
+    }
+
+    @Test
+    fun theSystemBackGestureRightAfterATabSwitchIsABack() {
+        val nav = AppNavigator()
+        val controller = host(nav)
+        rule.runOnIdle { nav.selectTab(BrowseRoute, forward = true) }
+        // the system back gesture pops the controller directly, without going through AppNavigator
+        rule.runOnIdle { controller().popBackStack() }
+        rule.runOnIdle {
+            assertTrue(controller().currentBackStackEntry!!.destination.hasRoute(FollowingRoute::class))
+            assertNull(nav.siblingTargetId)
+        }
+    }
 }

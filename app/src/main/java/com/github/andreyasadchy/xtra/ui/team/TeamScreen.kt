@@ -71,6 +71,7 @@ import com.github.andreyasadchy.xtra.ui.browse.pagedItems
 import com.github.andreyasadchy.xtra.ui.browse.rememberCoverColor
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
 import com.github.andreyasadchy.xtra.ui.channel.MarkdownText
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionItem
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.Avatar
@@ -155,27 +156,29 @@ fun TeamScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicatorTop = barTop,
                 ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        state = grid,
-                        modifier = Modifier.fillMaxSize().testTag(TeamListTag),
-                        contentPadding = PaddingValues(
-                            start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop,
-                            bottom = bottomPadding + LagoonSpacing.m,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                        horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
-                            TeamHeaderBlock(header, coverColor, options, barTop, Modifier.onSizeChanged { headerHeight = it.height })
-                        }
-                        if (members != null) {
-                            pagedItems(
-                                members, offline, "member",
-                                skeleton = { SkeletonRow() },
-                                empty = { EmptyState(stringResource(R.string.team_empty), icon = LucideIcons.Users) },
-                            ) { index, member ->
-                                MemberCell(member, index, options, compactStreams, actions)
+                    StaggerGate("team", hasItems = (members?.itemCount ?: 0) > 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            state = grid,
+                            modifier = Modifier.fillMaxSize().testTag(TeamListTag),
+                            contentPadding = PaddingValues(
+                                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop,
+                                bottom = bottomPadding + LagoonSpacing.m,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                        ) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
+                                TeamHeaderBlock(header, coverColor, options, barTop, Modifier.onSizeChanged { headerHeight = it.height })
+                            }
+                            if (members != null) {
+                                pagedItems(
+                                    members, offline, "member",
+                                    skeleton = { SkeletonRow() },
+                                    empty = { EmptyState(stringResource(R.string.team_empty), icon = LucideIcons.Users) },
+                                ) { index, member ->
+                                    MemberCell(member, index, options, compactStreams, actions)
+                                }
                             }
                         }
                     }

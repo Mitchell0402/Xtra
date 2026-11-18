@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.main.nav
 
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.github.andreyasadchy.xtra.model.ui.Tag
@@ -14,20 +16,39 @@ class AppNavigator {
         private set
     private val pending = mutableListOf<(NavHostController) -> Unit>()
 
-    /** The entry a tab switch just opened; the host animates it as a sibling, not as a page one level deeper. */
+    /**
+     * The entry a tab switch just opened; the host animates the switch as a sibling, not as a page one level deeper or
+     * a back (motion plan M1 item 3). One-shot: the transition lambdas only read it, and the next navigation of any
+     * kind (a page deeper, back, the system back gesture) clears it in [clearStaleSibling].
+     */
     var siblingTargetId: String? = null
         private set
     var siblingForward = true
         private set
 
+    /** Whether the transition to or from [entry] is the tab switch that just happened. */
+    fun isSibling(entry: NavBackStackEntry) = entry.id == siblingTargetId
+
+    /**
+     * Runs synchronously inside every navigate() and pop, before [selectTab] writes the new marker (it writes after
+     * navigate() returns), so a tab switch only clears the previous one. Not a back-stack flow: that is collected
+     * asynchronously and could clear the new marker before the transition reads it.
+     */
+    private val clearStaleSibling = NavController.OnDestinationChangedListener { controller, _, _ ->
+        if (controller.currentBackStackEntry?.id != siblingTargetId) siblingTargetId = null
+    }
+
     fun attach(controller: NavHostController) {
+        this.controller?.removeOnDestinationChangedListener(clearStaleSibling)
         this.controller = controller
+        controller.addOnDestinationChangedListener(clearStaleSibling)
         val calls = pending.toList()
         pending.clear()
         calls.forEach { it(controller) }
     }
 
     fun detach(controller: NavHostController) {
+        controller.removeOnDestinationChangedListener(clearStaleSibling)
         if (this.controller === controller) this.controller = null
     }
 

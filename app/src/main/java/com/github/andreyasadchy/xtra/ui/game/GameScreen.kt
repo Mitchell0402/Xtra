@@ -87,6 +87,7 @@ import com.github.andreyasadchy.xtra.ui.browse.pagedItems
 import com.github.andreyasadchy.xtra.ui.browse.rememberCoverColor
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
 import com.github.andreyasadchy.xtra.ui.browse.videoMenu
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.EmptyState
 import com.github.andreyasadchy.xtra.ui.design.components.FilterChipRow
@@ -269,77 +270,79 @@ fun GameScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicatorTop = barTop,
                 ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        state = grid,
-                        modifier = Modifier.fillMaxSize().testTag(GameListTag),
-                        contentPadding = PaddingValues(
-                            start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop,
-                            bottom = bottomPadding + LagoonSpacing.m,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                        horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
-                            GameHeaderBlock(
-                                header = header,
-                                coverColor = coverColor,
-                                options = options,
-                                showFollow = showFollow,
-                                following = following,
-                                onFollow = { if (it) actions.setFollowing(true) else unfollowSheet = true },
-                                onTag = actions::openGameTag,
-                                boxArtModifier = boxArtModifier,
-                                gradientTop = barTop,
-                                modifier = Modifier.onSizeChanged { headerHeight = it.height },
-                            )
-                        }
-                        // the floating tabs sit over this gap
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "tabs", contentType = "tabs") {
-                            Spacer(Modifier.height(tabsBlock))
-                        }
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                            val kind = selected.kind
-                            FilterChipRow(
-                                filterChips(
-                                    kind = kind,
-                                    filter = filters.of(kind),
-                                    config = filters.configOf(kind),
-                                    onOpen = { filterSheet = true },
-                                    onRemoveTag = { tag ->
-                                        val filter = filters.of(kind)
-                                        actions.applyFilter(kind, filter.copy(tags = filter.tags - tag), FilterSaves())
-                                    },
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                            )
-                        }
-                        when (selected) {
-                            GameSegment.Live -> if (lists.streams == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.streams.let { streams ->
-                                pagedItems(
-                                    streams, offline, "stream",
-                                    skeleton = { SkeletonLiveCard() },
-                                    empty = { EmptyState(stringResource(R.string.browse_game_empty_live), icon = LucideIcons.Radio) },
-                                ) { index, stream ->
-                                    StreamCell(stream, index, options, compactStreams, filters.streams, actions)
-                                }
+                    StaggerGate("game:${selected.name}", hasItems = (current?.itemCount ?: 0) > 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            state = grid,
+                            modifier = Modifier.fillMaxSize().testTag(GameListTag),
+                            contentPadding = PaddingValues(
+                                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop,
+                                bottom = bottomPadding + LagoonSpacing.m,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                        ) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
+                                GameHeaderBlock(
+                                    header = header,
+                                    coverColor = coverColor,
+                                    options = options,
+                                    showFollow = showFollow,
+                                    following = following,
+                                    onFollow = { if (it) actions.setFollowing(true) else unfollowSheet = true },
+                                    onTag = actions::openGameTag,
+                                    boxArtModifier = boxArtModifier,
+                                    gradientTop = barTop,
+                                    modifier = Modifier.onSizeChanged { headerHeight = it.height },
+                                )
                             }
-                            GameSegment.Videos -> if (lists.videos == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.videos.let { videos ->
-                                pagedItems(
-                                    videos, offline, "video",
-                                    skeleton = { SkeletonLiveCard() },
-                                    empty = { EmptyState(stringResource(R.string.browse_game_empty_videos), icon = LucideIcons.Film) },
-                                ) { index, video ->
-                                    VideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
-                                }
+                            // the floating tabs sit over this gap
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "tabs", contentType = "tabs") {
+                                Spacer(Modifier.height(tabsBlock))
                             }
-                            GameSegment.Clips -> if (lists.clips == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.clips.let { clips ->
-                                pagedItems(
-                                    clips, offline, "clip",
-                                    skeleton = { SkeletonLiveCard() },
-                                    empty = { EmptyState(stringResource(R.string.browse_game_empty_clips), icon = LucideIcons.Scissors) },
-                                ) { index, clip ->
-                                    ClipCell(clip, index, options, actions)
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                                val kind = selected.kind
+                                FilterChipRow(
+                                    filterChips(
+                                        kind = kind,
+                                        filter = filters.of(kind),
+                                        config = filters.configOf(kind),
+                                        onOpen = { filterSheet = true },
+                                        onRemoveTag = { tag ->
+                                            val filter = filters.of(kind)
+                                            actions.applyFilter(kind, filter.copy(tags = filter.tags - tag), FilterSaves())
+                                        },
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                )
+                            }
+                            when (selected) {
+                                GameSegment.Live -> if (lists.streams == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.streams.let { streams ->
+                                    pagedItems(
+                                        streams, offline, "stream",
+                                        skeleton = { SkeletonLiveCard() },
+                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_live), icon = LucideIcons.Radio) },
+                                    ) { index, stream ->
+                                        StreamCell(stream, index, options, compactStreams, filters.streams, actions)
+                                    }
+                                }
+                                GameSegment.Videos -> if (lists.videos == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.videos.let { videos ->
+                                    pagedItems(
+                                        videos, offline, "video",
+                                        skeleton = { SkeletonLiveCard() },
+                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_videos), icon = LucideIcons.Film) },
+                                    ) { index, video ->
+                                        VideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
+                                    }
+                                }
+                                GameSegment.Clips -> if (lists.clips == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.clips.let { clips ->
+                                    pagedItems(
+                                        clips, offline, "clip",
+                                        skeleton = { SkeletonLiveCard() },
+                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_clips), icon = LucideIcons.Scissors) },
+                                    ) { index, clip ->
+                                        ClipCell(clip, index, options, actions)
+                                    }
                                 }
                             }
                         }

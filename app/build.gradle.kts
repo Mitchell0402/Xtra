@@ -24,6 +24,14 @@ val releaseSigning = Properties().apply {
     System.getenv("LAGOON_KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
 }.takeIf { it.getProperty("storeFile") != null }
 
+// Cold-start measurement builds (docs/perf/startup-plan.md 1.3). -Plagoon.perfId=<name> changes only the application
+// id (qa -> .qa.perf.<name>, benchmark -> .bench.perf.<name>) so several versions install side by side and never
+// replace a .qa or release install. -Plagoon.dexUncompressed stores dex uncompressed (the A3 control build only).
+// CI never sets either.
+val perfId = providers.gradleProperty("lagoon.perfId").orNull?.also {
+    require(Regex("[a-z0-9]+").matches(it)) { "lagoon.perfId must be lower-case letters and digits: $it" }
+}
+
 android {
     signingConfigs {
         getByName("debug") {
@@ -70,7 +78,7 @@ android {
         // this build so shrinker crashes show up without ever touching the release key.
         create("qa") {
             initWith(getByName("release"))
-            applicationIdSuffix = ".qa"
+            applicationIdSuffix = if (perfId != null) ".qa.perf.$perfId" else ".qa"
             versionNameSuffix = "-QA"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
@@ -78,7 +86,7 @@ android {
         // Non-debuggable, profileable build for the :benchmark module. Also carries the U0 lab screens.
         create("benchmark") {
             initWith(getByName("qa"))
-            applicationIdSuffix = ".bench"
+            applicationIdSuffix = if (perfId != null) ".bench.perf.$perfId" else ".bench"
             versionNameSuffix = "-BENCH"
             // -Plagoon.profiling: the same build without R8, so a baseline profile recorded on it names the source
             // classes and methods (a profile recorded on the R8 build names merged and inlined classes that the
@@ -123,7 +131,7 @@ android {
     }
     // minSdk 29 would store dex files uncompressed (+4.7 MB APK); keep them compressed like v0.1 so the
     // size gate (plan 10.4) compares like with like and the GitHub download stays small
-    packaging.dex.useLegacyPackaging = true
+    packaging.dex.useLegacyPackaging = !providers.gradleProperty("lagoon.dexUncompressed").isPresent
 }
 
 // memory check (plan 10.4, U7): gradlew assembleDebug -Pleakcanary adds LeakCanary to that debug build only; tests and CI never get it

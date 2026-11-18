@@ -2,10 +2,8 @@ package com.github.andreyasadchy.xtra.ui.game
 
 import androidx.compose.foundation.background
 import kotlin.math.roundToInt
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -44,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,6 +97,7 @@ import com.github.andreyasadchy.xtra.ui.browse.rememberCoverColor
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
 import com.github.andreyasadchy.xtra.ui.browse.videoMenu
 import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
+import com.github.andreyasadchy.xtra.ui.design.components.HeaderCollapseScroll
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.EmptyState
 import com.github.andreyasadchy.xtra.ui.design.components.FilterChipRow
@@ -266,7 +266,7 @@ fun GameScreen(
     // is, like v0.1's app bar over a view pager. 0 = shown, -collapseRange = under the bar
     val headerOffset = rememberSaveable { mutableFloatStateOf(0f) }
     val collapseRange = (headerHeight + gapPx).toFloat()
-    val headerScroll = remember { GameHeaderScroll(headerOffset) }
+    val headerScroll = remember { HeaderCollapseScroll(headerOffset) }
     headerScroll.range = collapseRange
 
     LaunchedEffect(scrollToTopRequests) {
@@ -280,8 +280,11 @@ fun GameScreen(
         val index = segments.indexOf(selected)
         if (index >= 0 && index != pagerState.currentPage && !pagerState.isScrollInProgress) pagerState.animateScrollToPage(index)
     }
+    // read through state: the effect outlives recompositions, and a stale "selected" would swallow a swipe back
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }.collect { page -> segments.getOrNull(page)?.let { if (it != selected) onSelect(it) } }
+        snapshotFlow { pagerState.settledPage }.collect { page -> segments.getOrNull(page)?.let { if (it != currentSelected) currentOnSelect(it) } }
     }
     // a segment's list starts loading as soon as a swipe heads for it, not once the swipe has settled
     LaunchedEffect(pagerState) {
@@ -486,40 +489,6 @@ private fun GameSegmentGrid(
             }
         }
     }
-}
-
-/**
- * Collapses the game header as a list scrolls up and brings it back once a list is at its top (motion plan M3a): the
- * header lives outside the pager, so every page drives the same offset through nested scrolling.
- */
-internal class GameHeaderScroll(private val offset: MutableFloatState) : NestedScrollConnection {
-    /** How far the header can move: its height and the gap under it, in pixels. */
-    var range = 0f
-
-    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-        // up: the header goes first, then the list scrolls
-        if (available.y >= 0f) return Offset.Zero
-        val consumed = GameHeaderRules.collapse(offset.floatValue, available.y, range)
-        offset.floatValue += consumed
-        return Offset(0f, consumed)
-    }
-
-    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-        // down past the list's top: the header comes back
-        if (available.y <= 0f) return Offset.Zero
-        val taken = GameHeaderRules.expand(offset.floatValue, available.y)
-        offset.floatValue += taken
-        return Offset(0f, taken)
-    }
-}
-
-/** The header's share of a vertical scroll (pure, GamePagerTest). */
-object GameHeaderRules {
-    /** Of an upward scroll [dy] (negative), what the header at [offset] (0 shown, -range hidden) takes. */
-    fun collapse(offset: Float, dy: Float, range: Float): Float = dy.coerceAtLeast(-(range + offset)).coerceAtMost(0f)
-
-    /** Of a downward scroll [dy] the list did not use (it is at its top), what the header takes to come back. */
-    fun expand(offset: Float, dy: Float): Float = dy.coerceAtMost(-offset).coerceAtLeast(0f)
 }
 
 private val GameSegment.label: Int

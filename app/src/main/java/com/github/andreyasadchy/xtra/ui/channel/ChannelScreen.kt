@@ -1,11 +1,20 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.collectLatest
 import androidx.core.content.res.ResourcesCompat
 import android.text.method.LinkMovementMethod
 import android.widget.TextView
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import com.github.andreyasadchy.xtra.ui.design.components.HeaderCollapseScroll
+import androidx.compose.animation.core.animate
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -204,6 +214,7 @@ const val ChannelListTag = "channelList"
 const val ChannelSegmentsTag = "channelSegments"
 const val ChannelHeaderTag = "channelHeader"
 const val ChannelLiveCardTag = "channelLiveCard"
+const val ChannelPagerTag = "channelPager"
 
 /** Width of the channel column of the two-pane tablet layout (plan 7.3). */
 private val InfoPaneWidth = 380.dp
@@ -241,11 +252,14 @@ fun ChannelScreen(
     toast: ToastHostState? = null,
     offline: Boolean = false,
     onChatArea: (ChatArea) -> Unit = {},
+    onVisit: (ChannelSegment) -> Unit = {},
 ) {
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val twoPane = WidthClass.of(configuration.screenWidthDp) == WidthClass.Expanded
-    val grid = rememberLazyGridState()
+    // one grid per segment, kept outside the pager: each keeps its scroll position while its page is not composed
+    // (motion plan M3c, X2)
+    val grids = ChannelSegment.entries.associateWith { rememberLazyGridState() }
     var headerHeight by remember { mutableIntStateOf(0) }
     var filterSheet by rememberSaveable { mutableStateOf(false) }
     var unfollowSheet by rememberSaveable { mutableStateOf(false) }
@@ -257,20 +271,57 @@ fun ChannelScreen(
     val gapPx = with(density) { LagoonSpacing.cardGap.roundToPx() }
     val tabs = segments.size > 1
     val tabsBlock = if (tabs) LagoonSpacing.touchTarget else 0.dp
-    val chat = selected == ChannelSegment.Chat
+    val motion = Lagoon.motion
     IntegrityWatch(lists.suggestions, actions)
     IntegrityWatch(lists.videos, actions)
     IntegrityWatch(lists.clips, actions)
 
-    LaunchedEffect(scrollToTopRequests) {
-        if (scrollToTopRequests > 0) grid.animateScrollToItem(0)
+    // the segments are pages side by side (motion plan M3c): a swipe moves between them, a tap on a tab scrolls there
+    val pagerState = rememberPagerState(initialPage = segments.indexOf(selected).coerceAtLeast(0)) { segments.size }
+    val chatIndex = segments.indexOf(ChannelSegment.Chat)
+    // the old chat is a view over the page: it shows once the pages have settled on its segment, and a light stand-in
+    // takes its place while the pages move (shared rule 5)
+    // phones: the header above the pages collapses under the bar as any list scrolls up, shared by every page
+    val headerOffset = rememberSaveable { mutableFloatStateOf(0f) }
+    val chat by remember(chatIndex, twoPane) {
+        derivedStateOf {
+            chatIndex >= 0 && pagerState.settledPage == chatIndex && pagerState.targetPage == chatIndex && !pagerState.isScrollInProgress &&
+                // on phones the chat sits right under the pinned tabs: it waits until the header has folded away
+                (twoPane || -headerOffset.floatValue >= headerHeight + gapPx - 1)
+        }
     }
-    // a new segment starts at its top, right under the pinned tabs, unless the header is still in view
-    var lastSelected by remember { mutableStateOf(selected) }
+    val headerScroll = remember { HeaderCollapseScroll(headerOffset) }
+    val collapseRange = (headerHeight + gapPx).toFloat()
+    headerScroll.range = collapseRange
+
+    LaunchedEffect(scrollToTopRequests) {
+        if (scrollToTopRequests > 0) {
+            headerOffset.floatValue = 0f
+            grids.getValue(selected).animateScrollToItem(0)
+        }
+    }
+    // a tap on a tab moves the pager; a settled swipe tells the page which segment shows now
     LaunchedEffect(selected) {
-        if (selected != lastSelected) {
-            lastSelected = selected
-            if (!twoPane && grid.firstVisibleItemIndex >= 1) grid.scrollToItem(1)
+        val index = segments.indexOf(selected)
+        if (index >= 0 && index != pagerState.currentPage && !pagerState.isScrollInProgress) pagerState.animateScrollToPage(index)
+    }
+    // read through state: the effect outlives recompositions, and a stale "selected" would swallow a swipe back
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page -> segments.getOrNull(page)?.let { if (it != currentSelected) currentOnSelect(it) } }
+    }
+    // a segment's list starts loading as soon as a swipe heads for it; heading for the chat folds the header away
+    // (the chat sits right under the pinned tabs)
+    LaunchedEffect(pagerState, twoPane) {
+        snapshotFlow { pagerState.targetPage }.collectLatest { page ->
+            val segment = segments.getOrNull(page) ?: return@collectLatest
+            onVisit(segment)
+            // the range is read from the connection: the header's height is only known after the first frames
+            val range = headerScroll.range
+            if (segment == ChannelSegment.Chat && !twoPane && headerOffset.floatValue > -range) {
+                animate(headerOffset.floatValue, -range, animationSpec = motion.layout()) { value, _ -> headerOffset.floatValue = value }
+            }
         }
     }
     val paneWidthPx = if (twoPane) with(density) { InfoPaneWidth.roundToPx() } else 0
@@ -282,17 +333,22 @@ fun ChannelScreen(
     }
     val coverColor = rememberCoverColor(options.image(header.banner ?: header.avatar)) ?: Lagoon.colors.card
     val collapseDistancePx = with(density) { (BannerMaxHeight + AvatarSize * 0.6f).toPx() }
-    // 0 while the header shows, 1 once it has scrolled under the bar (always 1 in chat, where the header is gone)
+    // 0 while the header shows, 1 once it has scrolled under the bar (always 1 in chat and on tablets)
     val collapsed: () -> Float = {
         when {
             chat || twoPane -> 1f
-            grid.firstVisibleItemIndex > 0 -> 1f
             // the bar is solid once the name has gone under it, not only once the tall header (live card) has
-            else -> grid.firstVisibleItemScrollOffset / minOf(headerHeight * 0.6f, collapseDistancePx).coerceAtLeast(1f)
+            else -> -headerOffset.floatValue / minOf(headerHeight * 0.6f, collapseDistancePx).coerceAtLeast(1f)
         }
     }
     val name = displayName(header.name, header.login, options.nameDisplay)
     val onFollow: (Boolean) -> Unit = { if (it) actions.setFollowing(true) else unfollowSheet = true }
+    val current = when (selected) {
+        ChannelSegment.Suggestions -> lists.suggestions
+        ChannelSegment.Videos -> lists.videos
+        ChannelSegment.Clips -> lists.clips
+        else -> null
+    }
 
     Box(modifier.fillMaxSize()) {
         GlassBackdrop(Modifier.fillMaxSize().then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)) {
@@ -304,6 +360,34 @@ fun ChannelScreen(
                         actions = actions, gradientTop = barTop, modifier = mod,
                     )
                 }
+                val pages: @Composable (Modifier, Dp, Int) -> Unit = { pagerModifier, top, columns ->
+                    // pull to refresh outside the pages: a pull down first brings the header back (phones)
+                    LagoonPullToRefresh(
+                        isRefreshing = current?.loadState?.refresh is LoadState.Loading && (current?.itemCount ?: 0) > 0,
+                        onRefresh = { current?.refresh() },
+                        modifier = pagerModifier,
+                        indicatorTop = barTop,
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
+                            // only the page in view is composed; the neighbours join while a swipe moves (motion plan M3)
+                            beyondViewportPageCount = 0,
+                            key = { segments[it].key },
+                            modifier = Modifier.fillMaxSize().testTag(ChannelPagerTag),
+                        ) { page ->
+                            val segment = segments[page]
+                            if (segment == ChannelSegment.Chat) {
+                                ChatStandIn(top = top, shown = chat)
+                            } else {
+                                SegmentList(
+                                    segment, lists, filters, about, options, actions, grids.getValue(segment), videoPositions, bookmarkedVideoIds,
+                                    columns = columns, top = top, bottom = bottomPadding, offline = offline,
+                                    onOpenFilter = { filterSheet = true },
+                                )
+                            }
+                        }
+                    }
+                }
                 if (twoPane) {
                     Row(Modifier.fillMaxSize()) {
                         LazyColumn(
@@ -313,32 +397,34 @@ fun ChannelScreen(
                         ) {
                             item(key = "header") { headerBlock(Modifier) }
                         }
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            if (!chat) {
-                                SegmentList(
-                                    selected, lists, filters, about, options, actions, grid, videoPositions, bookmarkedVideoIds,
-                                    columns = maxOf(1, cardColumns(configuration.screenWidthDp - InfoPaneWidth.value.toInt())),
-                                    top = barTop + tabsBlock + LagoonSpacing.xs, bottom = bottomPadding, offline = offline,
-                                    onOpenFilter = { filterSheet = true }, header = null,
-                                )
-                            }
+                        // only the right column turns pages; the channel column stays (shared rule 4)
+                        pages(
+                            Modifier.weight(1f).fillMaxHeight(),
+                            barTop + tabsBlock + LagoonSpacing.xs,
+                            maxOf(1, cardColumns(configuration.screenWidthDp - InfoPaneWidth.value.toInt())),
+                        )
+                    }
+                } else {
+                    BoxWithConstraints(Modifier.fillMaxSize().nestedScroll(headerScroll)) {
+                        val pagerHeight = (maxHeight - barTop - tabsBlock).coerceAtLeast(0.dp)
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight(Alignment.Top, unbounded = true)
+                                .offset { IntOffset(0, headerOffset.floatValue.roundToInt()) }
+                        ) {
+                            Spacer(Modifier.height(barTop))
+                            headerBlock(
+                                Modifier
+                                    .padding(horizontal = LagoonSpacing.pageSide)
+                                    .onSizeChanged { headerHeight = it.height }
+                            )
+                            Spacer(Modifier.height(LagoonSpacing.cardGap))
+                            // the floating tabs sit over this gap
+                            Spacer(Modifier.height(tabsBlock))
+                            pages(Modifier.fillMaxWidth().height(pagerHeight), LagoonSpacing.cardGap, cardColumns(configuration.screenWidthDp))
                         }
                     }
-                } else if (!chat) {
-                    SegmentList(
-                        selected, lists, filters, about, options, actions, grid, videoPositions, bookmarkedVideoIds,
-                        columns = cardColumns(configuration.screenWidthDp), top = barTop, bottom = bottomPadding, offline = offline,
-                        onOpenFilter = { filterSheet = true },
-                        header = {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
-                                headerBlock(Modifier.onSizeChanged { headerHeight = it.height })
-                            }
-                            // the floating tabs sit over this gap
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "tabs", contentType = "tabs") {
-                                Spacer(Modifier.height(tabsBlock))
-                            }
-                        },
-                    )
                 }
             }
         }
@@ -359,12 +445,12 @@ fun ChannelScreen(
                 selectedIndex = segments.indexOf(selected).coerceAtLeast(0),
                 onSelect = { onSelect(segments[it]) },
                 glass = true,
+                // the selected block follows the pages while they move
+                position = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                 modifier = Modifier
                     .offset {
-                        // under the header while it shows, then pinned under the bar (always pinned in chat and on tablets)
-                        val inList = if (!chat && !twoPane && grid.firstVisibleItemIndex == 0) {
-                            barTopPx + headerHeight + gapPx - grid.firstVisibleItemScrollOffset
-                        } else Int.MIN_VALUE
+                        // under the header while it shows, then pinned under the bar (always pinned on tablets)
+                        val inList = if (!twoPane) barTopPx + headerHeight + gapPx + headerOffset.floatValue.roundToInt() else Int.MIN_VALUE
                         IntOffset(paneWidthPx, maxOf(barTopPx, inList))
                     }
                     .padding(horizontal = LagoonSpacing.pageSide)
@@ -432,7 +518,7 @@ val ChannelSegment.label: Int
         ChannelSegment.About -> R.string.about
     }
 
-/** The grid of one segment, with the header items in front of it on phones. */
+/** The grid of one segment's page. */
 @Composable
 private fun SegmentList(
     selected: ChannelSegment,
@@ -449,7 +535,6 @@ private fun SegmentList(
     bottom: Dp,
     offline: Boolean,
     onOpenFilter: () -> Unit,
-    header: (LazyGridScope.() -> Unit)?,
 ) {
     val current = when (selected) {
         ChannelSegment.Suggestions -> lists.suggestions
@@ -457,12 +542,7 @@ private fun SegmentList(
         ChannelSegment.Clips -> lists.clips
         else -> null
     }
-    LagoonPullToRefresh(
-        isRefreshing = current?.loadState?.refresh is LoadState.Loading && (current?.itemCount ?: 0) > 0,
-        onRefresh = { current?.refresh() },
-        modifier = Modifier.fillMaxSize(),
-        indicatorTop = top,
-    ) {
+    run {
         StaggerGate("channel:${selected.name}", hasItems = (current?.itemCount ?: 0) > 0) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
@@ -475,7 +555,6 @@ private fun SegmentList(
                 verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
                 horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
             ) {
-                header?.invoke(this)
                 when (selected) {
                     ChannelSegment.Videos -> {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
@@ -523,6 +602,28 @@ private fun SegmentList(
                     ChannelSegment.Chat -> Unit
                 }
             }
+        }
+    }
+}
+
+/**
+ * The chat segment's page while the pages move (motion plan M3c, shared rule 5): a few grey message lines in place of
+ * the old chat, which is a view over the page and only shows once the pages have settled on it. Once settled the page
+ * draws nothing; the chat (kept alive from its first opening until the page goes) sits over it.
+ */
+@Composable
+private fun ChatStandIn(top: Dp, shown: Boolean) {
+    if (shown) {
+        Spacer(Modifier.fillMaxSize())
+        return
+    }
+    val line = Lagoon.colors.card
+    Column(
+        Modifier.fillMaxSize().padding(start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = top + LagoonSpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.s),
+    ) {
+        repeat(8) { i ->
+            Box(Modifier.fillMaxWidth(if (i % 3 == 0) 0.55f else if (i % 3 == 1) 0.8f else 0.4f).height(14.dp).background(line, LagoonShapes.pill))
         }
     }
 }

@@ -100,6 +100,9 @@ import com.github.andreyasadchy.xtra.ui.design.components.pressable
 import com.github.andreyasadchy.xtra.ui.design.components.rememberTopBarState
 import com.github.andreyasadchy.xtra.ui.design.components.shimmer
 import com.github.andreyasadchy.xtra.ui.design.components.staggeredAppear
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
+import com.github.andreyasadchy.xtra.ui.design.components.LocalStaggerMemory
+import com.github.andreyasadchy.xtra.ui.design.components.rememberStaggerMemory
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
@@ -236,6 +239,7 @@ fun FollowingScreen(
     var accountSheet by rememberSaveable { mutableStateOf(false) }
     var logOutSheet by rememberSaveable { mutableStateOf(false) }
     val gridStates = FollowingSegment.entries.associateWith { rememberLazyGridState() }
+    val staggerMemory = rememberStaggerMemory()
 
     LaunchedEffect(scrollToTopRequests) {
         if (scrollToTopRequests > 0) {
@@ -266,6 +270,7 @@ fun FollowingScreen(
                 .fillMaxSize()
                 .then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)
         ) {
+            CompositionLocalProvider(LocalStaggerMemory provides staggerMemory) {
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = { siblingBy(motion, density) { segments.indexOf(it) } },
@@ -282,6 +287,7 @@ fun FollowingScreen(
                     FollowingSegment.Games -> GamesSegment(lists.games, options, actions, state, insets)
                 }
                 }
+            }
             }
         }
         // the floating layer: drawn over the backdrop, never inside it, so the glass does not sample itself
@@ -353,6 +359,7 @@ private val FollowingSegment.label: Int
  */
 @Composable
 private fun <T : Any> SegmentGrid(
+    stagger: String,
     items: LazyPagingItems<T>?,
     columns: Int,
     state: LazyGridState,
@@ -372,6 +379,7 @@ private fun <T : Any> SegmentGrid(
         modifier = Modifier.fillMaxSize(),
         indicatorTop = insets.top,
     ) {
+      StaggerGate(stagger, hasItems = !first) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = state,
@@ -423,6 +431,7 @@ private fun <T : Any> SegmentGrid(
                 }
             }
         }
+      }
     }
 }
 
@@ -448,6 +457,7 @@ private fun LiveSegment(
     val columns = liveColumns(WidthClass.of(configuration.screenWidthDp), configuration.screenWidthDp)
     var menuFor by remember { mutableStateOf<Stream?>(null) }
     SegmentGrid(
+        stagger = "live",
         items = streams,
         columns = columns,
         state = state,
@@ -629,6 +639,7 @@ private fun VideosSegment(
     val sortLabel = stringResource(if (sort.sort == VideoFilters.SORT_VIEWS) R.string.view_count else R.string.upload_date)
     val typeLabel = stringResource(videoTypeLabel(sort.type))
     SegmentGrid(
+        stagger = "videos",
         items = videos,
         columns = columns,
         state = state,
@@ -767,6 +778,7 @@ private fun ChannelsSegment(
     val sortLabel = stringResource(channelSortLabel(sort.sort))
     val orderLabel = stringResource(if (sort.order == FollowedChannelsSorts.ORDER_ASC) R.string.ascending else R.string.descending)
     SegmentGrid(
+        stagger = "channels",
         items = channels,
         columns = columns,
         state = state,
@@ -895,6 +907,7 @@ private fun GamesSegment(
     val columns = gameColumns(WidthClass.of(LocalConfiguration.current.screenWidthDp))
     var menuFor by remember { mutableStateOf<Game?>(null) }
     SegmentGrid(
+        stagger = "games",
         items = games,
         columns = columns,
         state = state,

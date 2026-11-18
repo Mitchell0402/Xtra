@@ -181,7 +181,7 @@ fun LoginOverlayHost(
 fun LoginBottomHost(state: LoginUiState, onTrouble: () -> Unit, onTvNext: () -> Unit) {
     val step = state.step
     Box(Modifier.fillMaxWidth().background(Lagoon.colors.page).windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) {
-        AnimatedVisibility(step == LoginStep.Web || step == LoginStep.TvWeb) {
+        AnimatedVisibility(step == LoginStep.Web || step == LoginStep.TvWeb, enter = Lagoon.motion.expand(), exit = Lagoon.motion.collapse()) {
             LoginBottomBar(step, onTrouble, onTvNext)
         }
     }

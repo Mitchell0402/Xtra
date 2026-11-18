@@ -103,6 +103,9 @@ import com.github.andreyasadchy.xtra.ui.design.components.pressable
 import com.github.andreyasadchy.xtra.ui.design.components.rememberTopBarState
 import com.github.andreyasadchy.xtra.ui.design.components.shimmer
 import com.github.andreyasadchy.xtra.ui.design.components.staggeredAppear
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
+import com.github.andreyasadchy.xtra.ui.design.components.LocalStaggerMemory
+import com.github.andreyasadchy.xtra.ui.design.components.rememberStaggerMemory
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
@@ -218,6 +221,7 @@ fun SavedScreen(
     var logOutSheet by rememberSaveable { mutableStateOf(false) }
     var importSheet by rememberSaveable { mutableStateOf(false) }
     val gridStates = SavedSegment.entries.associateWith { rememberLazyGridState() }
+    val staggerMemory = rememberStaggerMemory()
     // items swiped away while their undo toast shows (and after, until the list drops them)
     val pending = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
@@ -249,6 +253,7 @@ fun SavedScreen(
     val columns = cardColumns(LocalConfiguration.current.screenWidthDp)
     Box(modifier.fillMaxSize()) {
         GlassBackdrop(Modifier.fillMaxSize().then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)) {
+            CompositionLocalProvider(LocalStaggerMemory provides staggerMemory) {
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = { siblingBy(motion, density) { segments.indexOf(it) } },
@@ -267,6 +272,7 @@ fun SavedScreen(
                     )
                     SavedSegment.Filters -> FiltersList(filters, options, actions, state, columns, listTop, bottomPadding, pending, removeWithUndo)
                 }
+            }
             }
         }
         LargeTopBar(
@@ -337,12 +343,14 @@ val SavedSegment.label: Int
 
 @Composable
 private fun SavedGrid(
+    stagger: String,
+    hasItems: Boolean,
     state: LazyGridState,
     columns: Int,
     top: Dp,
     bottom: Dp,
     content: androidx.compose.foundation.lazy.grid.LazyGridScope.() -> Unit,
-) {
+) = StaggerGate(stagger, hasItems) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
@@ -354,11 +362,14 @@ private fun SavedGrid(
     )
 }
 
-/** A swipe to the left reveals the red delete tint and removes the item (the host shows the undo). */
+/**
+ * A swipe to the left reveals the red delete tint and removes the item (the host shows the undo). The first-load fade
+ * sits on the whole swipe box, so the tint underneath fades in with the card instead of showing through it.
+ */
 @Composable
-private fun SwipeToRemove(itemKey: String, label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
+private fun SwipeToRemove(itemKey: String, index: Int, label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
     key(itemKey) {
-        SwipeToDelete(label, onRemove, content)
+        SwipeToDelete(label, onRemove, Modifier.staggeredAppear(index), content)
     }
 }
 
@@ -390,7 +401,7 @@ private fun DownloadsList(
     LaunchedEffect(firstId) {
         if (firstId != null && state.firstVisibleItemIndex <= 1) state.animateScrollToItem(0)
     }
-    SavedGrid(state, columns, top, bottom) {
+    SavedGrid("downloads", hasItems = (downloads?.itemCount ?: 0) > 0, state, columns, top, bottom) {
         val first = downloads == null || downloads.itemCount == 0
         when {
             downloads == null -> Unit
@@ -403,7 +414,7 @@ private fun DownloadsList(
                 val itemKey = "d${video.id}"
                 if (itemKey in pending) return@items
                 val name = video.name?.trim().orEmpty()
-                SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
+                SwipeToRemove(itemKey, index, stringResource(R.string.delete), onRemove = {
                     removeWithUndo(itemKey, resources.getString(R.string.saved_download_removed, name.short())) { actions.deleteDownload(video, keepFiles = true) }
                 }) {
                     DownloadCell(video, index, states[video.id], options, actions,
@@ -515,7 +526,7 @@ private fun DownloadCell(
         title = video.name?.trim().orEmpty(),
         meta = meta,
         onClick = { actions.playOffline(video) },
-        modifier = Modifier.staggeredAppear(index).actionsForAccessibility(menu),
+        modifier = Modifier.actionsForAccessibility(menu),
         thumbnail = options.image(video.thumbnail),
         duration = duration?.takeIf { !recording }?.let { DateUtils.formatElapsedTime(it / 1000L) },
         progress = if (options.usePositions && position != null && duration != null && duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else null,
@@ -645,7 +656,7 @@ private fun BookmarksList(
     LaunchedEffect(firstId) {
         if (firstId != null && state.firstVisibleItemIndex <= 2) state.animateScrollToItem(0)
     }
-    SavedGrid(state, columns, top, bottom) {
+    SavedGrid("bookmarks", hasItems = !bookmarks.isNullOrEmpty(), state, columns, top, bottom) {
         item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
             FilterChipRow(
                 listOf(
@@ -666,7 +677,7 @@ private fun BookmarksList(
                 val bookmark = bookmarks[index]
                 val itemKey = "b${bookmark.id}"
                 if (itemKey in pending) return@items
-                SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = {
+                SwipeToRemove(itemKey, index, stringResource(R.string.delete), onRemove = {
                     removeWithUndo(itemKey, resources.getString(R.string.saved_bookmark_removed, bookmark.title?.trim().orEmpty().short())) { actions.deleteBookmark(bookmark) }
                 }) {
                     BookmarkCell(bookmark, index, options, savedOptions, positions, bookmark.userId in ignored, actions, onDelete = {
@@ -734,7 +745,7 @@ private fun BookmarkCell(
         title = bookmark.title?.trim().orEmpty(),
         meta = meta,
         onClick = { actions.openBookmark(bookmark, position) },
-        modifier = Modifier.staggeredAppear(index).actionsForAccessibility(menu),
+        modifier = Modifier.actionsForAccessibility(menu),
         thumbnail = options.image(bookmark.thumbnail),
         duration = durationSeconds?.let { DateUtils.formatElapsedTime(it.toLong()) },
         progress = if (options.usePositions && position != null && durationSeconds != null && durationSeconds > 0) (position / (durationSeconds * 1000f)).coerceIn(0f, 1f) else null,
@@ -794,7 +805,7 @@ private fun FiltersList(
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
-    SavedGrid(state, columns, top, bottom) {
+    SavedGrid("filters", hasItems = (filters?.itemCount ?: 0) > 0, state, columns, top, bottom) {
         val first = filters == null || filters.itemCount == 0
         when {
             filters == null -> Unit
@@ -808,7 +819,7 @@ private fun FiltersList(
                 if (itemKey in pending) return@items
                 val title = filter.gameName ?: stringResource(R.string.saved_filter_all_games)
                 val remove = { removeWithUndo(itemKey, resources.getString(R.string.saved_filter_removed, title.short())) { actions.deleteFilter(filter) } }
-                SwipeToRemove(itemKey, stringResource(R.string.delete), onRemove = remove) {
+                SwipeToRemove(itemKey, index, stringResource(R.string.delete), onRemove = remove) {
                     FilterCell(filter, title, index, actions, onDelete = remove)
                 }
             }
@@ -832,7 +843,6 @@ private fun FilterCell(filter: SavedFilter, title: String, index: Int, actions: 
     Row(
         Modifier
             .fillMaxWidth()
-            .staggeredAppear(index)
             .pressable(onClick = { actions.openFilter(filter) }, onLongClick = { menuOpen = true }, shape = LagoonShapes.card)
             .background(Lagoon.colors.card)
             .heightIn(min = 72.dp)

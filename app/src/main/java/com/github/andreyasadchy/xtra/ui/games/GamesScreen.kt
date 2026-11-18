@@ -56,6 +56,7 @@ import com.github.andreyasadchy.xtra.ui.browse.actionsForAccessibility
 import com.github.andreyasadchy.xtra.ui.browse.filterChips
 import com.github.andreyasadchy.xtra.ui.browse.pagedItems
 import com.github.andreyasadchy.xtra.ui.browse.posterColumns
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionItem
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.EmptyState
@@ -150,51 +151,53 @@ fun GamesScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicatorTop = listTop,
                 ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        state = grid,
-                        modifier = Modifier.fillMaxSize().testTag(GamesGridTag),
-                        contentPadding = PaddingValues(
-                            start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = listTop + LagoonSpacing.xs,
-                            bottom = bottomPadding + LagoonSpacing.m,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                        horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                            FilterChipRow(
-                                filterChips(FilterKind.Games, filter, FilterSheetConfig(FilterKind.Games), onOpen = { filterSheet = true }, onRemoveTag = removeTag),
-                                contentPadding = PaddingValues(0.dp),
-                            )
-                        }
-                        if (games == null) {
-                            items(12, contentType = { "skeleton" }) { Box(Modifier.fillMaxWidth().height(180.dp).shimmer(LagoonShapes.card)) }
-                        } else {
-                            pagedItems(
-                                games, offline, "game",
-                                skeletonCount = 12,
-                                skeleton = { Box(Modifier.fillMaxWidth().height(180.dp).shimmer(LagoonShapes.card)) },
-                                empty = {
-                                    EmptyState(
-                                        stringResource(if (filter.tags.isEmpty()) R.string.browse_games_empty else R.string.browse_games_empty_tags),
-                                        icon = LucideIcons.Gamepad2,
-                                        modifier = Modifier.padding(top = 24.dp),
-                                    )
-                                },
-                            ) { index, game ->
-                                val menu = gameMenu(game, filter, options, actions)
-                                GamePoster(
-                                    name = game.name.orEmpty(),
-                                    onClick = { actions.openGame(game) },
-                                    modifier = Modifier.staggeredAppear(index).actionsForAccessibility(menu),
-                                    boxArt = options.image(game.boxArt),
-                                    viewers = game.viewerCount?.let { TwitchApiHelper.formatCount(it, options.truncateCounts) },
-                                    subtitle = if (options.showBroadcasters) game.broadcasterCount?.let {
-                                        pluralStringResource(R.plurals.broadcasters, it, TwitchApiHelper.formatCount(it, options.truncateCounts))
-                                    } else null,
-                                    onLongClick = { menuFor = game },
-                                    boxArtModifier = posterModifier(game),
+                    StaggerGate("games", hasItems = (games?.itemCount ?: 0) > 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            state = grid,
+                            modifier = Modifier.fillMaxSize().testTag(GamesGridTag),
+                            contentPadding = PaddingValues(
+                                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = listTop + LagoonSpacing.xs,
+                                bottom = bottomPadding + LagoonSpacing.m,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                        ) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                                FilterChipRow(
+                                    filterChips(FilterKind.Games, filter, FilterSheetConfig(FilterKind.Games), onOpen = { filterSheet = true }, onRemoveTag = removeTag),
+                                    contentPadding = PaddingValues(0.dp),
                                 )
+                            }
+                            if (games == null) {
+                                items(12, contentType = { "skeleton" }) { Box(Modifier.fillMaxWidth().height(180.dp).shimmer(LagoonShapes.card)) }
+                            } else {
+                                pagedItems(
+                                    games, offline, "game",
+                                    skeletonCount = 12,
+                                    skeleton = { Box(Modifier.fillMaxWidth().height(180.dp).shimmer(LagoonShapes.card)) },
+                                    empty = {
+                                        EmptyState(
+                                            stringResource(if (filter.tags.isEmpty()) R.string.browse_games_empty else R.string.browse_games_empty_tags),
+                                            icon = LucideIcons.Gamepad2,
+                                            modifier = Modifier.padding(top = 24.dp),
+                                        )
+                                    },
+                                ) { index, game ->
+                                    val menu = gameMenu(game, filter, options, actions)
+                                    GamePoster(
+                                        name = game.name.orEmpty(),
+                                        onClick = { actions.openGame(game) },
+                                        modifier = Modifier.staggeredAppear(index).actionsForAccessibility(menu),
+                                        boxArt = options.image(game.boxArt),
+                                        viewers = game.viewerCount?.let { TwitchApiHelper.formatCount(it, options.truncateCounts) },
+                                        subtitle = if (options.showBroadcasters) game.broadcasterCount?.let {
+                                            pluralStringResource(R.plurals.broadcasters, it, TwitchApiHelper.formatCount(it, options.truncateCounts))
+                                        } else null,
+                                        onLongClick = { menuFor = game },
+                                        boxArtModifier = posterModifier(game),
+                                    )
+                                }
                             }
                         }
                     }

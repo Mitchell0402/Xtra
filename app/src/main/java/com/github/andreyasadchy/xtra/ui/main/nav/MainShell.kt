@@ -123,15 +123,22 @@ private fun AppNavHost(
         startDestination = startRoute,
         modifier = modifier,
         enterTransition = {
-            if (targetState.id == nav.siblingTargetId) motion.sibling(density, nav.siblingForward).targetContentEnter
+            if (nav.isSibling(targetState)) motion.sibling(density, nav.siblingForward).targetContentEnter
             else motion.forward().targetContentEnter
         },
         exitTransition = {
-            if (targetState.id == nav.siblingTargetId) motion.sibling(density, nav.siblingForward).initialContentExit
+            if (nav.isSibling(targetState)) motion.sibling(density, nav.siblingForward).initialContentExit
             else motion.forward().initialContentExit
         },
-        popEnterTransition = { motion.back().targetContentEnter },
-        popExitTransition = { motion.back().initialContentExit },
+        // switching back to the start tab pops to it, so the pop transitions check the tab switch too (N2)
+        popEnterTransition = {
+            if (nav.isSibling(targetState)) motion.sibling(density, nav.siblingForward).targetContentEnter
+            else motion.back().targetContentEnter
+        },
+        popExitTransition = {
+            if (nav.isSibling(targetState)) motion.sibling(density, nav.siblingForward).initialContentExit
+            else motion.back().initialContentExit
+        },
     ) {
         page<FollowingRoute>(activity, nav) { FollowingDestination(it) }
         page<BrowseRoute>(activity, nav) { BrowseDestination(it) }

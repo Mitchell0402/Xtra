@@ -70,6 +70,7 @@ import com.github.andreyasadchy.xtra.ui.browse.cardColumns
 import com.github.andreyasadchy.xtra.ui.browse.posterColumns
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
 import com.github.andreyasadchy.xtra.ui.browse.videoMenu
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.ButtonStyle
 import com.github.andreyasadchy.xtra.ui.design.components.ChannelRow
@@ -213,80 +214,82 @@ fun SearchScreen(
     Box(modifier.fillMaxSize()) {
         GlassBackdrop(Modifier.fillMaxSize().then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)) {
             CompositionLocalProvider(LocalBrowseOffline provides offline) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
-                    state = grid,
-                    modifier = Modifier.fillMaxSize().imePadding().testTag(SearchResultsTag),
-                    contentPadding = PaddingValues(
-                        start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop + LagoonSpacing.xs,
-                        bottom = bottomPadding + LagoonSpacing.m,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                    horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                ) {
-                    when {
-                        !searching -> {
-                            if (showRecent && recent.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "recentHeading") {
-                                    SectionHeading(stringResource(R.string.browse_search_recent)) {
-                                        LagoonButton(stringResource(R.string.browse_search_clear_recent), actions::forgetAll, style = ButtonStyle.Secondary)
-                                    }
-                                }
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "recent") {
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.xs), verticalArrangement = Arrangement.spacedBy(LagoonSpacing.xs)) {
-                                        recent.forEach { text ->
-                                            RecentChip(text, onClick = { query = text; actions.remember(text) }, onRemove = { actions.forget(text) })
+                StaggerGate("search", hasItems = searching && listOfNotNull(results.channels, results.streams, results.games, results.videos).any { it.itemCount > 0 }) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        state = grid,
+                        modifier = Modifier.fillMaxSize().imePadding().testTag(SearchResultsTag),
+                        contentPadding = PaddingValues(
+                            start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop + LagoonSpacing.xs,
+                            bottom = bottomPadding + LagoonSpacing.m,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                        horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                    ) {
+                        when {
+                            !searching -> {
+                                if (showRecent && recent.isNotEmpty()) {
+                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "recentHeading") {
+                                        SectionHeading(stringResource(R.string.browse_search_recent)) {
+                                            LagoonButton(stringResource(R.string.browse_search_clear_recent), actions::forgetAll, style = ButtonStyle.Secondary)
                                         }
                                     }
-                                }
-                            } else {
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "hint") {
-                                    EmptyState(stringResource(R.string.browse_search_hint), icon = LucideIcons.Search, modifier = Modifier.padding(top = 24.dp))
-                                }
-                            }
-                        }
-                        else -> {
-                            if (groups.size > 1) {
-                                item(span = { GridItemSpan(maxLineSpan) }, contentType = "groups") {
-                                    FilterChipRow(
-                                        buildList {
-                                            add(FilterChipItem(stringResource(R.string.all), selected = shown == null, onClick = { groupKey = null }))
-                                            groups.forEach { group ->
-                                                add(FilterChipItem(stringResource(group.label), selected = shown == group, onClick = { groupKey = group.key }))
+                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "recent") {
+                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.xs), verticalArrangement = Arrangement.spacedBy(LagoonSpacing.xs)) {
+                                            recent.forEach { text ->
+                                                RecentChip(text, onClick = { query = text; actions.remember(text) }, onRemove = { actions.forget(text) })
                                             }
-                                        },
-                                        modifier = Modifier.testTag(SearchGroupChipsTag),
-                                        contentPadding = PaddingValues(0.dp),
-                                    )
-                                }
-                            }
-                            val single = shown ?: groups.singleOrNull()
-                            if (single != null) {
-                                fullGroup(single, results, columns, cardColumns, posterColumns, options, compactStreams, videoPositions, bookmarkedVideoIds, actions, offline, open, query)
-                            } else {
-                                val allEmpty = groups.all { group ->
-                                    val items = results.of(group)
-                                    items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading)
-                                }
-                                val allFailed = groups.all { group ->
-                                    val items = results.of(group)
-                                    items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.Error)
-                                }
-                                if (allFailed) {
-                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "error") {
-                                        ErrorState(
-                                            message = stringResource(if (offline) R.string.no_connection else R.string.following_load_error),
-                                            onRetry = { groups.forEach { results.of(it)?.refresh() } },
-                                            modifier = Modifier.padding(top = 32.dp),
-                                        )
-                                    }
-                                } else if (allEmpty) {
-                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
-                                        EmptyState(stringResource(R.string.browse_search_empty, query.trim()), icon = LucideIcons.Search, modifier = Modifier.padding(top = 24.dp))
+                                        }
                                     }
                                 } else {
-                                    groups.forEach { group ->
-                                        groupPreview(group, results, columns, cardColumns, posterColumns, options, compactStreams, videoPositions, bookmarkedVideoIds, actions, open) { groupKey = group.key }
+                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "hint") {
+                                        EmptyState(stringResource(R.string.browse_search_hint), icon = LucideIcons.Search, modifier = Modifier.padding(top = 24.dp))
+                                    }
+                                }
+                            }
+                            else -> {
+                                if (groups.size > 1) {
+                                    item(span = { GridItemSpan(maxLineSpan) }, contentType = "groups") {
+                                        FilterChipRow(
+                                            buildList {
+                                                add(FilterChipItem(stringResource(R.string.all), selected = shown == null, onClick = { groupKey = null }))
+                                                groups.forEach { group ->
+                                                    add(FilterChipItem(stringResource(group.label), selected = shown == group, onClick = { groupKey = group.key }))
+                                                }
+                                            },
+                                            modifier = Modifier.testTag(SearchGroupChipsTag),
+                                            contentPadding = PaddingValues(0.dp),
+                                        )
+                                    }
+                                }
+                                val single = shown ?: groups.singleOrNull()
+                                if (single != null) {
+                                    fullGroup(single, results, columns, cardColumns, posterColumns, options, compactStreams, videoPositions, bookmarkedVideoIds, actions, offline, open, query)
+                                } else {
+                                    val allEmpty = groups.all { group ->
+                                        val items = results.of(group)
+                                        items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.NotLoading)
+                                    }
+                                    val allFailed = groups.all { group ->
+                                        val items = results.of(group)
+                                        items == null || (items.itemCount == 0 && items.loadState.refresh is LoadState.Error)
+                                    }
+                                    if (allFailed) {
+                                        item(span = { GridItemSpan(maxLineSpan) }, contentType = "error") {
+                                            ErrorState(
+                                                message = stringResource(if (offline) R.string.no_connection else R.string.following_load_error),
+                                                onRetry = { groups.forEach { results.of(it)?.refresh() } },
+                                                modifier = Modifier.padding(top = 32.dp),
+                                            )
+                                        }
+                                    } else if (allEmpty) {
+                                        item(span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
+                                            EmptyState(stringResource(R.string.browse_search_empty, query.trim()), icon = LucideIcons.Search, modifier = Modifier.padding(top = 24.dp))
+                                        }
+                                    } else {
+                                        groups.forEach { group ->
+                                            groupPreview(group, results, columns, cardColumns, posterColumns, options, compactStreams, videoPositions, bookmarkedVideoIds, actions, open) { groupKey = group.key }
+                                        }
                                     }
                                 }
                             }

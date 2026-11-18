@@ -25,6 +25,18 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -126,11 +138,64 @@ fun SkeletonRow(modifier: Modifier = Modifier) {
 }
 
 /**
- * Fades an item in when a list first loads, each one [LagoonMotion.StaggerMs] after the previous (plan 5). Only the
- * first [LagoonMotion.StaggerLimit] items take part; pass [enabled] false once the first screen has been shown.
+ * Which lists of a page have already played their first-load fade (motion plan M1 item 1). Kept in saved state at
+ * the page, outside segments and pagers, so going back, switching tabs or segments, scrolling an item away and back,
+ * or search results arriving letter by letter never replay it.
+ */
+@Stable
+class StaggerMemory(shown: List<String> = emptyList()) {
+    internal val shown = mutableStateListOf<String>().apply { addAll(shown) }
+
+    companion object {
+        val Saver: Saver<StaggerMemory, Any> = listSaver(save = { it.shown.toList() }, restore = { StaggerMemory(it) })
+    }
+}
+
+@Composable
+fun rememberStaggerMemory(): StaggerMemory = rememberSaveable(saver = StaggerMemory.Saver) { StaggerMemory() }
+
+/** The page's [StaggerMemory]; a [StaggerGate] without one keeps its own. */
+val LocalStaggerMemory = staticCompositionLocalOf<StaggerMemory?> { null }
+
+/** Whether the items under it may play the first-load fade now. Only [StaggerGate] turns it on. */
+internal val LocalStaggerOpen = compositionLocalOf { false }
+
+/**
+ * The first-load fade of one list, played once (motion plan M1 item 1): it opens in the frame the list first has
+ * items, stays open for the whole stagger, then closes for good. A later refresh, a list scrolled away and back, or
+ * the page shown again do not open it. [key] names the list within the page, for example the segment.
+ */
+@Composable
+fun StaggerGate(key: String, hasItems: Boolean, content: @Composable () -> Unit) {
+    val memory = LocalStaggerMemory.current ?: rememberStaggerMemory()
+    var open by remember(key) { mutableStateOf(false) }
+    // decided in composition, so the first frame with items is already transparent
+    val opening = hasItems && key !in memory.shown
+    if (opening) {
+        SideEffect {
+            if (key !in memory.shown) memory.shown += key
+            open = true
+        }
+    }
+    LaunchedEffect(key, open) {
+        if (open) {
+            delay(StaggerWindowMs)
+            open = false
+        }
+    }
+    CompositionLocalProvider(LocalStaggerOpen provides (open || opening)) { content() }
+}
+
+/** Long enough for the last staggered item to finish, with two frames to spare. */
+internal const val StaggerWindowMs = (LagoonMotion.StaggerLimit - 1) * LagoonMotion.StaggerMs + LagoonMotion.SHORT + 40L
+
+/**
+ * Fades an item in when its list first loads, each one [LagoonMotion.StaggerMs] after the previous (plan 5). Only the
+ * first [LagoonMotion.StaggerLimit] items take part, and only while the list's [StaggerGate] is open; outside a gate
+ * items appear at once.
  */
 fun Modifier.staggeredAppear(index: Int, enabled: Boolean = true): Modifier = composed {
-    if (!enabled || index >= LagoonMotion.StaggerLimit) return@composed this
+    if (!enabled || !LocalStaggerOpen.current || index >= LagoonMotion.StaggerLimit) return@composed this
     val motion = Lagoon.motion
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {

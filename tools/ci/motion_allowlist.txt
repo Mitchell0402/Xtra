@@ -1,12 +1,6 @@
 # Exceptions to tools/ci/motion_guard.py (motion plan M0, item 2). Format:  <rule> <path> <count>  # reason
-# The count must match exactly. Entries tagged "M1" are temporary: motion plan M1 item 4 replaces the values with
-# LagoonMotion specs (and M1 item 6 the login bar), then removes the entry.
+# The count must match exactly. A later stage that has to keep an exception adds it here with its stage and reason.
 
 # --- permanent
 animate-to app/src/main/java/com/github/andreyasadchy/xtra/ui/games/BrowseDetail.kt 2  # SeekableTransitionState.animateTo(state): no spec means "run the transitionSpec", which is LagoonMotion
 
-# --- temporary (M1)
-spec app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerScreen.kt 6  # M1 item 4: player progress, pull-down snap-back, controls fade, mini dismiss
-animate-to app/src/main/java/com/github/andreyasadchy/xtra/ui/player/PlayerScreen.kt 1  # M1 item 5: mini dismiss onDragCancel falls back to the default spring
-spec app/src/main/java/com/github/andreyasadchy/xtra/ui/chat/ChatScreen.kt 2  # M1 item 4: chat animateItem fade and placement -> listItem specs
-visibility app/src/main/java/com/github/andreyasadchy/xtra/ui/login/LoginScreen.kt 1  # M1 item 6: login bottom bar -> expand/collapse

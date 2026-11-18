@@ -54,6 +54,7 @@ import com.github.andreyasadchy.xtra.ui.browse.cardColumns
 import com.github.andreyasadchy.xtra.ui.browse.filterChips
 import com.github.andreyasadchy.xtra.ui.browse.pagedItems
 import com.github.andreyasadchy.xtra.ui.browse.streamMenu
+import com.github.andreyasadchy.xtra.ui.design.components.StaggerGate
 import com.github.andreyasadchy.xtra.ui.design.components.ActionSheet
 import com.github.andreyasadchy.xtra.ui.design.components.EmptyState
 import com.github.andreyasadchy.xtra.ui.design.components.FilterChipRow
@@ -123,41 +124,43 @@ fun TopStreamsScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicatorTop = listTop,
                 ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        state = grid,
-                        modifier = Modifier.fillMaxSize().testTag(TopStreamsListTag),
-                        contentPadding = PaddingValues(
-                            start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = listTop + LagoonSpacing.xs,
-                            bottom = bottomPadding + LagoonSpacing.m,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                        horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                            FilterChipRow(
-                                filterChips(
-                                    FilterKind.Streams, filter, config,
-                                    onOpen = { filterSheet = true },
-                                    onRemoveTag = { tag -> onApplyFilter(filter.copy(tags = filter.tags - tag), FilterSaves()) },
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                            )
-                        }
-                        if (streams == null) {
-                            items(6, contentType = { "skeleton" }) { SkeletonLiveCard() }
-                        } else {
-                            pagedItems(
-                                streams, offline, "stream",
-                                skeleton = { SkeletonLiveCard() },
-                                empty = { EmptyState(stringResource(R.string.browse_streams_empty), icon = LucideIcons.Radio, modifier = Modifier.padding(top = 24.dp)) },
-                            ) { index, stream ->
-                                var menuOpen by remember { mutableStateOf(false) }
-                                val menu = streamMenu(stream, options, actions, showGame = true) { tag ->
-                                    onApplyFilter(FilterLogic.addStreamTag(filter, tag), FilterSaves())
+                    StaggerGate("top", hasItems = (streams?.itemCount ?: 0) > 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            state = grid,
+                            modifier = Modifier.fillMaxSize().testTag(TopStreamsListTag),
+                            contentPadding = PaddingValues(
+                                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = listTop + LagoonSpacing.xs,
+                                bottom = bottomPadding + LagoonSpacing.m,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                        ) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                                FilterChipRow(
+                                    filterChips(
+                                        FilterKind.Streams, filter, config,
+                                        onOpen = { filterSheet = true },
+                                        onRemoveTag = { tag -> onApplyFilter(filter.copy(tags = filter.tags - tag), FilterSaves()) },
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                )
+                            }
+                            if (streams == null) {
+                                items(6, contentType = { "skeleton" }) { SkeletonLiveCard() }
+                            } else {
+                                pagedItems(
+                                    streams, offline, "stream",
+                                    skeleton = { SkeletonLiveCard() },
+                                    empty = { EmptyState(stringResource(R.string.browse_streams_empty), icon = LucideIcons.Radio, modifier = Modifier.padding(top = 24.dp)) },
+                                ) { index, stream ->
+                                    var menuOpen by remember { mutableStateOf(false) }
+                                    val menu = streamMenu(stream, options, actions, showGame = true) { tag ->
+                                        onApplyFilter(FilterLogic.addStreamTag(filter, tag), FilterSaves())
+                                    }
+                                    StreamItem(stream, index, options, compactStreams, showGame = true, menu = menu, onClick = { actions.openStream(stream) }, onLongClick = { menuOpen = true })
+                                    if (menuOpen) ActionSheet(menu, onDismiss = { menuOpen = false }, title = stream.channelName ?: stream.channelLogin)
                                 }
-                                StreamItem(stream, index, options, compactStreams, showGame = true, menu = menu, onClick = { actions.openStream(stream) }, onLongClick = { menuOpen = true })
-                                if (menuOpen) ActionSheet(menu, onDismiss = { menuOpen = false }, title = stream.channelName ?: stream.channelLogin)
                             }
                         }
                     }

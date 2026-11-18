@@ -9,7 +9,7 @@ Plan: "Lagoon UI 全面重构计划" (Claude Doc, finalized 2026-11-12). One sta
 | `u9-plan.md` | U9 plan (2026-11-17): audit of every sub-screen still in the old Material style after v0.2, and the remediation plan; revision 2 after two reviews, D1–D3 decided, approved 2026-11-17 |
 | `u9-report.md` | U9 report: legacy UI removed, Material Components library dropped, guard and surface registry in CI, walkthroughs, phone checks |
 | `u9/surfaces.md` | Sub-screen registry (checked against the code by `tools/ci/legacy_ui_guard.py`) with before/after verdicts; `u9/*.webp` are the walkthrough mosaics |
-| `motion-audit.md` | Motion audit and plan (2026-11-18, revision 2, awaiting approval): every transition and animation inventoried from code and emulator recordings, issues ranked, staged plan M0–M6 with effort and performance risk; recordings in `E:/Projects/Lagoon-audit/motion/`. Reviews: `motion-audit-review-1.md`, `motion-audit-review-2.md` |
+| `motion-audit.md` | Motion audit and plan (2026-11-18, revision 2, approved 2026-11-18 with all five defaults): every transition and animation inventoried from code and emulator recordings, issues ranked, staged plan M0–M6 with effort and performance risk; recordings in `E:/Projects/Lagoon-audit/motion/`. Reviews: `motion-audit-review-1.md`, `motion-audit-review-2.md` |
 | `feature-inventory.md` | App-wide feature list generated from the code (`tools/ui-inventory/inventory.py`); each stage claims and ticks its rows |
 
 ## How the guardrails work

@@ -420,9 +420,17 @@ class ChatFragment : BaseNetworkFragment(), ChatActions, ChatSheetActions, Integ
             val ime = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
             val nav = ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
             val shown = ime > nav
-            if (shown) state.keyboardHeight = ime - nav
-            // only when the keyboard comes up: while it goes down after the emote button, the panel must stay
-            if (shown && !imeShown && state.emotePanel) toggleEmoteMenu(false)
+            val above = (ime - nav).coerceAtLeast(0)
+            state.imeNow = above
+            // the tallest reading of this showing: the readings on the way down must not shrink it (motion plan M4)
+            if (shown) state.keyboardHeight = EmotePanelRules.keyboardHeight(state.keyboardHeight, above, startOfShowing = !imeShown)
+            // only when the keyboard comes up: while it goes down after the emote button, the panel must stay. The
+            // panel's place stays while the keyboard rises into it
+            if (shown && !imeShown && state.emotePanel) {
+                state.panelHandOff = true
+                toggleEmoteMenu(false)
+            }
+            if (state.panelHandOff && EmotePanelRules.handOffDone(above, state.keyboardHeight)) state.panelHandOff = false
             imeShown = shown
         }
         layoutListener = listener

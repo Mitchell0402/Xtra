@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.saved
 
+import com.github.andreyasadchy.xtra.ui.design.components.userListItem
 import com.github.andreyasadchy.xtra.ui.design.components.SwipeToDelete
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedContent
@@ -367,9 +368,11 @@ private fun SavedGrid(
  * sits on the whole swipe box, so the tint underneath fades in with the card instead of showing through it.
  */
 @Composable
-private fun SwipeToRemove(itemKey: String, index: Int, label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
+private fun LazyGridItemScope.SwipeToRemove(itemKey: String, index: Int, label: String, onRemove: () -> Unit, content: @Composable () -> Unit) {
+    // the others close the gap on the steady spring when one is removed (motion plan M4 item 4)
+    val placement = userListItem()
     key(itemKey) {
-        SwipeToDelete(label, onRemove, Modifier.staggeredAppear(index), content)
+        SwipeToDelete(label, onRemove, placement.staggeredAppear(index), content)
     }
 }
 

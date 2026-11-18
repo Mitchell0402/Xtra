@@ -91,6 +91,8 @@ class MainViewModel(
 
     var isPlayerOpened = false
     val playbackStates = MutableSharedFlow<List<PlaybackState>>()
+    /** The screen as it was before a rebuild after a settings change, shown over the new one (motion plan M5). */
+    var recreateCover: android.graphics.Bitmap? = null
     var loadingPlaybackStates = false
     val startDownloadService = MutableSharedFlow<Pair<Int, Boolean>>()
 

@@ -24,18 +24,18 @@ object SettingsCatalog {
                 R.string.st_group_display, listOf(
                     ChoiceSetting(C.UI_LANGUAGE, "auto", R.string.language, ChoiceSource.Dynamic(DYNAMIC_LANGUAGE), icon = LucideIcons.Languages),
                     ToggleSetting(C.UI_GLASS, true, R.string.glass_effects, R.string.glass_effects_summary, LucideIcons.Layers),
-                    ToggleSetting(C.UI_DRAW_BEHIND_CUTOUTS, false, R.string.draw_behind_cutouts, R.string.st_cutouts_summary, LucideIcons.Smartphone, refresh = true),
+                    ToggleSetting(C.UI_DRAW_BEHIND_CUTOUTS, false, R.string.draw_behind_cutouts, R.string.st_cutouts_summary, LucideIcons.Smartphone, refresh = Refresh.Recreate),
                 )
             ),
             SettingsGroupSpec(
                 R.string.st_group_cards, listOf(
-                    ChoiceSetting(C.COMPACT_STREAMS, "disabled", R.string.hide_stream_previews, ChoiceSource.Arrays(R.array.compactStreamsEntries, R.array.compactStreamsValues), R.string.st_compact_streams_summary, LucideIcons.Rows3, refresh = true),
-                    ChoiceSetting(C.UI_NAME_DISPLAY, "0", R.string.name_display, ChoiceSource.Arrays(R.array.nameDisplayEntries, R.array.nameDisplayValues), R.string.name_display_summary, LucideIcons.Type, refresh = true),
-                    ToggleSetting(C.UI_TRUNCATE_VIEW_COUNT, true, R.string.compact_number_formatting, R.string.st_truncate_summary, LucideIcons.Hash, refresh = true),
-                    ToggleSetting(C.UI_UPTIME, true, R.string.show_uptime, icon = LucideIcons.Clock, refresh = true),
-                    ToggleSetting(C.UI_TAGS, true, R.string.show_tags, icon = LucideIcons.Tag, refresh = true),
-                    ToggleSetting(C.UI_BROADCASTERS_COUNT, true, R.string.broadcastersCount, icon = LucideIcons.Users, refresh = true),
-                    ToggleSetting(C.UI_BOOKMARK_TIME_LEFT, true, R.string.show_vod_time_left, icon = LucideIcons.Bookmark, refresh = true),
+                    ChoiceSetting(C.COMPACT_STREAMS, "disabled", R.string.hide_stream_previews, ChoiceSource.Arrays(R.array.compactStreamsEntries, R.array.compactStreamsValues), R.string.st_compact_streams_summary, LucideIcons.Rows3, refresh = Refresh.Live),
+                    ChoiceSetting(C.UI_NAME_DISPLAY, "0", R.string.name_display, ChoiceSource.Arrays(R.array.nameDisplayEntries, R.array.nameDisplayValues), R.string.name_display_summary, LucideIcons.Type, refresh = Refresh.Recreate),
+                    ToggleSetting(C.UI_TRUNCATE_VIEW_COUNT, true, R.string.compact_number_formatting, R.string.st_truncate_summary, LucideIcons.Hash, refresh = Refresh.Recreate),
+                    ToggleSetting(C.UI_UPTIME, true, R.string.show_uptime, icon = LucideIcons.Clock, refresh = Refresh.Live),
+                    ToggleSetting(C.UI_TAGS, true, R.string.show_tags, icon = LucideIcons.Tag, refresh = Refresh.Live),
+                    ToggleSetting(C.UI_BROADCASTERS_COUNT, true, R.string.broadcastersCount, icon = LucideIcons.Users, refresh = Refresh.Live),
+                    ToggleSetting(C.UI_BOOKMARK_TIME_LEFT, true, R.string.show_vod_time_left, icon = LucideIcons.Bookmark, refresh = Refresh.Live),
                 )
             ),
             SettingsGroupSpec(

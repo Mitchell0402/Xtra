@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.following
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
@@ -83,6 +84,8 @@ class FollowingDestination(host: PageHost) : ComposePage(host), FollowingActions
         val segments = FollowingSegment.list(segmentsPref, showVideos = !gqlToken.isNullOrBlank())
         val defaultSegment = FollowingSegment.default(segmentsPref, segments)
         val account = FollowingAccount(loggedIn, context.tokenPrefs().getString(C.USERNAME, null))
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        LocalSettingsVersion.current
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
             showUptime = prefs.getBoolean(C.UI_UPTIME, true),

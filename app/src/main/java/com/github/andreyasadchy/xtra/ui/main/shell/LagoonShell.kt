@@ -57,6 +57,12 @@ class ShellState(val tabs: List<ShellTab>) {
     /** The player fills a picture-in-picture window: the navigation stays out of it (keeping its place). */
     var inPictureInPicture by mutableStateOf(false)
 
+    /**
+     * Bumped when settings close after a change the pages can take without a rebuild (motion plan M5 item 3): pages
+     * that read those settings read them again ([LocalSettingsVersion]).
+     */
+    var settingsVersion by mutableIntStateOf(0)
+
     val hideOnScroll = HideOnScrollState()
 
     val navLocked: Boolean get() = miniPlayer
@@ -151,3 +157,9 @@ fun ShellRail(state: ShellState, onSelect: (Int) -> Unit, modifier: Modifier = M
         modifier = modifier,
     )
 }
+
+/**
+ * Changes when settings close after a "live" change (motion plan M5 item 3). A page that reads such a setting reads
+ * this first (or keys its `remember` on it), so it redraws with the new value instead of the screen rebuilding.
+ */
+val LocalSettingsVersion = androidx.compose.runtime.compositionLocalOf { 0 }

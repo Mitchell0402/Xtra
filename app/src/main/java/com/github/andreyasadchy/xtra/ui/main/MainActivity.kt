@@ -40,6 +40,11 @@ import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
 import android.view.View
+import com.github.andreyasadchy.xtra.ui.settings.SettingsResult
+import com.github.andreyasadchy.xtra.ui.settings.model.Refresh
+import android.os.Looper
+import android.os.Handler
+import android.view.PixelCopy
 import com.github.andreyasadchy.xtra.ui.player.PlayerPip
 import kotlin.math.roundToInt
 import com.github.andreyasadchy.xtra.ui.player.PlayerArrivalRules
@@ -182,8 +187,14 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             if (result.data?.getBooleanExtra(SettingsActivity.EXTRA_ACCOUNT_CHANGED, false) == true) {
                 // logged in or out from settings: same as the login launchers below
                 restartActivity()
-            } else if (result.resultCode == RESULT_OK) {
-                recreate()
+            } else {
+                // only what the changed settings need (motion plan M5 item 3): nothing, a fresh read by the pages, or a
+                // rebuild hidden behind a picture of the screen as it was
+                when (SettingsResult.refresh(result.resultCode == RESULT_OK, result.data?.getStringExtra(SettingsActivity.EXTRA_REFRESH))) {
+                    Refresh.Recreate -> recreateWithCover()
+                    Refresh.Live -> shell?.let { it.settingsVersion++ }
+                    Refresh.None -> Unit
+                }
             }
         }
         loginResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -416,6 +427,13 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
         }
         restorePlayerFragment()
         handleIntent(intent)
+        // rebuilt after a settings change: the old screen's picture fades into the new one after its first frame
+        viewModel.recreateCover?.let { cover ->
+            viewModel.recreateCover = null
+            showSwapOverlay(cover)
+            val decor = window.decorView
+            decor.viewTreeObserver.registerFrameCommitCallback { decor.post { fadeSwapOverlay() } }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.video.collectLatest { pair ->
@@ -539,6 +557,30 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
+    }
+
+    /**
+     * Rebuilds the screen after a settings change it cannot take in place (motion plan M5 item 3): the screen as it is
+     * once back is copied first, kept in the view model (which survives the rebuild) and laid over the new screen until
+     * its first frame. The window copy leaves the video out; the player's cover takes the video's place (M2a).
+     */
+    private fun recreateWithCover() {
+        val decor = window.decorView
+        decor.viewTreeObserver.registerFrameCommitCallback {
+            decor.post {
+                if (isFinishing || isDestroyed) return@post
+                if (decor.width <= 0 || decor.height <= 0) {
+                    recreate()
+                    return@post
+                }
+                val bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
+                PixelCopy.request(window, bitmap, { copied ->
+                    if (copied == PixelCopy.SUCCESS) viewModel.recreateCover = bitmap else bitmap.recycle()
+                    if (!isFinishing && !isDestroyed) recreate()
+                }, Handler(Looper.getMainLooper()))
+            }
+        }
+        decor.invalidate()
     }
 
     /** After logging in or out: the main screen starts again, cross-fading instead of cutting (motion plan M5 item 2). */

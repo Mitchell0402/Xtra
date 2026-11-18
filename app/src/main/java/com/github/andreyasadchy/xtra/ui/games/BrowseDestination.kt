@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.games
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
@@ -85,6 +86,8 @@ class BrowseDestination(host: PageHost) : ComposePage(host), GamesGridActions {
         val context = requireContext()
         val prefs = context.prefs()
         val root = args.tags.isNullOrEmpty()
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        LocalSettingsVersion.current
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
             showTags = prefs.getBoolean(C.UI_TAGS, true),

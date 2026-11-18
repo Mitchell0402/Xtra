@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.game
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -249,7 +250,9 @@ class GamePage(
         val segments = remember { GameSegment.list(segmentsPref) }
         var selectedKey by rememberSaveable { mutableStateOf(GameSegment.default(segmentsPref, segments).key) }
         val selected = GameSegment.of(selectedKey)?.takeIf { it in segments } ?: segments.first()
-        val options = remember {
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        val settingsVersion = LocalSettingsVersion.current
+        val options = remember(settingsVersion) {
             FollowingListOptions(
                 nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
                 showUptime = prefs.getBoolean(C.UI_UPTIME, true),
@@ -259,7 +262,7 @@ class GamePage(
                 usePositions = prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true),
             )
         }
-        val compact = remember { prefs.getString(C.COMPACT_STREAMS, "disabled") == "all" }
+        val compact = remember(settingsVersion) { prefs.getString(C.COMPACT_STREAMS, "disabled") == "all" }
         val streamsFilterValue by streams.filter.collectAsState()
         val videosFilterValue by videos.filter.collectAsState()
         val clipsFilterValue by clips.filter.collectAsState()

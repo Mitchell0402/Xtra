@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.top
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
@@ -85,6 +86,8 @@ class TopStreamsDestination(host: PageHost) : ComposePage(host) {
         val context = requireContext()
         val prefs = context.prefs()
         val root = args.tags.isNullOrEmpty() && args.languages.isNullOrEmpty()
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        LocalSettingsVersion.current
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
             showUptime = prefs.getBoolean(C.UI_UPTIME, true),

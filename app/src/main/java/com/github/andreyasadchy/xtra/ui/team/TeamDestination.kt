@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.team
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
@@ -64,6 +65,8 @@ class TeamDestination(host: PageHost) : ComposePage(host) {
     override fun Content() {
         val context = requireContext()
         val prefs = context.prefs()
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        LocalSettingsVersion.current
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
             showUptime = prefs.getBoolean(C.UI_UPTIME, true),

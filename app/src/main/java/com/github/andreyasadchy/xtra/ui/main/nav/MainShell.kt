@@ -1,5 +1,7 @@
 package com.github.andreyasadchy.xtra.ui.main.nav
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.animateFloatAsState
@@ -81,6 +83,7 @@ fun MainShell(
         if (state.inPictureInPicture) motion.fadeExit() else motion.fade(),
         label = "navigationInPip",
     )
+    CompositionLocalProvider(LocalSettingsVersion provides state.settingsVersion) {
     Box(Modifier.fillMaxSize().background(Lagoon.colors.page)) {
         Row(Modifier.fillMaxSize()) {
             // rail and pill cross-fade when the window gets wider or narrower (N14)
@@ -117,6 +120,7 @@ fun MainShell(
             LaunchedEffect(Unit) { state.bottomBarHeightPx = 0 }
         }
         overlay()
+    }
     }
 }
 

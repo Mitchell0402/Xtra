@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.search
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
 import com.github.andreyasadchy.xtra.ui.main.nav.PageHost
@@ -70,6 +71,8 @@ class SearchDestination(host: PageHost) : ComposePage(host), SearchActions {
         val context = requireContext()
         val prefs = context.prefs()
         groups = SearchGroup.list(prefs.getString(C.UI_SEARCH_TABS, null))
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        LocalSettingsVersion.current
         val options = FollowingListOptions(
             nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
             showUptime = prefs.getBoolean(C.UI_UPTIME, true),

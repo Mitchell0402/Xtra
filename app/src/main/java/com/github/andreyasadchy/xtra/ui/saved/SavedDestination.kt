@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.saved
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import androidx.compose.runtime.Composable
 import com.github.andreyasadchy.xtra.ui.main.nav.ComposePage
@@ -183,7 +184,16 @@ class SavedDestination(host: PageHost) : ComposePage(host), SavedActions {
             truncateCounts = prefs.getBoolean(C.UI_TRUNCATE_VIEW_COUNT, true),
             usePositions = prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true),
         )
-        val savedOptions = SavedOptions(bookmarkTimeLeft = prefs.getBoolean(C.UI_BOOKMARK_TIME_LEFT, true))
+        // read again when settings close after a change that needs no rebuild (motion plan M5 item 3); turning "time
+        // left" on there loads the users' broadcast types it needs, as opening the page does
+        LocalSettingsVersion.current
+        val timeLeft = prefs.getBoolean(C.UI_BOOKMARK_TIME_LEFT, true)
+        val savedOptions = SavedOptions(bookmarkTimeLeft = timeLeft)
+        var timeLeftSeen by remember { mutableStateOf(timeLeft) }
+        LaunchedEffect(timeLeft) {
+            if (timeLeft && !timeLeftSeen) updateBookmarkUsers()
+            timeLeftSeen = timeLeft
+        }
         var segmentKey by rememberSaveable { mutableStateOf<String?>(null) }
         val contract = ActivityResultContracts.StartActivityForResult()
         folderResultLauncher = rememberLauncherForActivityResult(contract, ::onFolderResult)

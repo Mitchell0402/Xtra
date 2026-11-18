@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.settings.model.Refresh
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonViewMotion
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToastsOwner
 import com.github.andreyasadchy.xtra.ui.design.components.LagoonToasts
@@ -61,7 +62,8 @@ class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
     private val streamProxyViewModel: StreamProxySettingsViewModel by viewModels { StreamProxySettingsViewModel.StreamProxySettingsViewModelFactory }
     private val videoSwapViewModel: VideoSwapSettingsViewModel by viewModels { VideoSwapSettingsViewModel.VideoSwapSettingsViewModelFactory }
 
-    private var changed = false
+    /** The heaviest thing a change here needs from the main screen (motion plan M5 item 3). */
+    private var refresh = Refresh.None
     private var accountChanged = false
     private val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     private lateinit var store: SettingsStore
@@ -112,16 +114,11 @@ class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
         LagoonViewMotion.pageTransitions(this)
         wasLoggedIn = savedInstanceState?.getBoolean(KEY_WAS_LOGGED_IN) == true
         accountChanged = savedInstanceState?.getBoolean(KEY_ACCOUNT_CHANGED) == true
-        if (savedInstanceState?.getBoolean(KEY_CHANGED) == true || accountChanged) {
-            changed = true
-            publishResult()
-        }
+        refresh = savedInstanceState?.getString(KEY_CHANGED)?.let { runCatching { Refresh.valueOf(it) }.getOrNull() } ?: Refresh.None
+        if (refresh != Refresh.None || accountChanged) publishResult()
         applyTheme()
         enableEdgeToEdge()
-        store = SettingsStore(prefs(), tokenPrefs()) {
-            changed = true
-            publishResult()
-        }
+        store = SettingsStore(prefs(), tokenPrefs()) { level -> markChanged(level) }
         val lists = SettingsLists(
             customVm = customProxyViewModel,
             streamVm = streamProxyViewModel,
@@ -342,17 +339,18 @@ class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
         }
     }
 
-    private fun markChanged() {
-        changed = true
+    /** Language, chat width and the rest that only the old screen reads: rebuild. */
+    private fun markChanged(level: Refresh = Refresh.Recreate) {
+        if (level > refresh) refresh = level
         publishResult()
     }
 
     private fun publishResult() {
-        setResult(RESULT_OK, Intent().putExtra(EXTRA_ACCOUNT_CHANGED, accountChanged))
+        setResult(RESULT_OK, Intent().putExtra(EXTRA_ACCOUNT_CHANGED, accountChanged).putExtra(EXTRA_REFRESH, refresh.name))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putBoolean(KEY_CHANGED, changed)
+        outState.putString(KEY_CHANGED, refresh.name)
         outState.putBoolean(KEY_WAS_LOGGED_IN, wasLoggedIn)
         outState.putBoolean(KEY_ACCOUNT_CHANGED, accountChanged)
         super.onSaveInstanceState(outState)
@@ -365,6 +363,8 @@ class SettingsActivity : AppCompatActivity(), LagoonToastsOwner {
         private const val KEY_WAS_LOGGED_IN = "was_logged_in"
         private const val KEY_ACCOUNT_CHANGED = "account_changed"
         const val EXTRA_ACCOUNT_CHANGED = "account_changed"
+        /** [Refresh] name: what the main screen does with this result (missing on old results means a rebuild). */
+        const val EXTRA_REFRESH = "refresh"
         const val PROJECT_URL = "https://github.com/Mitchell0402/Xtra"
     }
 }

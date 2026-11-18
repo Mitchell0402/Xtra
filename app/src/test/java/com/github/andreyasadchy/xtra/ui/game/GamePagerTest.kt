@@ -22,6 +22,7 @@ import com.github.andreyasadchy.xtra.ui.browse.BrowseFixtures
 import com.github.andreyasadchy.xtra.ui.browse.FilterKind
 import com.github.andreyasadchy.xtra.ui.browse.FilterSheetConfig
 import com.github.andreyasadchy.xtra.ui.browse.RecordingBrowseActions
+import com.github.andreyasadchy.xtra.ui.design.components.HeaderCollapseRules
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
 import com.github.andreyasadchy.xtra.ui.following.FollowingFixtures
 import org.junit.Assert.assertEquals
@@ -94,6 +95,17 @@ class GamePagerTest {
     }
 
     @Test
+    fun aSwipeBackToTheFirstSegmentSelectsItAgain() {
+        showGame()
+        compose.onNodeWithTag(GamePagerTag).performTouchInput { swipeLeft(startX = width * 0.85f, endX = width * 0.15f) }
+        compose.waitForIdle()
+        compose.onNodeWithTag(GamePagerTag).performTouchInput { swipeRight(startX = width * 0.15f, endX = width * 0.85f) }
+        compose.waitForIdle()
+        assertEquals(GameSegment.Live, shown)
+        compose.onNodeWithText("Live").assertIsSelected()
+    }
+
+    @Test
     fun aTapOnATabStillSwitches() {
         showGame()
         compose.onNodeWithText("Videos").performClick()
@@ -136,12 +148,12 @@ class GamePagerTest {
     @Test
     fun theHeaderTakesTheScrollFirstOnTheWayUpAndLastOnTheWayDown() {
         // up 300 with 200 left to hide: the header takes 200
-        assertEquals(-200f, GameHeaderRules.collapse(offset = -100f, dy = -300f, range = 300f), 0f)
+        assertEquals(-200f, HeaderCollapseRules.collapse(offset = -100f, dy = -300f, range = 300f), 0f)
         // already hidden: nothing
-        assertEquals(0f, GameHeaderRules.collapse(offset = -300f, dy = -50f, range = 300f), 0f)
+        assertEquals(0f, HeaderCollapseRules.collapse(offset = -300f, dy = -50f, range = 300f), 0f)
         // down what the list did not use: back up to fully shown
-        assertEquals(100f, GameHeaderRules.expand(offset = -100f, dy = 250f), 0f)
-        assertEquals(40f, GameHeaderRules.expand(offset = -100f, dy = 40f), 0f)
-        assertEquals(0f, GameHeaderRules.expand(offset = 0f, dy = 40f), 0f)
+        assertEquals(100f, HeaderCollapseRules.expand(offset = -100f, dy = 250f), 0f)
+        assertEquals(40f, HeaderCollapseRules.expand(offset = -100f, dy = 40f), 0f)
+        assertEquals(0f, HeaderCollapseRules.expand(offset = 0f, dy = 40f), 0f)
     }
 }

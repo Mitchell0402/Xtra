@@ -136,9 +136,16 @@ class ChannelDestination(host: PageHost) : ComposePage(host) {
         }
         val videosFilterValue by videosViewModel.filter.collectAsState()
         val clipsFilterValue by clipsViewModel.filter.collectAsState()
-        val suggestions = (if (ChannelSegment.Suggestions in segments) suggestionsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
-        val videos = (if (ChannelSegment.Videos in segments && videosFilterValue != null) videosViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
-        val clips = (if (ChannelSegment.Clips in segments && clipsFilterValue != null) clipsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        // a segment's list loads once it has been shown or a swipe heads for it (motion plan M3c)
+        val openedKeys by pagerViewModel.openedSegments.collectAsState()
+        val opened = { segment: ChannelSegment -> segment in segments && (segment == selected || segment.key in openedKeys) }
+        LaunchedEffect(selected) { pagerViewModel.openSegment(selected.key) }
+        val suggestionsOn = opened(ChannelSegment.Suggestions)
+        val videosOn = opened(ChannelSegment.Videos) && videosFilterValue != null
+        val clipsOn = opened(ChannelSegment.Clips) && clipsFilterValue != null
+        val suggestions = (if (suggestionsOn) suggestionsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val videos = (if (videosOn) videosViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
+        val clips = (if (clipsOn) clipsViewModel.flow else emptyFlow()).collectAsLazyPagingItems()
         val stream by pagerViewModel.stream.collectAsState()
         val user by pagerViewModel.user.collectAsState()
         val following by pagerViewModel.isFollowing.collectAsState()
@@ -233,10 +240,11 @@ class ChannelDestination(host: PageHost) : ComposePage(host) {
             segments = segments,
             selected = selected,
             onSelect = { selectedKey = it.key },
+            onVisit = { pagerViewModel.openSegment(it.key) },
             lists = ChannelLists(
-                suggestions = suggestions.takeIf { ChannelSegment.Suggestions in segments },
-                videos = videos.takeIf { videosFilterValue != null },
-                clips = clips.takeIf { clipsFilterValue != null },
+                suggestions = suggestions.takeIf { suggestionsOn },
+                videos = videos.takeIf { videosOn },
+                clips = clips.takeIf { clipsOn },
             ),
             filters = ChannelFilters(
                 videos = page.videosFilter(),

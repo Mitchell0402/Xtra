@@ -52,6 +52,16 @@ class GamePagerViewModel(
     private val _isFollowing = MutableStateFlow<Boolean?>(null)
     val isFollowing: StateFlow<Boolean?> = _isFollowing
     val follow = MutableStateFlow<Pair<Boolean, String?>?>(null)
+
+    /**
+     * The segments the viewer has shown or swiped towards (motion plan M3a, the "segment opened" switch): only their
+     * lists load. The first one is the segment the page opens on; a swipe opens the next as soon as it heads there.
+     */
+    val openedSegments = MutableStateFlow<Set<String>>(emptySet())
+
+    fun openSegment(key: String) {
+        if (key !in openedSegments.value) openedSegments.value = openedSegments.value + key
+    }
     private var updatedLocalGame = false
 
     private val _game = MutableStateFlow<Game?>(null)

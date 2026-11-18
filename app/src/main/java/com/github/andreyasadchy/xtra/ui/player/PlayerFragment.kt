@@ -14,23 +14,35 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.text.format.DateFormat
 import android.util.Base64
 import android.view.Gravity
+import android.view.PixelCopy
 import android.view.LayoutInflater
 import android.view.RoundedCorner
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -81,6 +93,7 @@ import com.github.andreyasadchy.xtra.ui.common.BaseNetworkFragment
 import android.app.admin.DeviceAdminReceiver
 import com.github.andreyasadchy.xtra.ui.common.IntegrityDialog
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonTheme
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonViewMotion
 import com.github.andreyasadchy.xtra.ui.download.DownloadDialog
 import com.github.andreyasadchy.xtra.ui.following.ConfirmSheet
 import com.github.andreyasadchy.xtra.ui.main.MainActivity
@@ -133,6 +146,20 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     private var isPortrait = true
     private var confirmUnfollow by mutableStateOf(false)
     private var volumeLevel = -1f
+    /** How this page arrives (motion plan M2a): set by MainActivity before the fragment is added, read once. */
+    var arrival: PlayerArrival? = null
+    private var pageArrival: PlayerArrival? = null
+    /** The picture over the video slot until the first frame (item 2), and the old video during a swap (item 4). */
+    private var coverView: ImageView? = null
+    private var snapshotView: ImageView? = null
+    private var snapshotBitmap: Bitmap? = null
+    private val coverGate = CoverGate()
+    private var coverRequest: coil3.request.Disposable? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val coverTimeout = Runnable { applyCover(coverGate.tick(SystemClock.uptimeMillis())) }
+    /** Set in onStop: the video was on and playing, so the way back gets a cover; and the picture to use. */
+    private var coverOnReturn = false
+    private var returnCover: Any? = null
     private var lastVolumeChange = 0L
     private var audioOnlyApplied = false
 
@@ -160,7 +187,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         super.onCreate(savedInstanceState)
         audioOnlyApplied = savedInstanceState?.getBoolean(KEY_AUDIO_ONLY_APPLIED) == true
         isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
+        // a page that replaced a mini player starts minimized (motion plan M2a item 4): no back callback then
+        if (isMaximized) requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
         WindowCompat.getInsetsController(requireActivity().window, requireActivity().window.decorView).systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
@@ -183,10 +211,29 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
 
         val root = FrameLayout(context)
         val surface = SurfaceView(context)
+        // over the surface, the same size as the picture: the content's cover until the first frame, and the old
+        // video while the content is replaced (motion plan M2a items 2 and 4); both scale with the video view
+        val cover = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            isVisible = false
+        }
+        val snapshot = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            isVisible = false
+        }
         val aspect = AspectRatioFrameLayout(context).apply {
             setAspectRatio(16f / 9f)
             addView(surface, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(cover, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(snapshot, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
+        coverView = cover
+        snapshotView = snapshot
+        val arrival = arrival.also { arrival = null }
+        pageArrival = arrival
+        val entrance = (arrival as? PlayerArrival.Open)?.entrance
         val subtitles = SubtitleView(context).apply {
             setUserDefaultStyle()
             setUserDefaultTextSize()
@@ -202,7 +249,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         root.addView(video, FrameLayout.LayoutParams(0, 0))
         val compose = ComposeView(context).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent { LagoonTheme { PageContent() } }
+            setContent { LagoonTheme { PageContent(entrance) } }
         }
         root.addView(compose, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         val chat = FragmentContainerView(context).apply {
@@ -221,12 +268,212 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         surfaceView = surface
         subtitleView = subtitles
         chatContainer = chat
+        when (arrival) {
+            is PlayerArrival.Open -> putCover(arrival.cover, arrival.coverWidth, arrival.coverHeight)
+            is PlayerArrival.Swap -> {
+                state.videoAspect = arrival.videoAspect
+                aspect.setAspectRatio(arrival.videoAspect)
+                if (arrival.video != null) {
+                    snapshotBitmap = arrival.video
+                    snapshot.setImageBitmap(arrival.video)
+                    LagoonViewMotion.show(snapshot)
+                } else {
+                    // no copy of the old picture: its cover stands in, if the image cache has it
+                    snapshot.scaleType = ImageView.ScaleType.CENTER_CROP
+                    CachedImage.load(context, PlayerArrivalRules.coverModel(arrival.oldCover), CachedImage.DefaultWidth, CachedImage.DefaultHeight) { image ->
+                        if (snapshotView === snapshot && pageArrival != null) {
+                            snapshot.setImageDrawable(image)
+                            LagoonViewMotion.show(snapshot)
+                        }
+                    }
+                }
+                putCover(arrival.cover, CachedImage.DefaultWidth, CachedImage.DefaultHeight)
+            }
+            null -> Unit
+        }
         return root
+    }
+
+    /**
+     * MainActivity, before adding a page that replaces a minimized player: the new page starts minimized too, without
+     * the back callback (motion plan M2a item 4).
+     */
+    fun startMinimized() {
+        isMaximized = false
+    }
+
+    // --- the cover over the video slot (motion plan M2a item 2) ---
+
+    /** Puts [model]'s picture over the video slot until the first frame, if the image cache has it. */
+    private fun putCover(model: Any?, widthPx: Int, heightPx: Int) {
+        val view = coverView ?: return
+        val picture = PlayerArrivalRules.coverModel(model) ?: return
+        coverRequest?.dispose()
+        coverGate.arm(SystemClock.uptimeMillis())
+        mainHandler.removeCallbacks(coverTimeout)
+        mainHandler.postDelayed(coverTimeout, CoverGate.TimeoutMs)
+        coverRequest = CachedImage.load(requireContext(), picture, widthPx, heightPx) { image -> showCoverImage(view, image) }
+    }
+
+    private fun showCoverImage(view: ImageView, image: android.graphics.drawable.Drawable) {
+        if (coverView !== view || !coverGate.imageReady()) return
+        view.setImageDrawable(image)
+        LagoonViewMotion.show(view)
+        state.coverUp = true
+    }
+
+    private fun applyCover(action: CoverGate.Action) {
+        if (coverGate.phase == CoverGate.Phase.Idle) {
+            mainHandler.removeCallbacks(coverTimeout)
+            coverRequest?.dispose()
+            coverRequest = null
+        }
+        val view = coverView ?: return
+        when (action) {
+            CoverGate.Action.Fade -> LagoonViewMotion.fadeOut(view) { view.setImageDrawable(null) }
+            CoverGate.Action.Remove -> {
+                LagoonViewMotion.hide(view)
+                view.setImageDrawable(null)
+            }
+            CoverGate.Action.None -> Unit
+        }
+        if (action != CoverGate.Action.None) state.coverUp = false
+    }
+
+    /** The viewer chose audio only or chat only, paused, or the player failed: the page's own state shows. */
+    private fun cancelCover() = applyCover(coverGate.cancel())
+
+    override fun onRenderedFirstFrame() = applyCover(coverGate.firstFrame())
+
+    override fun onPlayerError() = cancelCover()
+
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean) {
+        if (!playWhenReady) cancelCover()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (coverOnReturn) {
+            // back from the background (another activity, Home): the video track was switched off, and the first
+            // frame waits for the next key frame; the content's picture covers that wait (P5 case 1)
+            coverOnReturn = false
+            putCover(returnCover, CachedImage.DefaultWidth, CachedImage.DefaultHeight)
+        }
+    }
+
+    override fun onStop() {
+        // before ExoPlayerFragment tells the service to stop (that switches the video track off in the background)
+        coverOnReturn = CoverGate.coverOnReturn(
+            videoOn = !state.videoDisabled && !state.audioOnly && !state.chatOnly && !state.inPictureInPicture,
+            playing = state.isPlaying,
+        )
+        returnCover = backend?.thumbnail
+        super.onStop()
+    }
+
+    /**
+     * The page's first frame is on the screen (motion plan M2a): the activity's picture of the tapped card hands over
+     * to the cover in the video slot, which starts growing on the same frame; after a swap, the old page and the old
+     * video fade into the new ones.
+     */
+    private fun onPageFirstFrame() {
+        val arrival = pageArrival ?: return
+        pageArrival = null
+        val activity = activity as? MainActivity
+        when (arrival) {
+            is PlayerArrival.Open -> {
+                val picture = activity?.endEntranceOverlay()
+                val cover = coverView
+                if (picture != null && cover != null && cover.drawable == null) showCoverImage(cover, picture)
+            }
+            is PlayerArrival.Swap -> {
+                activity?.fadeSwapOverlay()
+                snapshotView?.let { view ->
+                    LagoonViewMotion.fadeOut(view) {
+                        view.setImageDrawable(null)
+                        snapshotBitmap?.recycle()
+                        snapshotBitmap = null
+                    }
+                }
+                if (arrival.expand) maximize()
+            }
+        }
+    }
+
+    /**
+     * Copies what is on the screen before this page is replaced by another content (motion plan M2a item 4): the
+     * video from its own surface (a window copy leaves the video out), and, while maximized, the rest of the page from
+     * the window with the video's place cleared. Calls [done] on the main thread when both copies are back or after
+     * 100 ms, whichever comes first; a copy that is not back by then is left out. Call before [close], which stops the
+     * player.
+     */
+    fun captureForSwap(window: Window, done: (SwapCapture) -> Unit) {
+        val surface = surfaceView
+        val video = videoView
+        val oldCover = backend?.thumbnail
+        val aspect = state.videoAspect
+        if (view == null || surface == null || video == null || state.inPictureInPicture) {
+            done(SwapCapture(null, null, aspect, oldCover, isMaximized))
+            return
+        }
+        var videoCopy: Bitmap? = null
+        var pageCopy: Bitmap? = null
+        var pending = 0
+        var finished = false
+        val maximized = isMaximized
+        val finish = Runnable {
+            if (!finished) {
+                finished = true
+                done(SwapCapture(videoCopy, pageCopy, aspect, oldCover, maximized))
+            }
+        }
+        if (surface.isVisible && !state.videoDisabled && surface.holder.surface?.isValid == true && surface.width > 0 && surface.height > 0) {
+            val bitmap = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
+            pending++
+            PixelCopy.request(surface, bitmap, { result ->
+                if (!finished && result == PixelCopy.SUCCESS) videoCopy = bitmap else bitmap.recycle()
+                if (--pending == 0) finish.run()
+            }, mainHandler)
+        }
+        val decor = window.decorView
+        if (maximized && decor.width > 0 && decor.height > 0) {
+            val bitmap = Bitmap.createBitmap(decor.width, decor.height, Bitmap.Config.ARGB_8888)
+            val location = IntArray(2)
+            video.getLocationInWindow(location)
+            val hole = Rect(location[0], location[1], location[0] + video.width, location[1] + video.height)
+            pending++
+            PixelCopy.request(window, Rect(0, 0, decor.width, decor.height), bitmap, { result ->
+                if (!finished && result == PixelCopy.SUCCESS) {
+                    // the new page's video slot, where the old video is drawn, shows through the video's place
+                    Canvas(bitmap).drawRect(hole, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) })
+                    pageCopy = bitmap
+                } else {
+                    bitmap.recycle()
+                }
+                if (--pending == 0) finish.run()
+            }, mainHandler)
+        }
+        if (pending == 0) finish.run() else mainHandler.postDelayed(finish, SwapCaptureTimeoutMs)
+    }
+
+    /**
+     * What [captureForSwap] copied: the video, the page around it (maximized only), the old video's shape, the old
+     * content's picture for when the video copy failed, and whether the page was maximized.
+     */
+    class SwapCapture(val video: Bitmap?, val page: Bitmap?, val aspect: Float, val oldCover: Any?, val maximized: Boolean)
+
+    /** The chat's own opacity channel (motion plan M2a item 1): no layout, a hardware layer only while it fades. */
+    private fun fadeChat(alpha: Float, shiftY: Float) {
+        val chat = chatContainer ?: return
+        if (chat.alpha != alpha) chat.alpha = alpha
+        if (chat.translationY != shiftY) chat.translationY = shiftY
+        val layer = if (alpha > 0f && alpha < 1f) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE
+        if (chat.layerType != layer) chat.setLayerType(layer, null)
     }
 
     @kotlin.OptIn(ExperimentalLayoutApi::class)
     @Composable
-    private fun PageContent() {
+    private fun PageContent(entrance: PlayerEntrance?) {
         val shell = (activity as? ShellHost)?.shell
         val ime = WindowInsets.isImeVisible
         LaunchedEffect(ime) { onKeyboard(ime) }
@@ -262,6 +509,9 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             onVideoPlacement = ::placeVideo,
             onChatPlacement = ::placeChat,
             sideInsets = sideInsets(),
+            entrance = entrance,
+            onFirstFrame = ::onPageFirstFrame,
+            onChatFade = ::fadeChat,
         )
         if (state.viewerListOpen) {
             val list by viewerListViewModel.viewerList.collectAsState()
@@ -646,6 +896,11 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         // can be called from a deep link before the restored player fragment has a view
         if (view == null) return
         isMaximized = false
+        // the chat now fades out over the first part of the minimize: the keyboard and focus leave at its start
+        chatContainer?.let { chat ->
+            (requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(chat.windowToken, 0)
+            chat.clearFocus()
+        }
         if (state.kind == PlayerKind.Stream && chatFragment?.emoteMenuIsVisible() == true) {
             chatFragment?.toggleBackPressedCallback(false)
         }
@@ -841,6 +1096,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                 if (backend?.quality?.name == VideoQuality.AUDIO_ONLY_QUALITY) {
                     changeQuality(backend.previousQuality)
                 } else {
+                    cancelCover()
                     changeQuality(backend?.qualities?.find { it.name == VideoQuality.AUDIO_ONLY_QUALITY })
                 }
                 changePlayerMode()
@@ -875,6 +1131,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
     }
 
     override fun selectQuality(quality: VideoQuality) {
+        if (quality.name == VideoQuality.AUDIO_ONLY_QUALITY || quality.name == VideoQuality.CHAT_ONLY_QUALITY) cancelCover()
         changeQuality(backend?.qualities?.find { it.name == quality.name && it.url == quality.url })
         changePlayerMode()
     }
@@ -1452,6 +1709,16 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         chatContainer = null
         lastVideo = null
         lastChat = null
+        mainHandler.removeCallbacks(coverTimeout)
+        coverRequest?.dispose()
+        coverRequest = null
+        coverView = null
+        snapshotView?.setImageDrawable(null)
+        snapshotView = null
+        snapshotBitmap?.recycle()
+        snapshotBitmap = null
+        pageArrival = null
+        state.coverUp = false
     }
 
     companion object {
@@ -1463,6 +1730,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         const val KEY_AUDIO_ONLY = "audioOnly"
         private const val PAGE_COLOR = 0xFF111113.toInt()
         private const val OVERLAY_COLOR = 0xB3111113.toInt()
+        /** A swap waits at most this long for its two screen copies (motion plan M2a item 4). */
+        private const val SwapCaptureTimeoutMs = 100L
     }
 }
 

@@ -40,6 +40,19 @@ import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
 import android.view.View
+import kotlin.math.roundToInt
+import com.github.andreyasadchy.xtra.ui.player.PlayerArrivalRules
+import com.github.andreyasadchy.xtra.ui.player.PlayerArrival
+import com.github.andreyasadchy.xtra.ui.player.CachedImage
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonViewMotion
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
+import com.github.andreyasadchy.xtra.ui.design.components.PressOrigin
+import androidx.core.view.isVisible
+import android.widget.ImageView
+import android.widget.FrameLayout
+import android.view.ViewGroup
+import android.graphics.drawable.Drawable
+import android.graphics.Bitmap
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -111,6 +124,8 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
 
 
     companion object {
+        /** The player overlay never outlives this when the player's first frame does not come (activity stopped). */
+        private const val OverlayGuardMs = 1000L
         const val KEY_VIDEO = "video"
 
         const val INTENT_INSTALL_UPDATE = "com.github.andreyasadchy.xtra.INSTALL_UPDATE"
@@ -751,8 +766,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
 
 //Navigation listeners
 
-    fun startStream(stream: Stream, audioOnly: Boolean = false) {
-        (playerFragment as? ExoPlayerFragment)?.close(deleteStates = false)
+    fun startStream(stream: Stream, audioOnly: Boolean = false) = openPlayer(stream.thumbnail) {
         viewModel.savePlaybackState(PlaybackState(
             type = BasePlaybackService.STREAM,
             streamId = stream.id,
@@ -768,14 +782,12 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             createdAt = stream.createdAt,
             viewerCount = stream.viewerCount,
         ))
-        val fragment = ExoPlayerFragment().apply {
+        ExoPlayerFragment().apply {
             if (audioOnly) arguments = Bundle().apply { putBoolean(PlayerFragment.KEY_AUDIO_ONLY, true) }
         }
-        startPlayer(fragment)
     }
 
-    fun startVideo(video: Video, offset: Long?, ignoreSavedPosition: Boolean = false, qualities: String? = null) {
-        (playerFragment as? ExoPlayerFragment)?.close(deleteStates = false)
+    fun startVideo(video: Video, offset: Long?, ignoreSavedPosition: Boolean = false, qualities: String? = null) = openPlayer(video.thumbnail) {
         viewModel.savePlaybackState(PlaybackState(
             type = BasePlaybackService.VIDEO,
             videoId = video.id,
@@ -800,12 +812,10 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
                 viewModel.saveVideoPosition(id, offset ?: 0)
             }
         }
-        val fragment = ExoPlayerFragment()
-        startPlayer(fragment)
+        ExoPlayerFragment()
     }
 
-    fun startClip(clip: Clip) {
-        (playerFragment as? ExoPlayerFragment)?.close(deleteStates = false)
+    fun startClip(clip: Clip) = openPlayer(clip.thumbnail) {
         viewModel.savePlaybackState(PlaybackState(
             type = BasePlaybackService.CLIP,
             videoId = clip.videoId,
@@ -825,12 +835,10 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             videoCreatedAt = clip.videoCreatedAt,
             videoAnimatedPreviewURL = clip.videoAnimatedPreviewURL,
         ))
-        val fragment = ExoPlayerFragment()
-        startPlayer(fragment)
+        ExoPlayerFragment()
     }
 
-    fun startOfflineVideo(video: OfflineVideo, offset: Long? = null) {
-        (playerFragment as? ExoPlayerFragment)?.close(deleteStates = false)
+    fun startOfflineVideo(video: OfflineVideo, offset: Long? = null) = openPlayer(video.thumbnail) {
         viewModel.savePlaybackState(PlaybackState(
             type = BasePlaybackService.OFFLINE_VIDEO,
             offlineVideoId = video.id,
@@ -848,20 +856,159 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
         if (offset != null && prefs.getBoolean(C.PLAYER_USE_VIDEO_POSITIONS, true)) {
             viewModel.saveOfflineVideoPosition(video.id, offset)
         }
-        val fragment = ExoPlayerFragment().apply {
+        ExoPlayerFragment().apply {
             arguments = Bundle().apply {
                 putBoolean(PlayerFragment.KEY_OFFLINE, true)
             }
         }
+    }
+
+    /** The newest content asked for while the screen is being copied for a swap (the last one wins). */
+    private var pendingSwap: (() -> ExoPlayerFragment)? = null
+    private var pendingSwapCover: Any? = null
+
+    /**
+     * Opens [build]'s player (motion plan M2a items 3 and 4). [build] saves the playback state and makes the fragment,
+     * as the four start functions did after closing the old player. With a player on the screen, the screen is copied
+     * first (the copies need the old player still running), then the old one closes and the new one takes its place
+     * and mode, fading from the copies. With none, the new player grows from the tapped card's picture, or rises from
+     * the bottom.
+     */
+    private fun openPlayer(cover: Any?, build: () -> ExoPlayerFragment) {
+        val tap = PressOrigin.take()
+        if (pendingSwap != null) {
+            pendingSwap = build
+            pendingSwapCover = cover
+            return
+        }
+        val current = playerFragment as? ExoPlayerFragment
+        if (current != null && current.isAdded && current.view != null) {
+            val plan = PlayerArrivalRules.swap(playerMinimized = !current.isPlayerMaximized(), tap = tap)
+            pendingSwap = build
+            pendingSwapCover = cover
+            current.captureForSwap(window) { capture ->
+                // the copies take up to 100 ms: the activity may be gone by then
+                if (isDestroyed) {
+                    pendingSwap = null
+                    capture.video?.recycle()
+                    capture.page?.recycle()
+                    return@captureForSwap
+                }
+                val next = pendingSwap ?: return@captureForSwap
+                val nextCover = pendingSwapCover
+                pendingSwap = null
+                pendingSwapCover = null
+                current.close(deleteStates = false)
+                capture.page?.let { showSwapOverlay(it) }
+                val fragment = next()
+                fragment.arrival = PlayerArrival.Swap(capture.video, capture.aspect, capture.oldCover, nextCover, plan.startMinimized, plan.expand)
+                if (plan.startMinimized) fragment.startMinimized()
+                startPlayer(fragment)
+            }
+            return
+        }
+        current?.close(deleteStates = false)
+        val fragment = build()
+        val width = tap?.bounds?.width?.roundToInt() ?: CachedImage.DefaultWidth
+        val height = tap?.bounds?.height?.roundToInt() ?: CachedImage.DefaultHeight
+        fragment.arrival = PlayerArrival.Open(PlayerArrivalRules.entrance(tap), tap?.model ?: cover, width, height)
+        tap?.let { showEntranceOverlay(it, cover) }
         startPlayer(fragment)
+    }
+
+    /** One plain ImageView above the player and below the toasts, made the first time a player opens or swaps. */
+    private var playerOverlay: ImageView? = null
+    private var playerOverlayBitmap: Bitmap? = null
+    private var playerOverlayRequest: coil3.request.Disposable? = null
+    private val playerOverlayGuard = Runnable { fadeSwapOverlay(); endEntranceOverlay() }
+
+    private fun playerOverlay(): ImageView = playerOverlay ?: ImageView(this).apply {
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        isVisible = false
+    }.also { view ->
+        val root = binding.root
+        root.addView(view, root.indexOfChild(binding.toastOverlay), FrameLayout.LayoutParams(0, 0))
+        playerOverlay = view
+    }
+
+    private fun clearPlayerOverlay() {
+        playerOverlayRequest?.dispose()
+        playerOverlayRequest = null
+        playerOverlay?.let {
+            LagoonViewMotion.hide(it)
+            it.setImageDrawable(null)
+        }
+        playerOverlayBitmap?.recycle()
+        playerOverlayBitmap = null
+    }
+
+    /**
+     * The tapped card's picture, held where the card was from the tap until the player's first frame, which then takes
+     * it over (motion plan M2a item 3). Only from the image cache: nothing shows when it is not there.
+     */
+    private fun showEntranceOverlay(tap: PressOrigin.Tap, cover: Any?) {
+        clearPlayerOverlay()
+        val view = playerOverlay()
+        val bounds = tap.bounds
+        view.scaleType = ImageView.ScaleType.CENTER_CROP
+        view.layoutParams = FrameLayout.LayoutParams(bounds.width.roundToInt(), bounds.height.roundToInt()).apply {
+            leftMargin = bounds.left.roundToInt()
+            topMargin = bounds.top.roundToInt()
+        }
+        playerOverlayRequest = CachedImage.load(this, tap.model ?: cover, bounds.width.roundToInt(), bounds.height.roundToInt()) { image ->
+            view.setImageDrawable(image)
+            LagoonViewMotion.show(view)
+        }
+        view.removeCallbacks(playerOverlayGuard)
+        view.postDelayed(playerOverlayGuard, OverlayGuardMs)
+    }
+
+    /** Called by the new player on its first frame: hides the card's picture and hands it over, if it had arrived. */
+    fun endEntranceOverlay(): Drawable? {
+        val view = playerOverlay ?: return null
+        if (playerOverlayBitmap != null) return null
+        playerOverlayRequest?.dispose()
+        playerOverlayRequest = null
+        val image = view.drawable.takeIf { view.isVisible }
+        LagoonViewMotion.hide(view)
+        view.setImageDrawable(null)
+        return image
+    }
+
+    /** The old page around the video while the content is replaced (motion plan M2a item 4), over the new page. */
+    private fun showSwapOverlay(bitmap: Bitmap) {
+        clearPlayerOverlay()
+        val view = playerOverlay()
+        view.scaleType = ImageView.ScaleType.FIT_XY
+        view.layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        view.setImageBitmap(bitmap)
+        playerOverlayBitmap = bitmap
+        LagoonViewMotion.show(view)
+        view.removeCallbacks(playerOverlayGuard)
+        view.postDelayed(playerOverlayGuard, OverlayGuardMs)
+    }
+
+    /** Called by the new player on its first frame: the old page fades into the new one underneath. */
+    fun fadeSwapOverlay() {
+        val view = playerOverlay ?: return
+        val bitmap = playerOverlayBitmap ?: return
+        view.removeCallbacks(playerOverlayGuard)
+        LagoonViewMotion.fadeOut(view, LagoonMotion.SHORT) {
+            if (playerOverlayBitmap === bitmap) {
+                view.setImageDrawable(null)
+                bitmap.recycle()
+                playerOverlayBitmap = null
+            }
+        }
     }
 
 //Player methods
 
     private fun startPlayer(fragment: Fragment) {
         playerFragment = fragment
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.playerContainer, fragment).commit()
+        val transaction = supportFragmentManager.beginTransaction().replace(R.id.playerContainer, fragment)
+        // a swap commits up to 100 ms after the tap (motion plan M2a item 4), possibly after the state was saved
+        if (supportFragmentManager.isStateSaved) transaction.commitAllowingStateLoss() else transaction.commit()
         viewModel.isPlayerOpened = true
         onPlayerModeChanged()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
@@ -873,6 +1020,9 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
     }
 
     fun closePlayer() {
+        pendingSwap = null
+        pendingSwapCover = null
+        clearPlayerOverlay()
         // the fragment can already be gone when a twitch.tv link replaces a restored player
         // no fragment transition: the mini player has already slid out and faded on the motion system's spring
         // (motion plan M1 item 5), and a View fade here would run on its own, unmanaged timing
@@ -1035,7 +1185,8 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
                     if (state.miniPlayer && !state.playerMaximized) base + 92.dp else base,
                     Lagoon.motion.layout(Dp.VisibilityThreshold), label = "toastBottom",
                 )
-                LagoonToastOverlay(toasts, bottom)
+                // the steady spring overshoots a little: past a 0 dp target (picture in picture) padding would go negative
+                LagoonToastOverlay(toasts, bottom.coerceAtLeast(0.dp))
                 // screen readers meet the layer only while it shows a toast
                 LaunchedEffect(Unit) {
                     snapshotFlow { toasts.state.current != null && toasts.drawingSheet == null }.collect { showing ->

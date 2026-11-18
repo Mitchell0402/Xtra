@@ -51,6 +51,8 @@ private fun MediaCardFrame(
 private fun Thumbnail(model: Any?, modifier: Modifier, overlay: @Composable BoxScope.() -> Unit) {
     Box(
         modifier
+            // a tap on the card opens the player from this picture (motion plan M2a)
+            .pressOriginMedia(model)
             .clip(LagoonShapes.cardMedia)
             .background(Lagoon.colors.control),
     ) {

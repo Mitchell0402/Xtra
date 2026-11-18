@@ -54,6 +54,15 @@ class PlayerConnection(private val state: PlayerUiState, private val host: Host)
         fun onIsPlayingChanged(isPlaying: Boolean)
         fun onPlayButtonChanged(showPlayButton: Boolean, playbackState: Int)
         fun qualityLabel(quality: VideoQuality?): String?
+        /**
+         * The surface shows a new first frame (motion plan M2a item 2: the cover over the video fades). Also fires
+         * after an ad break's surface switch; the page only listens while it has put a cover up.
+         */
+        fun onRenderedFirstFrame() {}
+        /** The player stopped on an error (the cover goes). */
+        fun onPlayerError() {}
+        /** The viewer paused or resumed (a pause takes the cover away: a paused video may not draw a new frame). */
+        fun onPlayWhenReadyChanged(playWhenReady: Boolean) {}
     }
 
     var backend: PlaybackBackend? = null
@@ -71,6 +80,15 @@ class PlayerConnection(private val state: PlayerUiState, private val host: Host)
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             updatePlayButton()
             updateProgress()
+            host.onPlayWhenReadyChanged(playWhenReady)
+        }
+
+        override fun onRenderedFirstFrame() {
+            host.onRenderedFirstFrame()
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            host.onPlayerError()
         }
 
         override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {

@@ -71,6 +71,11 @@ class PlayerUiState {
     /** Video rendering is switched off (audio only, or in the background); the surface is hidden. */
     var videoDisabled by mutableStateOf(false)
     var videoAspect by mutableFloatStateOf(16f / 9f)
+    /**
+     * A picture covers the video slot while the first frame is on its way (motion plan M2a item 2); the audio-only
+     * backdrop waits under it instead of flashing while the video track comes back.
+     */
+    var coverUp by mutableStateOf(false)
     /** Short ad status for the corner of the video, null when there is nothing to say (plan stage 4 of the ad work). */
     var adStatus by mutableStateOf<CharSequence?>(null)
     var subtitles by mutableStateOf(SubtitleState.None)

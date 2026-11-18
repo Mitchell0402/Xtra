@@ -1,6 +1,16 @@
 package com.github.andreyasadchy.xtra.ui.game
 
 import androidx.compose.foundation.background
+import kotlin.math.roundToInt
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -188,11 +198,13 @@ interface GameActions : BrowseActions {
 const val GameListTag = "gameList"
 const val GameSegmentsTag = "gameSegments"
 const val GameHeaderTag = "gameHeader"
+const val GamePagerTag = "gamePager"
 
 /**
  * A game's page (plan 7.2, U4): the box art and its colour behind the name, viewer, broadcaster and follower counts,
  * the game's tags and the follow button; below it the live, video and clip segments on floating glass tabs that pin
- * under the bar, each with its filter chips. One grid holds header and list, so the header scrolls away with it.
+ * under the bar, each with its filter chips. The segments are pages side by side (motion plan M3a); the header sits
+ * above them and collapses under the bar as any page's list scrolls up.
  *
  * @param boxArtModifier marks the box art as the shared element of the poster-to-page transition.
  * @param showFollow the `ui_follow_button` setting allows following games; [following] is null until known.
@@ -210,6 +222,7 @@ fun GameScreen(
     compactStreams: Boolean,
     actions: GameActions,
     modifier: Modifier = Modifier,
+    onVisit: (GameSegment) -> Unit = {},
     showFollow: Boolean = true,
     following: Boolean? = null,
     tagResults: LazyPagingItems<Tag>? = null,
@@ -225,7 +238,9 @@ fun GameScreen(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val columns = cardColumns(configuration.screenWidthDp)
-    val grid = rememberLazyGridState()
+    // one grid per segment, kept outside the pager: each keeps its own scroll position while its page is not
+    // composed (motion plan M3a, X2)
+    val grids = GameSegment.entries.associateWith { rememberLazyGridState() }
     var headerHeight by remember { mutableIntStateOf(0) }
     var filterSheet by rememberSaveable { mutableStateOf(false) }
     var unfollowSheet by rememberSaveable { mutableStateOf(false) }
@@ -235,32 +250,46 @@ fun GameScreen(
     val gapPx = with(density) { LagoonSpacing.cardGap.roundToPx() }
     val tabs = segments.size > 1
     val tabsBlock = if (tabs) LagoonSpacing.touchTarget else 0.dp
-    val current = when (selected) {
+    fun listOf(segment: GameSegment) = when (segment) {
         GameSegment.Live -> lists.streams
         GameSegment.Videos -> lists.videos
         GameSegment.Clips -> lists.clips
     }
+    val current = listOf(selected)
     IntegrityWatch(lists.streams, actions)
     IntegrityWatch(lists.videos, actions)
     IntegrityWatch(lists.clips, actions)
 
+    // the segments are pages side by side: a swipe moves between them, a tap on a tab scrolls there (motion plan M3a)
+    val pagerState = rememberPagerState(initialPage = segments.indexOf(selected).coerceAtLeast(0)) { segments.size }
+    // the header collapses under the bar as the list scrolls up, shared by every page: a page switch keeps it where it
+    // is, like v0.1's app bar over a view pager. 0 = shown, -collapseRange = under the bar
+    val headerOffset = rememberSaveable { mutableFloatStateOf(0f) }
+    val collapseRange = (headerHeight + gapPx).toFloat()
+    val headerScroll = remember { GameHeaderScroll(headerOffset) }
+    headerScroll.range = collapseRange
+
     LaunchedEffect(scrollToTopRequests) {
-        if (scrollToTopRequests > 0) grid.animateScrollToItem(0)
-    }
-    // a new segment starts at its top, right under the pinned tabs, unless the header is still in view
-    var lastSelected by remember { mutableStateOf(selected) }
-    LaunchedEffect(selected) {
-        if (selected != lastSelected) {
-            lastSelected = selected
-            if (grid.firstVisibleItemIndex >= 1) grid.scrollToItem(1)
+        if (scrollToTopRequests > 0) {
+            headerOffset.floatValue = 0f
+            grids.getValue(selected).animateScrollToItem(0)
         }
+    }
+    // a tap on a tab moves the pager; a settled swipe tells the page which segment is shown now
+    LaunchedEffect(selected) {
+        val index = segments.indexOf(selected)
+        if (index >= 0 && index != pagerState.currentPage && !pagerState.isScrollInProgress) pagerState.animateScrollToPage(index)
+    }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page -> segments.getOrNull(page)?.let { if (it != selected) onSelect(it) } }
+    }
+    // a segment's list starts loading as soon as a swipe heads for it, not once the swipe has settled
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.targetPage }.collect { page -> segments.getOrNull(page)?.let(onVisit) }
     }
     val coverColor = rememberCoverColor(options.image(header.boxArt)) ?: Lagoon.colors.card
     // 0 while the header shows, 1 once it has scrolled under the bar
-    val collapsed: () -> Float = {
-        if (grid.firstVisibleItemIndex > 0) 1f
-        else grid.firstVisibleItemScrollOffset / (headerHeight * 0.6f).coerceAtLeast(1f)
-    }
+    val collapsed: () -> Float = { -headerOffset.floatValue / (headerHeight * 0.6f).coerceAtLeast(1f) }
     Box(modifier.fillMaxSize()) {
         GlassBackdrop(Modifier.fillMaxSize().then(if (navScroll != null) Modifier.nestedScroll(navScroll) else Modifier)) {
             CompositionLocalProvider(LocalBrowseOffline provides offline) {
@@ -270,80 +299,55 @@ fun GameScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicatorTop = barTop,
                 ) {
-                    StaggerGate("game:${selected.name}", hasItems = (current?.itemCount ?: 0) > 0) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(columns),
-                            state = grid,
-                            modifier = Modifier.fillMaxSize().testTag(GameListTag),
-                            contentPadding = PaddingValues(
-                                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide, top = barTop,
-                                bottom = bottomPadding + LagoonSpacing.m,
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
-                            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+                    BoxWithConstraints(Modifier.fillMaxSize().nestedScroll(headerScroll)) {
+                        val pagerHeight = (maxHeight - barTop - tabsBlock).coerceAtLeast(0.dp)
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .wrapContentHeight(Alignment.Top, unbounded = true)
+                                .offset { IntOffset(0, headerOffset.floatValue.roundToInt()) }
                         ) {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "header", contentType = "header") {
-                                GameHeaderBlock(
-                                    header = header,
-                                    coverColor = coverColor,
-                                    options = options,
-                                    showFollow = showFollow,
-                                    following = following,
-                                    onFollow = { if (it) actions.setFollowing(true) else unfollowSheet = true },
-                                    onTag = actions::openGameTag,
-                                    boxArtModifier = boxArtModifier,
-                                    gradientTop = barTop,
-                                    modifier = Modifier.onSizeChanged { headerHeight = it.height },
-                                )
-                            }
+                            Spacer(Modifier.height(barTop))
+                            GameHeaderBlock(
+                                header = header,
+                                coverColor = coverColor,
+                                options = options,
+                                showFollow = showFollow,
+                                following = following,
+                                onFollow = { if (it) actions.setFollowing(true) else unfollowSheet = true },
+                                onTag = actions::openGameTag,
+                                boxArtModifier = boxArtModifier,
+                                gradientTop = barTop,
+                                modifier = Modifier
+                                    .padding(horizontal = LagoonSpacing.pageSide)
+                                    .onSizeChanged { headerHeight = it.height },
+                            )
+                            Spacer(Modifier.height(LagoonSpacing.cardGap))
                             // the floating tabs sit over this gap
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "tabs", contentType = "tabs") {
-                                Spacer(Modifier.height(tabsBlock))
-                            }
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
-                                val kind = selected.kind
-                                FilterChipRow(
-                                    filterChips(
-                                        kind = kind,
-                                        filter = filters.of(kind),
-                                        config = filters.configOf(kind),
-                                        onOpen = { filterSheet = true },
-                                        onRemoveTag = { tag ->
-                                            val filter = filters.of(kind)
-                                            actions.applyFilter(kind, filter.copy(tags = filter.tags - tag), FilterSaves())
-                                        },
-                                    ),
-                                    contentPadding = PaddingValues(0.dp),
+                            Spacer(Modifier.height(tabsBlock))
+                            HorizontalPager(
+                                state = pagerState,
+                                // only the page in view is composed; the neighbours join while a swipe moves (motion plan M3)
+                                beyondViewportPageCount = 0,
+                                key = { segments[it].key },
+                                modifier = Modifier.fillMaxWidth().height(pagerHeight).testTag(GamePagerTag),
+                            ) { page ->
+                                val segment = segments[page]
+                                GameSegmentGrid(
+                                    segment = segment,
+                                    list = listOf(segment),
+                                    grid = grids.getValue(segment),
+                                    columns = columns,
+                                    filters = filters,
+                                    options = options,
+                                    compactStreams = compactStreams,
+                                    actions = actions,
+                                    videoPositions = videoPositions,
+                                    bookmarkedVideoIds = bookmarkedVideoIds,
+                                    offline = offline,
+                                    bottomPadding = bottomPadding,
+                                    onOpenFilter = { filterSheet = true },
                                 )
-                            }
-                            when (selected) {
-                                GameSegment.Live -> if (lists.streams == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.streams.let { streams ->
-                                    pagedItems(
-                                        streams, offline, "stream",
-                                        skeleton = { SkeletonLiveCard() },
-                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_live), icon = LucideIcons.Radio) },
-                                    ) { index, stream ->
-                                        StreamCell(stream, index, options, compactStreams, filters.streams, actions)
-                                    }
-                                }
-                                GameSegment.Videos -> if (lists.videos == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.videos.let { videos ->
-                                    pagedItems(
-                                        videos, offline, "video",
-                                        skeleton = { SkeletonLiveCard() },
-                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_videos), icon = LucideIcons.Film) },
-                                    ) { index, video ->
-                                        VideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
-                                    }
-                                }
-                                GameSegment.Clips -> if (lists.clips == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else lists.clips.let { clips ->
-                                    pagedItems(
-                                        clips, offline, "clip",
-                                        skeleton = { SkeletonLiveCard() },
-                                        empty = { EmptyState(stringResource(R.string.browse_game_empty_clips), icon = LucideIcons.Scissors) },
-                                    ) { index, clip ->
-                                        ClipCell(clip, index, options, actions)
-                                    }
-                                }
                             }
                         }
                     }
@@ -364,11 +368,12 @@ fun GameScreen(
                 selectedIndex = segments.indexOf(selected).coerceAtLeast(0),
                 onSelect = { onSelect(segments[it]) },
                 glass = true,
+                // the selected block follows the finger while the pages move
+                position = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                 modifier = Modifier
                     .offset {
                         // under the header while it shows, then pinned under the bar
-                        val inList = if (grid.firstVisibleItemIndex == 0) barTopPx + headerHeight + gapPx - grid.firstVisibleItemScrollOffset else Int.MIN_VALUE
-                        IntOffset(0, maxOf(barTopPx, inList))
+                        IntOffset(0, maxOf(barTopPx, barTopPx + headerHeight + gapPx + headerOffset.floatValue.roundToInt()))
                     }
                     .padding(horizontal = LagoonSpacing.pageSide)
                     .widthIn(max = 560.dp)
@@ -401,6 +406,119 @@ fun GameScreen(
             onDismiss = { unfollowSheet = false },
         )
     }
+}
+
+/** One segment's page: its filter chips and its list, in its own grid. */
+@Composable
+private fun GameSegmentGrid(
+    segment: GameSegment,
+    list: LazyPagingItems<*>?,
+    grid: LazyGridState,
+    columns: Int,
+    filters: GameFilters,
+    options: FollowingListOptions,
+    compactStreams: Boolean,
+    actions: GameActions,
+    videoPositions: Map<Long, Long>,
+    bookmarkedVideoIds: Set<String>,
+    offline: Boolean,
+    bottomPadding: Dp,
+    onOpenFilter: () -> Unit,
+) {
+    StaggerGate("game:${segment.name}", hasItems = (list?.itemCount ?: 0) > 0) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            state = grid,
+            modifier = Modifier.fillMaxSize().testTag(GameListTag),
+            contentPadding = PaddingValues(
+                start = LagoonSpacing.pageSide, end = LagoonSpacing.pageSide,
+                bottom = bottomPadding + LagoonSpacing.m,
+            ),
+            verticalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+            horizontalArrangement = Arrangement.spacedBy(LagoonSpacing.cardGap),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "chips", contentType = "chips") {
+                val kind = segment.kind
+                FilterChipRow(
+                    filterChips(
+                        kind = kind,
+                        filter = filters.of(kind),
+                        config = filters.configOf(kind),
+                        onOpen = onOpenFilter,
+                        onRemoveTag = { tag ->
+                            val filter = filters.of(kind)
+                            actions.applyFilter(kind, filter.copy(tags = filter.tags - tag), FilterSaves())
+                        },
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                )
+            }
+            @Suppress("UNCHECKED_CAST")
+            when (segment) {
+                GameSegment.Live -> if (list == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else (list as LazyPagingItems<Stream>).let { streams ->
+                    pagedItems(
+                        streams, offline, "stream",
+                        skeleton = { SkeletonLiveCard() },
+                        empty = { EmptyState(stringResource(R.string.browse_game_empty_live), icon = LucideIcons.Radio) },
+                    ) { index, stream ->
+                        StreamCell(stream, index, options, compactStreams, filters.streams, actions)
+                    }
+                }
+                GameSegment.Videos -> if (list == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else (list as LazyPagingItems<Video>).let { videos ->
+                    pagedItems(
+                        videos, offline, "video",
+                        skeleton = { SkeletonLiveCard() },
+                        empty = { EmptyState(stringResource(R.string.browse_game_empty_videos), icon = LucideIcons.Film) },
+                    ) { index, video ->
+                        VideoCell(video, index, options, videoPositions, bookmarkedVideoIds, actions)
+                    }
+                }
+                GameSegment.Clips -> if (list == null) items(6, contentType = { "skeleton" }) { SkeletonLiveCard() } else (list as LazyPagingItems<Clip>).let { clips ->
+                    pagedItems(
+                        clips, offline, "clip",
+                        skeleton = { SkeletonLiveCard() },
+                        empty = { EmptyState(stringResource(R.string.browse_game_empty_clips), icon = LucideIcons.Scissors) },
+                    ) { index, clip ->
+                        ClipCell(clip, index, options, actions)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Collapses the game header as a list scrolls up and brings it back once a list is at its top (motion plan M3a): the
+ * header lives outside the pager, so every page drives the same offset through nested scrolling.
+ */
+internal class GameHeaderScroll(private val offset: MutableFloatState) : NestedScrollConnection {
+    /** How far the header can move: its height and the gap under it, in pixels. */
+    var range = 0f
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        // up: the header goes first, then the list scrolls
+        if (available.y >= 0f) return Offset.Zero
+        val consumed = GameHeaderRules.collapse(offset.floatValue, available.y, range)
+        offset.floatValue += consumed
+        return Offset(0f, consumed)
+    }
+
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+        // down past the list's top: the header comes back
+        if (available.y <= 0f) return Offset.Zero
+        val taken = GameHeaderRules.expand(offset.floatValue, available.y)
+        offset.floatValue += taken
+        return Offset(0f, taken)
+    }
+}
+
+/** The header's share of a vertical scroll (pure, GamePagerTest). */
+object GameHeaderRules {
+    /** Of an upward scroll [dy] (negative), what the header at [offset] (0 shown, -range hidden) takes. */
+    fun collapse(offset: Float, dy: Float, range: Float): Float = dy.coerceAtLeast(-(range + offset)).coerceAtMost(0f)
+
+    /** Of a downward scroll [dy] the list did not use (it is at its top), what the header takes to come back. */
+    fun expand(offset: Float, dy: Float): Float = dy.coerceAtMost(-offset).coerceAtLeast(0f)
 }
 
 private val GameSegment.label: Int

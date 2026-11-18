@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.size
@@ -196,22 +198,23 @@ fun SegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     glass: Boolean = false,
+    position: (() -> Float)? = null,
 ) {
     if (glass) {
         // floating over a list (glass plan, Mitchell's note: switchable tabs are glass): the selected segment is a
         // lighter lens, so the teal block stays the navigation's alone
         GlassSurface(GlassLevel.Float, LagoonShapes.pill, modifier.fillMaxWidth().height(LagoonSpacing.touchTarget)) {
-            SegmentedTrack(options, selectedIndex, onSelect, LagoonGlass.segmentSelected)
+            SegmentedTrack(options, selectedIndex, onSelect, LagoonGlass.segmentSelected, position)
         }
     } else {
         Box(modifier.fillMaxWidth().height(LagoonSpacing.touchTarget).background(Lagoon.colors.card, LagoonShapes.pill)) {
-            SegmentedTrack(options, selectedIndex, onSelect, Lagoon.colors.selectedTrack)
+            SegmentedTrack(options, selectedIndex, onSelect, Lagoon.colors.selectedTrack, position)
         }
     }
 }
 
 @Composable
-private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, selectedColor: Color) {
+private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, selectedColor: Color, position: (() -> Float)?) {
     val motion = Lagoon.motion
     val measurer = rememberTextMeasurer()
     val style = Lagoon.type.labelStrong
@@ -235,9 +238,18 @@ private fun SegmentedTrack(options: List<String>, selectedIndex: Int, onSelect: 
         }
         if (fits) {
             val offset by animateDpAsState(equal * selectedIndex, motion.steady(), label = "segmentOffset")
+            val equalPx = with(density) { equal.toPx() }
             Box(
                 Modifier
-                    .offset(x = offset)
+                    // with pages under the tabs, the block follows the pages as they move (motion plan M3); read at
+                    // layout time, so a swipe does not recompose the tabs
+                    .then(
+                        if (position != null) {
+                            Modifier.offset { IntOffset((equalPx * position().coerceIn(0f, options.lastIndex.toFloat())).roundToInt(), 0) }
+                        } else {
+                            Modifier.offset(x = offset)
+                        }
+                    )
                     .width(equal)
                     .fillMaxHeight()
                     .background(selectedColor, LagoonShapes.pill)

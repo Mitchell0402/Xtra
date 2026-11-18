@@ -263,9 +263,16 @@ class GamePage(
         val streamsFilterValue by streams.filter.collectAsState()
         val videosFilterValue by videos.filter.collectAsState()
         val clipsFilterValue by clips.filter.collectAsState()
-        val streamItems = (if (GameSegment.Live in segments && streamsFilterValue != null) streams.flow else emptyFlow()).collectAsLazyPagingItems()
-        val videoItems = (if (GameSegment.Videos in segments && videosFilterValue != null) videos.flow else emptyFlow()).collectAsLazyPagingItems()
-        val clipItems = (if (GameSegment.Clips in segments && clipsFilterValue != null) clips.flow else emptyFlow()).collectAsLazyPagingItems()
+        // a segment's list loads once it has been shown or a swipe heads for it (motion plan M3a)
+        val openedKeys by pager.openedSegments.collectAsState()
+        val opened = { segment: GameSegment -> segment in segments && (segment == selected || segment.key in openedKeys) }
+        LaunchedEffect(selected) { pager.openSegment(selected.key) }
+        val streamsOn = opened(GameSegment.Live) && streamsFilterValue != null
+        val videosOn = opened(GameSegment.Videos) && videosFilterValue != null
+        val clipsOn = opened(GameSegment.Clips) && clipsFilterValue != null
+        val streamItems = (if (streamsOn) streams.flow else emptyFlow()).collectAsLazyPagingItems()
+        val videoItems = (if (videosOn) videos.flow else emptyFlow()).collectAsLazyPagingItems()
+        val clipItems = (if (clipsOn) clips.flow else emptyFlow()).collectAsLazyPagingItems()
         val tagItems = tags.flow.collectAsLazyPagingItems()
         val game by pager.game.collectAsState()
         val following by pager.isFollowing.collectAsState()
@@ -322,10 +329,11 @@ class GamePage(
             segments = segments,
             selected = selected,
             onSelect = { selectedKey = it.key },
+            onVisit = { pager.openSegment(it.key) },
             lists = GameLists(
-                streams = streamItems.takeIf { streamsFilterValue != null },
-                videos = videoItems.takeIf { videosFilterValue != null },
-                clips = clipItems.takeIf { clipsFilterValue != null },
+                streams = streamItems.takeIf { streamsOn },
+                videos = videoItems.takeIf { videosOn },
+                clips = clipItems.takeIf { clipsOn },
             ),
             filters = GameFilters(
                 streams = streamsFilterValue?.let { streamsFilter() } ?: BrowseFilter(),

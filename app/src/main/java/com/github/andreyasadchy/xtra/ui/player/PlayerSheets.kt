@@ -2,9 +2,7 @@ package com.github.andreyasadchy.xtra.ui.player
 
 import com.github.andreyasadchy.xtra.ui.design.components.currentSheetMaxHeight
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -110,9 +108,14 @@ fun PlayerSheetHost(state: PlayerUiState, source: PlayerSheetSource, actions: Pl
     if (page != PlayerSheet.Sleep && page != PlayerSheet.SleepAt) sleepAtFromSleep.value = false
     val motion = Lagoon.motion
     LagoonBottomSheet(onDismiss = { state.sheet = null }, skipHalfHeight = true) {
+        // inside the sheet's own window: back returns to the page this one was opened from before it closes the sheet
+        // (P18, like the filter sheet); a page opened straight from a quick button has nowhere to go back to
+        val upTo = PlayerSheetNav.backTarget(page, fromMenu.value, sleepAtFromSleep.value)
+        BackHandler(enabled = upTo != null) { state.sheet = upTo }
         AnimatedContent(
             targetState = page,
-            transitionSpec = { fadeIn(motion.fade()) togetherWith fadeOut(motion.fadeExit()) },
+            // deeper pages come in from the end, going back reverses it (motion plan M2b item 5)
+            transitionSpec = { if (PlayerSheetNav.isBack(initialState, targetState)) motion.sheetBack() else motion.sheetForward() },
             label = "playerSheet",
         ) { current ->
             PlayerSheetPage(current, state, source, actions, layout, if (current == PlayerSheet.SleepAt && sleepAtFromSleep.value) {
@@ -499,4 +502,22 @@ private fun AdBlockPage(state: PlayerUiState, source: PlayerSheetSource, actions
         )
         Spacer(Modifier.height(4.dp))
     }
+}
+
+/** Where back goes inside the player's sheet (motion plan M2b item 5). Pure, see PlayerGesturesTest. */
+object PlayerSheetNav {
+    /**
+     * The page back returns to from [page], or null when back closes the sheet: the menu itself, and pages opened
+     * straight from a quick button ([fromMenu] false). "At a set time" opened from the sleep timer goes back to it.
+     */
+    fun backTarget(page: PlayerSheet, fromMenu: Boolean, sleepAtFromSleep: Boolean): PlayerSheet? = when {
+        page == PlayerSheet.SleepAt && sleepAtFromSleep -> PlayerSheet.Sleep
+        page == PlayerSheet.Settings -> null
+        fromMenu -> PlayerSheet.Settings
+        else -> null
+    }
+
+    /** A move back up: to the menu, or from "at a set time" to the sleep timer. */
+    fun isBack(from: PlayerSheet, to: PlayerSheet): Boolean =
+        to == PlayerSheet.Settings || (from == PlayerSheet.SleepAt && to == PlayerSheet.Sleep)
 }

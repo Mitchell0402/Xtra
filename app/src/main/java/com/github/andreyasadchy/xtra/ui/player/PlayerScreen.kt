@@ -55,6 +55,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,6 +116,32 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/**
+ * What the last frame looked like, for deciding whether a layout change animates (motion plan M2b item 3). Written
+ * during composition, read only by it and its effects; not state, so writing it never schedules a frame.
+ */
+private class TransitionMemo(
+    var layout: PlayerLayout,
+    var windowWidth: Int,
+    var windowHeight: Int,
+    var chatWidthPx: Int,
+    var slot: Rect,
+    var chatTarget: Float,
+    var animate: Boolean = false,
+    var heldChat: ChatPlacement? = null,
+)
+
+/** Where the video view is drawn, after its scale (pivot at its top left) and translation. */
+fun VideoPlacement.drawnRect(): Rect {
+    val left = left + translationX
+    val top = top + translationY
+    return Rect(left, top, left + width * scale, top + height * scale)
+}
+
+/** The landscape scale mode shows the whole picture letterboxed (not zoomed or stretched). */
+@androidx.annotation.OptIn(UnstableApi::class)
+private fun isFitMode(resizeMode: Int) = resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT
 
 /** How far below its place the chat sits when it has faded out (motion plan M2a item 1). */
 private val ChatFadeShift = 16.dp
@@ -352,6 +382,73 @@ object PlayerGeometryRules {
     /** How far the chat sits below its place while it fades ([shiftPx] at alpha 0). */
     fun chatShift(progress: Float, shiftPx: Float): Float = shiftPx * (1f - chatAlpha(progress))
 
+    /** How far a drag on the player counts as the whole way between maximized and mini (drag down, swipe up). */
+    val DragRange = 360.dp
+
+    /** The back gesture's preview shrinks the page this far towards the mini player (motion plan M2b item 1). */
+    const val BackPreviewSpan = 0.25f
+
+    /** The page's progress while the back gesture is at [backProgress] (0 to 1). */
+    fun backPreview(backProgress: Float): Float = BackPreviewSpan * backProgress.coerceIn(0f, 1f)
+
+    /** The progress while a finger pulls the mini player up by [dy] pixels (negative upwards) over [rangePx]. */
+    fun miniSwipeProgress(dy: Float, rangePx: Float): Float = (1f + dy / rangePx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+
+    /** A swipe on the mini player this fast (progress per second) decides on its own. */
+    const val MiniFlingSpeed = 1f
+    /** A slow swipe expands past this share of the way, like the drag down that minimizes (15 %). */
+    const val MiniSwipeShare = 0.15f
+
+    /**
+     * Whether a swipe up on the mini player that let go at [share] of the way (positive upwards), moving at
+     * [velocity] progress per second (negative upwards), expands the player or springs back (motion plan M2b item 4).
+     */
+    fun miniSwipeExpands(share: Float, velocity: Float): Boolean = when {
+        velocity < -MiniFlingSpeed -> true
+        velocity > MiniFlingSpeed -> false
+        else -> share > MiniSwipeShare
+    }
+
+    /**
+     * Whether a change of the slot and the chat moves on the spring (motion plan M2b item 3): only between the
+     * landscape and tablet arrangements, in the same window (not a rotation), with the player fully open, and not
+     * while the tablet's divider is being dragged (that follows the finger).
+     */
+    fun animateLayoutChange(oldLayout: PlayerLayout, newLayout: PlayerLayout, sameWindow: Boolean, chatWidthDragged: Boolean, settled: Boolean): Boolean {
+        val wide = { l: PlayerLayout -> l == PlayerLayout.Landscape || l == PlayerLayout.Tablet }
+        return sameWindow && settled && !chatWidthDragged && wide(oldLayout) && wide(newLayout)
+    }
+
+    /** The [aspect] picture fitted in the middle of [box]. */
+    fun fitRect(box: Rect, aspect: Float): Rect {
+        if (box.width <= 0f || box.height <= 0f || aspect <= 0f) return box
+        val width = min(box.width, box.height * aspect)
+        val height = width / aspect
+        val left = box.left + (box.width - width) / 2f
+        val top = box.top + (box.height - height) / 2f
+        return Rect(left, top, left + width, top + height)
+    }
+
+    /**
+     * The video view laid out at its final [slot] but drawn where [shown] is on the way there: the picture inside it
+     * scaled evenly so it sits where it would in [shown]. In the zoom and fill modes the picture is the whole view, so
+     * it maps the views instead; their shapes differ, so the end of the move jumps a little (accepted in the plan).
+     */
+    fun slotTransition(slot: Rect, shown: Rect, videoAspect: Float, fit: Boolean): VideoPlacement {
+        val from = if (fit) fitRect(slot, videoAspect) else slot
+        val to = if (fit) fitRect(shown, videoAspect) else shown
+        val scale = to.width / from.width.coerceAtLeast(1f)
+        return VideoPlacement(
+            left = slot.left.roundToInt(),
+            top = slot.top.roundToInt(),
+            width = slot.width.roundToInt(),
+            height = slot.height.roundToInt(),
+            scale = scale,
+            translationX = to.left - slot.left - scale * (from.left - slot.left),
+            translationY = to.top - slot.top - scale * (from.top - slot.top),
+        )
+    }
+
     fun lerp(a: Float, b: Float, f: Float) = a + (b - a) * f
 
     fun lerpRect(a: Rect, b: Rect, f: Float) = Rect(lerp(a.left, b.left, f), lerp(a.top, b.top, f), lerp(a.right, b.right, f), lerp(a.bottom, b.bottom, f))
@@ -381,7 +478,7 @@ fun PlayerScreen(
     now: () -> Long = System::currentTimeMillis,
     entrance: PlayerEntrance? = null,
     onFirstFrame: () -> Unit = {},
-    onChatFade: (alpha: Float, shiftY: Float) -> Unit = { _, _ -> },
+    onChatFade: (alpha: Float, shiftY: Float, shiftX: Float) -> Unit = { _, _, _ -> },
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -445,6 +542,17 @@ fun PlayerScreen(
                 if (motion.reduced) enter.snapTo(0f) else enter.animateTo(0f, motion.playerSpring())
             }
         }
+        // the system back gesture previews the minimize: the page shrinks a little while the finger moves, springs back
+        // when the gesture is cancelled; a committed gesture minimizes from where it is (motion plan M2b item 1)
+        LaunchedEffect(Unit) {
+            snapshotFlow { state.backProgress }.collect { back ->
+                if (back != null) {
+                    progress.snapTo(PlayerGeometryRules.backPreview(back))
+                } else if (state.mode == PlayerMode.Maximized && progress.value > 0f && !dragging) {
+                    if (motion.reduced) progress.snapTo(0f) else progress.animateTo(0f, motion.playerSpring())
+                }
+            }
+        }
         val p = if (state.inPictureInPicture) 0f else progress.value
         val e = if (state.inPictureInPicture) 0f else enter.value
         // how far the page is from showing in full: the mini player's progress, or the entrance's
@@ -454,18 +562,68 @@ fun PlayerScreen(
             entrance?.from?.let { PlayerGeometryRules.fitToAspect(it, geometry.slot) } ?: LagoonMotion.playerRiseStart(geometry.slot, height)
         } else null
 
-        val placement = PlayerGeometryRules.videoPlacement(geometry, p, dismiss.value, visible = true, from = enterFrom, enter = e)
+        // landscape and tablet: the video and the chat move to their new places on the steady spring when the chat
+        // opens or closes, the keyboard comes, or the tablet switches to full screen, instead of jumping (P15, P16, X4).
+        // The video view is laid out at its final size once; only its scale and position follow the animation (a
+        // SurfaceView resized every frame reallocates its buffers). A finger on the tablet's divider, a rotation or a
+        // player that is not fully open moves everything at once.
+        val settled = away == 0f && !state.inPictureInPicture
+        // where the chat's left edge goes: its place, or just off the right edge when it is closed
+        val chatTarget = if (geometry.chat.visible) geometry.chat.left.toFloat() else width
+        val memo = remember { TransitionMemo(layout, constraints.maxWidth, constraints.maxHeight, state.chatWidthPx, geometry.slot, chatTarget) }
+        if (geometry.slot != memo.slot || chatTarget != memo.chatTarget || layout != memo.layout) {
+            memo.animate = !motion.reduced && PlayerGeometryRules.animateLayoutChange(
+                oldLayout = memo.layout,
+                newLayout = layout,
+                sameWindow = memo.windowWidth == constraints.maxWidth && memo.windowHeight == constraints.maxHeight,
+                chatWidthDragged = memo.chatWidthPx != state.chatWidthPx,
+                settled = settled,
+            )
+            if (geometry.chat.visible) memo.heldChat = geometry.chat
+            memo.layout = layout
+            memo.windowWidth = constraints.maxWidth
+            memo.windowHeight = constraints.maxHeight
+            memo.chatWidthPx = state.chatWidthPx
+            memo.slot = geometry.slot
+            memo.chatTarget = chatTarget
+        } else if (geometry.chat.visible) {
+            memo.heldChat = geometry.chat
+        }
+        val slotAnim = remember { Animatable(geometry.slot, Rect.VectorConverter) }
+        val chatEdge = remember { Animatable(chatTarget) }
+        LaunchedEffect(geometry.slot) {
+            if (memo.animate) slotAnim.animateTo(geometry.slot, motion.layout()) else slotAnim.snapTo(geometry.slot)
+        }
+        LaunchedEffect(chatTarget) {
+            if (memo.animate) chatEdge.animateTo(chatTarget, motion.layout()) else chatEdge.snapTo(chatTarget)
+        }
+        val shownSlot = if (memo.animate && settled) slotAnim.value else geometry.slot
+        val shownChatEdge = if (memo.animate && settled) chatEdge.value else chatTarget
+        val shown = if (shownSlot != geometry.slot) geometry.copy(slot = shownSlot) else geometry
+        val fitVideo = layout != PlayerLayout.Landscape || isFitMode(state.resizeMode)
+
+        val placement = if (shownSlot != geometry.slot) {
+            PlayerGeometryRules.slotTransition(geometry.slot, shownSlot, state.videoAspect, fitVideo)
+        } else {
+            PlayerGeometryRules.videoPlacement(geometry, p, dismiss.value, visible = true, from = enterFrom, enter = e)
+        }
         SideEffect { onVideoPlacement(placement) }
         // the chat fades with the page instead of vanishing on the first frame of a minimize and popping in at the end
         // of a maximize (P2, P4, P17). Its opacity goes through its own channel: in the placement it would lay the
         // whole chat list out again on every frame (motion plan M2a item 1)
         val chatAlpha = if (state.inPictureInPicture) 0f else PlayerGeometryRules.chatAlpha(away)
-        val chat = if (chatAlpha > 0f) geometry.chat else geometry.chat.copy(visible = false)
+        // a closing chat keeps its last place while it slides out to the right
+        val sliding = memo.heldChat?.takeIf { !geometry.chat.visible && memo.animate && settled && shownChatEdge < width }
+        val laidOut = sliding ?: geometry.chat
+        val chat = if (chatAlpha > 0f) laidOut else laidOut.copy(visible = false)
         SideEffect { onChatPlacement(chat) }
         val chatShift = with(density) { PlayerGeometryRules.chatShift(away, ChatFadeShift.toPx()) }
-        SideEffect { onChatFade(chatAlpha, chatShift) }
+        val chatSlide = if (laidOut.visible && (layout == PlayerLayout.Landscape || layout == PlayerLayout.Tablet)) shownChatEdge - laidOut.left else 0f
+        SideEffect { onChatFade(chatAlpha, chatShift, chatSlide) }
 
-        // everything around the video: black above it, the page below it (portrait), black beside it (landscape)
+        // everything around the video: black above it, the page below it (portrait), black beside it (landscape).
+        // While the slot moves, the hole is the video view as drawn: its letterbox bars are not in it
+        val hole = if (shownSlot != geometry.slot) placement.drawnRect() else shown.slot
         if (away < 1f && !state.inPictureInPicture) {
             val page = Lagoon.colors.page
             Canvas(
@@ -475,11 +633,11 @@ fun PlayerScreen(
                     // the maximized page takes every touch so nothing reaches the pages underneath
                     .pointerInput(Unit) { detectTapGestures { } }
             ) {
-                clipRect(geometry.slot.left, geometry.slot.top, geometry.slot.right, geometry.slot.bottom, ClipOp.Difference) {
+                clipRect(hole.left, hole.top, hole.right, hole.bottom, ClipOp.Difference) {
                     when (layout) {
                         PlayerLayout.Portrait, PlayerLayout.Tablet -> {
-                            drawRect(Color.Black, size = Size(size.width, geometry.slot.top))
-                            drawRect(page, topLeft = Offset(0f, geometry.slot.top), size = Size(size.width, size.height - geometry.slot.top))
+                            drawRect(Color.Black, size = Size(size.width, shown.slot.top))
+                            drawRect(page, topLeft = Offset(0f, shown.slot.top), size = Size(size.width, size.height - shown.slot.top))
                         }
                         else -> drawRect(Color.Black)
                     }
@@ -495,7 +653,7 @@ fun PlayerScreen(
                     actions = actions,
                     now = now,
                     modifier = Modifier
-                        .offset { IntOffset(0, geometry.slot.bottom.roundToInt()) }
+                        .offset { IntOffset(0, shown.slot.bottom.roundToInt()) }
                         .width(with(density) { geometry.paneWidth.toDp() })
                         .graphicsLayer { alpha = (1f - away * 3f).coerceAtLeast(0f) }
                         .onSizeChanged { if (it.height > 0) infoHeight = it.height },
@@ -514,7 +672,7 @@ fun PlayerScreen(
                 state = state,
                 options = options,
                 actions = actions,
-                geometry = geometry,
+                geometry = shown,
                 interactive = state.mode == PlayerMode.Maximized && !state.inPictureInPicture && e == 0f && (p == 0f || dragging),
                 progress = away,
                 setDragging = { dragging = it },
@@ -533,6 +691,8 @@ fun PlayerScreen(
                 progress = p,
                 dismiss = dismiss,
                 onMove = { delta -> miniOffset += delta },
+                progressAnim = progress,
+                onRelease = { release.floatValue = it },
             )
         }
 
@@ -1234,6 +1394,8 @@ private fun MiniPlayer(
     progress: Float,
     dismiss: Animatable<Float, *>,
     onMove: (Offset) -> Unit,
+    progressAnim: Animatable<Float, *>,
+    onRelease: (Float) -> Unit,
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -1250,10 +1412,28 @@ private fun MiniPlayer(
             .graphicsLayer { alpha = progress * (1f - (abs(dismiss.value) / card.width).coerceIn(0f, 1f)) }
             .pointerInput(options.moveFreely) {
                 val tracker = VelocityTracker()
+                val upTracker = VelocityTracker()
                 var dx = 0f
+                var dy = 0f
+                // 0 undecided, 1 sideways (dismiss, or move when "move freely" is on), 2 up (expand, motion plan M2b item 4)
+                var axis = 0
+                val range = with(density) { PlayerGeometryRules.DragRange.toPx() }
                 detectDragGestures(
-                    onDragStart = { tracker.resetTracking(); dx = 0f },
+                    onDragStart = { tracker.resetTracking(); upTracker.resetTracking(); dx = 0f; dy = 0f; axis = 0 },
                     onDragEnd = {
+                        if (axis == 2) {
+                            // progress per second, negative while the finger goes up
+                            val velocity = upTracker.calculateVelocity().y / range
+                            scope.launch {
+                                if (PlayerGeometryRules.miniSwipeExpands(-dy / range, velocity)) {
+                                    onRelease(velocity.coerceAtMost(0f))
+                                    actions.maximize()
+                                } else {
+                                    progressAnim.animateTo(1f, motion.playerSpring(), initialVelocity = velocity.coerceAtLeast(0f))
+                                }
+                            }
+                            return@detectDragGestures
+                        }
                         val velocity = tracker.calculateVelocity().x
                         scope.launch {
                             if (abs(velocity) > 1500f || (!options.moveFreely && abs(dx) > card.width * 0.4f)) {
@@ -1268,10 +1448,22 @@ private fun MiniPlayer(
                             }
                         }
                     },
-                    onDragCancel = { scope.launch { dismiss.animateTo(0f, motion.playerSpring()) } },
+                    onDragCancel = {
+                        scope.launch {
+                            if (axis == 2) progressAnim.animateTo(1f, motion.playerSpring()) else dismiss.animateTo(0f, motion.playerSpring())
+                        }
+                    },
                     onDrag = { change, amount ->
                         change.consume()
                         dx += amount.x
+                        dy += amount.y
+                        if (axis == 0) axis = if (!options.moveFreely && abs(dy) > abs(dx)) 2 else 1
+                        if (axis == 2) {
+                            upTracker.addPosition(change.uptimeMillis, Offset(0f, dy))
+                            val target = PlayerGeometryRules.miniSwipeProgress(dy, range)
+                            scope.launch { progressAnim.snapTo(target) }
+                            return@detectDragGestures
+                        }
                         // the card moves under the finger: track the distance, not the position inside the card
                         tracker.addPosition(change.uptimeMillis, Offset(dx, 0f))
                         val target = dx

@@ -94,6 +94,8 @@ class PlayerUiState {
     // page state
     var mode by mutableStateOf(PlayerMode.Maximized)
     var inPictureInPicture by mutableStateOf(false)
+    /** The system back gesture's progress while it previews the minimize (motion plan M2b item 1), null otherwise. */
+    var backProgress by mutableStateOf<Float?>(null)
     var controlsVisible by mutableStateOf(false)
     var chatOpen by mutableStateOf(true)
     /** In phone landscape the chat lies over the video instead of beside it. */

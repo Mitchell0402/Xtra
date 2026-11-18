@@ -77,6 +77,11 @@ jobs:
       run: |
         python3 tools/ci/test_legacy_ui_guard.py
         python3 tools/ci/legacy_ui_guard.py
+    # motion plan M0: every animation value comes from LagoonMotion, continuous animations go through one wrapper
+    - name: Motion guard
+      run: |
+        python3 tools/ci/test_motion_guard.py
+        python3 tools/ci/motion_guard.py
     - name: Lint (fails on new errors; existing ones are in app/lint-baseline.xml)
       run: ./gradlew :app:lintDebug
     - name: Upload lint report

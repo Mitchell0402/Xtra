@@ -3,12 +3,7 @@ package com.github.andreyasadchy.xtra.ui.design.components
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonColors
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -25,10 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +46,8 @@ import coil3.decode.DataSource
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
+import com.github.andreyasadchy.xtra.ui.design.theme.ContinuousMotion
+import com.github.andreyasadchy.xtra.ui.design.theme.continuousTransition
 
 /**
  * An image that fades in when it arrives instead of popping (plan 5). [model] is anything Coil loads (usually a URL),
@@ -137,25 +133,18 @@ fun Avatar(
 }
 
 /**
- * Whether live dots breathe. A page whose content is the backdrop of real glass turns it off (glass decision 4a):
- * every breath redraws the page, and the glass over it re-blurs 60 times a second while nothing else moves.
+ * The soft red live dot. It breathes slowly (plan 5); with reduced motion, or over a glass backdrop
+ * ([LocalAmbientMotion]), it stays still.
  */
-val LocalLiveDotBreathing = staticCompositionLocalOf { true }
-
-/** The soft red live dot. It breathes slowly (plan 5); with reduced motion, or over a glass backdrop, it stays still. */
 @Composable
 fun LiveDot(modifier: Modifier = Modifier, size: Dp = 7.dp) {
     val motion = Lagoon.motion
-    val breathe = !motion.reduced && LocalLiveDotBreathing.current
-    val alpha = if (breathe) {
-        val breathing = rememberInfiniteTransition(label = "liveDot")
-        breathing.animateFloat(
-            initialValue = 1f,
-            targetValue = 0.35f,
-            animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Reverse),
-            label = "liveDotAlpha",
-        )
-    } else null
+    val alpha = continuousTransition("liveDot", ContinuousMotion.Ambient)?.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = motion.loop(LagoonMotion.LiveDotMs, reverse = true),
+        label = "liveDotAlpha",
+    )
     Box(
         modifier
             .size(size)
@@ -230,13 +219,9 @@ fun ProgressRing(progress: Float?, modifier: Modifier = Modifier, size: Dp = 36.
     val colors = Lagoon.colors
     val motion = Lagoon.motion
     val animated by androidx.compose.animation.core.animateFloatAsState(progress ?: 0.25f, motion.steady(), label = "ring")
-    val spin = if (progress == null && !motion.reduced) {
-        val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "ringSpin")
-        transition.animateFloat(
-            0f, 360f,
-            androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.LinearEasing)),
-            label = "ringAngle",
-        ).value
+    val spin = if (progress == null) {
+        continuousTransition("ringSpin", ContinuousMotion.Progress)
+            ?.animateFloat(0f, 360f, motion.loop(LagoonMotion.RingSpinMs), label = "ringAngle")?.value ?: 0f
     } else 0f
     Box(
         modifier

@@ -26,7 +26,8 @@ private val PressHighlight = Color.White.copy(alpha = 0.07f)
 
 /**
  * Press feedback for every tappable card and row (plan 5): it shrinks to 97 % and lightens one step while held, then
- * springs back on release. No ripple. A long press gives a haptic tick before [onLongClick] runs.
+ * springs back on release. No ripple. A long press gives a haptic tick before [onLongClick] runs. A click also records
+ * where it happened ([PressOrigin]), so a player opened by it can expand from the card.
  */
 @OptIn(ExperimentalFoundationApi::class)
 fun Modifier.pressable(
@@ -49,7 +50,10 @@ fun Modifier.pressable(
         label = "pressScale",
     )
     val highlight by animateFloatAsState(if (pressed) 1f else 0f, motion.fade(LagoonMotion.INSTANT), label = "pressHighlight")
+    // the player expands from the tapped card (motion plan M2a): the click records where it was, before the press scale
+    val origin = remember { PressOriginHandle() }
     this
+        .then(PressOriginElement(origin))
         .graphicsLayer {
             scaleX = scale
             scaleY = scale
@@ -72,6 +76,9 @@ fun Modifier.pressable(
                     longClick()
                 }
             },
-            onClick = onClick,
+            onClick = {
+                origin.record()
+                onClick()
+            },
         )
 }

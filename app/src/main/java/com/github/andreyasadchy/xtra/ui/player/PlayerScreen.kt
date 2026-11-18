@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,6 +103,7 @@ import com.github.andreyasadchy.xtra.ui.design.components.Tag
 import com.github.andreyasadchy.xtra.ui.design.components.pressable
 import com.github.andreyasadchy.xtra.ui.design.icons.LucideIcons
 import com.github.andreyasadchy.xtra.ui.design.theme.Lagoon
+import com.github.andreyasadchy.xtra.ui.design.theme.LagoonMotion
 import com.github.andreyasadchy.xtra.ui.design.theme.LagoonShapes
 import com.github.andreyasadchy.xtra.util.TwitchApiHelper
 import kotlinx.coroutines.delay
@@ -110,6 +112,9 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/** How far below its place the chat sits when it has faded out (motion plan M2a item 1). */
+private val ChatFadeShift = 16.dp
 
 /** Where the fragment puts its plain video view: laid out at the maximized slot, moved and scaled into the mini player. */
 @Immutable
@@ -134,6 +139,13 @@ data class ChatPlacement(
     val visible: Boolean = false,
     val overlay: Boolean = false,
 )
+
+/**
+ * How a newly opened player arrives (motion plan M2a item 3): the video grows out of [from], a tapped card's picture
+ * in window pixels, or rises from below the window when [from] is null (a link, a notification).
+ */
+@Immutable
+data class PlayerEntrance(val from: Rect?)
 
 /** The four arrangements of the page (plan 7.4). */
 enum class PlayerLayout { Portrait, Landscape, Tablet, Pip }
@@ -289,24 +301,60 @@ object PlayerGeometryRules {
         PlayerGeometry(layout, slot, card, thumb, chat, paneWidth)
     }
 
-    /** The video view at [progress] between the maximized slot (0) and the mini player (1). */
-    fun videoPlacement(g: PlayerGeometry, progress: Float, dismissOffset: Float, visible: Boolean): VideoPlacement {
+    /**
+     * The video view at [progress] between the maximized slot (0) and the mini player (1). While the player opens,
+     * [enter] goes from 1 to 0 and the maximized end of that path starts at [from] (a card's picture, or below the
+     * window; motion plan M2a item 3) instead of the slot. [from] should have the slot's shape ([fitToAspect]).
+     */
+    fun videoPlacement(
+        g: PlayerGeometry,
+        progress: Float,
+        dismissOffset: Float,
+        visible: Boolean,
+        from: Rect? = null,
+        enter: Float = 0f,
+    ): VideoPlacement {
         val s = g.slot
-        val t = g.miniThumb
-        val scale = lerp(1f, t.width / s.width.coerceAtLeast(1f), progress)
+        val start = if (from != null && enter > 0f) lerpRect(s, from, enter) else s
+        val end = lerpRect(start, g.miniThumb, progress)
         return VideoPlacement(
             left = s.left.roundToInt(),
             top = s.top.roundToInt(),
             width = s.width.roundToInt(),
             height = s.height.roundToInt(),
-            scale = scale,
-            translationX = lerp(0f, t.left - s.left, progress) + dismissOffset,
-            translationY = lerp(0f, t.top - s.top, progress),
+            scale = end.width / s.width.coerceAtLeast(1f),
+            translationX = end.left - s.left + dismissOffset,
+            translationY = end.top - s.top,
             visible = visible,
         )
     }
 
+    /**
+     * [origin] (a tapped card's picture) reshaped to the slot's aspect ratio, same width and vertical centre, so the
+     * video scales evenly on the way from the card to the slot.
+     */
+    fun fitToAspect(origin: Rect, slot: Rect): Rect {
+        val ratio = slot.height / slot.width.coerceAtLeast(1f)
+        val height = origin.width * ratio
+        val top = origin.center.y - height / 2f
+        return Rect(origin.left, top, origin.right, top + height)
+    }
+
+    /** How much of the maximized page's progress the chat takes to fade: gone by 0.3 on the way down. */
+    const val ChatFadeSpan = 0.3f
+
+    /**
+     * The chat's opacity at [progress] (0 maximized, 1 mini; motion plan M2a item 1): it fades out over the first 30 %
+     * of a minimize and back in over the last 30 % of a maximize, so it never pops in or vanishes on one frame.
+     */
+    fun chatAlpha(progress: Float): Float = (1f - progress / ChatFadeSpan).coerceIn(0f, 1f)
+
+    /** How far the chat sits below its place while it fades ([shiftPx] at alpha 0). */
+    fun chatShift(progress: Float, shiftPx: Float): Float = shiftPx * (1f - chatAlpha(progress))
+
     fun lerp(a: Float, b: Float, f: Float) = a + (b - a) * f
+
+    fun lerpRect(a: Rect, b: Rect, f: Float) = Rect(lerp(a.left, b.left, f), lerp(a.top, b.top, f), lerp(a.right, b.right, f), lerp(a.bottom, b.bottom, f))
 }
 
 /**
@@ -331,6 +379,9 @@ fun PlayerScreen(
     modifier: Modifier = Modifier,
     sideInsets: Pair<Int, Int>? = null,
     now: () -> Long = System::currentTimeMillis,
+    entrance: PlayerEntrance? = null,
+    onFirstFrame: () -> Unit = {},
+    onChatFade: (alpha: Float, shiftY: Float) -> Unit = { _, _ -> },
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -383,21 +434,44 @@ fun PlayerScreen(
             val velocity = release.floatValue.also { release.floatValue = 0f }
             if (motion.reduced) progress.snapTo(target) else progress.animateTo(target, motion.playerSpring(), initialVelocity = velocity)
         }
+        // a newly opened player grows from the tapped card or rises from the bottom: 1 at the start, 0 in place.
+        // It waits for the page's first frame (building the page, the video and the service binding takes the first
+        // frames after the tap), then runs on the player spring (motion plan M2a item 3)
+        val enter = remember { Animatable(if (entrance != null) 1f else 0f).apply { updateBounds(0f, 1f) } }
+        LaunchedEffect(Unit) {
+            withFrameNanos { }
+            onFirstFrame()
+            if (enter.value > 0f) {
+                if (motion.reduced) enter.snapTo(0f) else enter.animateTo(0f, motion.playerSpring())
+            }
+        }
         val p = if (state.inPictureInPicture) 0f else progress.value
-        val maximized = p == 0f && state.mode == PlayerMode.Maximized && !dragging
+        val e = if (state.inPictureInPicture) 0f else enter.value
+        // how far the page is from showing in full: the mini player's progress, or the entrance's
+        val away = max(p, e)
+        val maximized = away == 0f && state.mode == PlayerMode.Maximized && !dragging
+        val enterFrom = if (e > 0f) {
+            entrance?.from?.let { PlayerGeometryRules.fitToAspect(it, geometry.slot) } ?: LagoonMotion.playerRiseStart(geometry.slot, height)
+        } else null
 
-        val placement = PlayerGeometryRules.videoPlacement(geometry, p, dismiss.value, visible = true)
+        val placement = PlayerGeometryRules.videoPlacement(geometry, p, dismiss.value, visible = true, from = enterFrom, enter = e)
         SideEffect { onVideoPlacement(placement) }
-        val chat = if (maximized && !state.inPictureInPicture) geometry.chat else geometry.chat.copy(visible = false)
+        // the chat fades with the page instead of vanishing on the first frame of a minimize and popping in at the end
+        // of a maximize (P2, P4, P17). Its opacity goes through its own channel: in the placement it would lay the
+        // whole chat list out again on every frame (motion plan M2a item 1)
+        val chatAlpha = if (state.inPictureInPicture) 0f else PlayerGeometryRules.chatAlpha(away)
+        val chat = if (chatAlpha > 0f) geometry.chat else geometry.chat.copy(visible = false)
         SideEffect { onChatPlacement(chat) }
+        val chatShift = with(density) { PlayerGeometryRules.chatShift(away, ChatFadeShift.toPx()) }
+        SideEffect { onChatFade(chatAlpha, chatShift) }
 
         // everything around the video: black above it, the page below it (portrait), black beside it (landscape)
-        if (p < 1f && !state.inPictureInPicture) {
+        if (away < 1f && !state.inPictureInPicture) {
             val page = Lagoon.colors.page
             Canvas(
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = 1f - p }
+                    .graphicsLayer { alpha = 1f - away }
                     // the maximized page takes every touch so nothing reaches the pages underneath
                     .pointerInput(Unit) { detectTapGestures { } }
             ) {
@@ -414,7 +488,7 @@ fun PlayerScreen(
         }
 
         if (layout == PlayerLayout.Portrait || layout == PlayerLayout.Tablet) {
-            if (p < 1f && !state.inPictureInPicture) {
+            if (away < 1f && !state.inPictureInPicture) {
                 PlayerInfo(
                     state = state,
                     options = options,
@@ -423,7 +497,7 @@ fun PlayerScreen(
                     modifier = Modifier
                         .offset { IntOffset(0, geometry.slot.bottom.roundToInt()) }
                         .width(with(density) { geometry.paneWidth.toDp() })
-                        .graphicsLayer { alpha = (1f - p * 3f).coerceAtLeast(0f) }
+                        .graphicsLayer { alpha = (1f - away * 3f).coerceAtLeast(0f) }
                         .onSizeChanged { if (it.height > 0) infoHeight = it.height },
                     scrollable = layout == PlayerLayout.Tablet,
                     maxHeight = with(density) { (height - geometry.slot.bottom).toDp() },
@@ -441,8 +515,8 @@ fun PlayerScreen(
                 options = options,
                 actions = actions,
                 geometry = geometry,
-                interactive = state.mode == PlayerMode.Maximized && !state.inPictureInPicture && (p == 0f || dragging),
-                progress = p,
+                interactive = state.mode == PlayerMode.Maximized && !state.inPictureInPicture && e == 0f && (p == 0f || dragging),
+                progress = away,
                 setDragging = { dragging = it },
                 progressAnim = progress,
                 onRelease = { release.floatValue = it },
@@ -630,7 +704,7 @@ private fun VideoLayer(
             )
         }
 
-        if (state.videoDisabled && progress < 1f) {
+        if (state.videoDisabled && !state.coverUp && progress < 1f) {
             AudioOnlyBackdrop(Modifier.align(Alignment.Center))
         }
 

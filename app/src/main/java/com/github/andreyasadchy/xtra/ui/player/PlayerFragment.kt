@@ -45,6 +45,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.trackPipAnimationHintView
 import androidx.annotation.OptIn
@@ -174,11 +175,39 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
 
     fun isPlayerMaximized() = isMaximized
 
+    /**
+     * Back while maximized: closes a sheet, else minimizes. The system back gesture previews the minimize (motion plan
+     * M2b item 1) in portrait and on tablets; not in phone landscape, where minimizing also unlocks the rotation.
+     * Registered only while maximized; the chat's emote panel registers after it and so keeps getting back first.
+     */
     private val backPressedCallback = object : OnBackPressedCallback(true) {
+        private var previewing = false
+
+        override fun handleOnBackStarted(backEvent: BackEventCompat) {
+            previewing = state.sheet == null && canPreviewBack()
+            if (previewing) state.backProgress = 0f
+        }
+
+        override fun handleOnBackProgressed(backEvent: BackEventCompat) {
+            if (previewing) state.backProgress = backEvent.progress
+        }
+
+        override fun handleOnBackCancelled() {
+            if (previewing) {
+                previewing = false
+                state.backProgress = null
+            }
+        }
+
         override fun handleOnBackPressed() {
+            previewing = false
             if (state.sheet != null) state.sheet = null else minimize()
+            // after minimize: the page then finishes the move from where the preview left it
+            state.backProgress = null
         }
     }
+
+    private fun canPreviewBack() = !state.inPictureInPicture && (isPortrait || isTabletLayout())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         if (arguments?.getBoolean(KEY_OFFLINE) == true) {
@@ -462,11 +491,15 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
      */
     class SwapCapture(val video: Bitmap?, val page: Bitmap?, val aspect: Float, val oldCover: Any?, val maximized: Boolean)
 
-    /** The chat's own opacity channel (motion plan M2a item 1): no layout, a hardware layer only while it fades. */
-    private fun fadeChat(alpha: Float, shiftY: Float) {
+    /**
+     * The chat's own opacity and offset channel (motion plans M2a item 1, M2b item 3): no layout, a hardware layer
+     * only while it fades.
+     */
+    private fun fadeChat(alpha: Float, shiftY: Float, shiftX: Float) {
         val chat = chatContainer ?: return
         if (chat.alpha != alpha) chat.alpha = alpha
         if (chat.translationY != shiftY) chat.translationY = shiftY
+        if (chat.translationX != shiftX) chat.translationX = shiftX
         val layer = if (alpha > 0f && alpha < 1f) View.LAYER_TYPE_HARDWARE else View.LAYER_TYPE_NONE
         if (chat.layerType != layer) chat.setLayerType(layer, null)
     }
@@ -568,7 +601,40 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         video.translationX = placement.translationX
         video.translationY = placement.translationY
         video.isVisible = placement.visible
+        val moved = placement != lastVideo || state.videoAspect != pipHintAspect
         lastVideo = placement
+        // the system shrinks into picture in picture from where the picture is: tell it once the video has settled
+        if (moved) {
+            pipHintAspect = state.videoAspect
+            mainHandler.removeCallbacks(pipHintUpdate)
+            mainHandler.postDelayed(pipHintUpdate, PipHintDelayMs)
+        }
+    }
+
+    private var pipHintAspect = 0f
+
+    private val pipHintUpdate = Runnable { updatePipHint() }
+
+    /** Where the picture is now, for picture in picture (motion plan M2b item 2). */
+    fun pipHint(): PlayerPip.Hint? {
+        val landscape = !isPortrait && !isTabletLayout()
+        val fit = !landscape || state.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT
+        return PlayerPip.hint(lastVideo, state.videoAspect, fit)
+    }
+
+    private fun updatePipHint() {
+        if (view == null || state.inPictureInPicture || !canEnterPictureInPicture()) return
+        val activity = activity ?: return
+        if (!activity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return
+        if (!requireContext().prefs().getBoolean(C.PLAYER_PICTURE_IN_PICTURE, true)) return
+        val hint = pipHint() ?: return
+        try {
+            activity.setPictureInPictureParams(PlayerPip.params(hint))
+        } catch (e: IllegalArgumentException) {
+            // a shape the system refuses: keep the previous parameters
+        } catch (e: IllegalStateException) {
+            // picture in picture is not supported here after all
+        }
     }
 
     private fun placeChat(placement: ChatPlacement) {
@@ -1295,13 +1361,13 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         val pip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
         if (canEnterPictureInPicture()) {
             if (pip && requireContext().prefs().getBoolean(C.PLAYER_PICTURE_IN_PICTURE, true)) {
-                requireActivity().setPictureInPictureParams(PictureInPictureParams.Builder().setAutoEnterEnabled(true).build())
+                requireActivity().setPictureInPictureParams(PlayerPip.params(pipHint(), autoEnter = true))
             }
         } else {
             // audio only: the controls stay (PlayerScreen pins them) and the screen stays on
             requireView().keepScreenOn = true
             if (pip) {
-                requireActivity().setPictureInPictureParams(PictureInPictureParams.Builder().setAutoEnterEnabled(false).build())
+                requireActivity().setPictureInPictureParams(PlayerPip.params(pipHint(), autoEnter = false))
             }
         }
     }
@@ -1570,8 +1636,9 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
             requireContext().prefs().getBoolean(C.PLAYER_PICTURE_IN_PICTURE, true)
         ) {
             requireActivity().setPictureInPictureParams(
-                PictureInPictureParams.Builder().apply {
-                    setActions(listOf(
+                PlayerPip.params(
+                    hint = pipHint(),
+                    actions = listOf(
                         RemoteAction(
                             Icon.createWithResource(requireContext(), R.drawable.baseline_audiotrack_black_24),
                             getString(R.string.audio_only),
@@ -1594,8 +1661,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
                                 PendingIntent.FLAG_IMMUTABLE,
                             ),
                         ),
-                    ))
-                }.build()
+                    ),
+                )
             )
         }
     }
@@ -1709,6 +1776,7 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         chatContainer = null
         lastVideo = null
         lastChat = null
+        mainHandler.removeCallbacks(pipHintUpdate)
         mainHandler.removeCallbacks(coverTimeout)
         coverRequest?.dispose()
         coverRequest = null
@@ -1732,6 +1800,8 @@ abstract class PlayerFragment : BaseNetworkFragment(), IntegrityDialog.Listener,
         private const val OVERLAY_COLOR = 0xB3111113.toInt()
         /** A swap waits at most this long for its two screen copies (motion plan M2a item 4). */
         private const val SwapCaptureTimeoutMs = 100L
+        /** The picture-in-picture hint waits for the video to stop moving (one binder call, not one per frame). */
+        private const val PipHintDelayMs = 150L
     }
 }
 

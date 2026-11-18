@@ -40,6 +40,7 @@ import android.os.PowerManager
 import android.os.ext.SdkExtensions
 import android.text.format.Formatter
 import android.view.View
+import com.github.andreyasadchy.xtra.ui.player.PlayerPip
 import kotlin.math.roundToInt
 import com.github.andreyasadchy.xtra.ui.player.PlayerArrivalRules
 import com.github.andreyasadchy.xtra.ui.player.PlayerArrival
@@ -559,7 +560,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             (playerFragment as? PlayerFragment)?.canEnterPictureInPicture() == true
         ) {
             try {
-                enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+                enterPictureInPictureMode(PlayerPip.params((playerFragment as? PlayerFragment)?.pipHint()))
             } catch (e: IllegalStateException) {
                 //device doesn't support PIP
             }
@@ -1015,7 +1016,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
             prefs.getBoolean(C.PLAYER_PICTURE_IN_PICTURE, true)
         ) {
-            setPictureInPictureParams(PictureInPictureParams.Builder().setAutoEnterEnabled(true).build())
+            setPictureInPictureParams(PlayerPip.params(autoEnter = true))
         }
     }
 
@@ -1035,7 +1036,7 @@ class MainActivity : AppCompatActivity(), ShellHost, IntegrityDialog.Listener, L
         viewModel.isPlayerOpened = false
         onPlayerModeChanged()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-            setPictureInPictureParams(PictureInPictureParams.Builder().setAutoEnterEnabled(false).build())
+            setPictureInPictureParams(PlayerPip.params(autoEnter = false))
         }
         viewModel.sleepTimer?.cancel()
         viewModel.sleepTimerEndTime = 0L

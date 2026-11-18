@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.channel
 
+import com.github.andreyasadchy.xtra.ui.main.shell.LocalSettingsVersion
 import com.github.andreyasadchy.xtra.ui.design.components.rememberLagoonToastState
 import android.os.Bundle
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,9 @@ class ChannelDestination(host: PageHost) : ComposePage(host) {
         val segments = remember { ChannelSegment.list(segmentsPref) }
         var selectedKey by rememberSaveable { mutableStateOf(ChannelSegment.default(segmentsPref, segments).key) }
         val selected = ChannelSegment.of(selectedKey)?.takeIf { it in segments } ?: segments.first()
-        val options = remember {
+        // settings that change without a rebuild are read again when they do (motion plan M5 item 3)
+        val settingsVersion = LocalSettingsVersion.current
+        val options = remember(settingsVersion) {
             FollowingListOptions(
                 nameDisplay = prefs.getString(C.UI_NAME_DISPLAY, "0") ?: "0",
                 showUptime = prefs.getBoolean(C.UI_UPTIME, true),

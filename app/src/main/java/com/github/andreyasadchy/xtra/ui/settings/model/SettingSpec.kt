@@ -80,9 +80,16 @@ sealed interface SettingItem {
 sealed interface StoredSetting : SettingItem {
     val key: String get() = id
     val store: PrefStore
-    /** Changing it needs the main screen to rebuild when settings closes (the old pages read it once). */
-    val refresh: Boolean
+    /** What the main screen does when settings closes after this changed (motion plan M5 item 3). */
+    val refresh: Refresh
 }
+
+/**
+ * What a changed setting needs from the main screen (motion plan M5 item 3, N10): nothing, a fresh read of the
+ * settings by the pages (they redraw in place), or a rebuild of the whole screen. Settings that are read somewhere
+ * the pages cannot reach (the player, the chat, the window) stay [Recreate].
+ */
+enum class Refresh { None, Live, Recreate }
 
 data class ToggleSetting(
     override val id: String,
@@ -93,7 +100,7 @@ data class ToggleSetting(
     override val condition: SettingCondition = SettingCondition.Always,
     override val dependsOn: String? = null,
     override val store: PrefStore = PrefStore.App,
-    override val refresh: Boolean = false,
+    override val refresh: Refresh = Refresh.None,
 ) : StoredSetting
 
 data class ChoiceSetting(
@@ -106,7 +113,7 @@ data class ChoiceSetting(
     override val condition: SettingCondition = SettingCondition.Always,
     override val dependsOn: String? = null,
     override val store: PrefStore = PrefStore.App,
-    override val refresh: Boolean = false,
+    override val refresh: Refresh = Refresh.None,
 ) : StoredSetting
 
 /** A whole number on a slider, stored as an Int (the v0.1 SeekBarPreference keys). */
@@ -124,7 +131,7 @@ data class SliderSetting(
     override val condition: SettingCondition = SettingCondition.Always,
     override val dependsOn: String? = null,
     override val store: PrefStore = PrefStore.App,
-    override val refresh: Boolean = false,
+    override val refresh: Refresh = Refresh.None,
 ) : StoredSetting
 
 /** Free text, stored as a String (the v0.1 EditTextPreference keys). [default] null means "not set". */
@@ -140,7 +147,7 @@ data class TextSetting(
     override val condition: SettingCondition = SettingCondition.Always,
     override val dependsOn: String? = null,
     override val store: PrefStore = PrefStore.App,
-    override val refresh: Boolean = false,
+    override val refresh: Refresh = Refresh.None,
 ) : StoredSetting
 
 /**
@@ -158,7 +165,7 @@ data class TabOrderSetting(
     override val condition: SettingCondition = SettingCondition.Always,
     override val dependsOn: String? = null,
     override val store: PrefStore = PrefStore.App,
-    override val refresh: Boolean = true,
+    override val refresh: Refresh = Refresh.Recreate,
 ) : StoredSetting
 
 data class ActionRow(

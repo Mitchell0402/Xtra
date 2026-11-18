@@ -1,5 +1,6 @@
 package com.github.andreyasadchy.xtra.ui.settings
 
+import com.github.andreyasadchy.xtra.ui.settings.model.Refresh
 import android.content.SharedPreferences
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -25,8 +26,8 @@ import com.github.andreyasadchy.xtra.ui.settings.model.ToggleSetting
 class SettingsStore(
     private val app: SharedPreferences,
     private val token: SharedPreferences,
-    /** Called after a write of a setting that needs the main screen to rebuild ([StoredSetting.refresh]). */
-    private val onRefreshNeeded: () -> Unit = {},
+    /** Called after a write of a setting the main screen has to react to ([StoredSetting.refresh]). */
+    private val onRefreshNeeded: (Refresh) -> Unit = {},
 ) {
     private var version by mutableIntStateOf(0)
 
@@ -107,6 +108,6 @@ class SettingsStore(
 
     private inline fun write(setting: StoredSetting, crossinline block: SharedPreferences.Editor.() -> Unit) {
         prefs(setting.store).edit { block() }
-        if (setting.refresh) onRefreshNeeded()
+        if (setting.refresh != Refresh.None) onRefreshNeeded(setting.refresh)
     }
 }
